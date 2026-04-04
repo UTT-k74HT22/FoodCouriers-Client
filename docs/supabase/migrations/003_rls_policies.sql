@@ -10,10 +10,26 @@
 -- =====================================================
 -- Customers can read/update their own profile
 CREATE POLICY "users_select_own" ON users
-    FOR SELECT USING (auth_id = auth.uid() OR role = 'admin');
+    FOR SELECT USING (auth_id = auth.uid());
+
+CREATE POLICY "users_select_admin" ON users
+    FOR SELECT USING (
+        EXISTS (SELECT 1 FROM users u WHERE u.auth_id = auth.uid() AND u.role = 'admin')
+    );
+
+CREATE POLICY "users_insert_own" ON users
+    FOR INSERT WITH CHECK (auth_id = auth.uid());
 
 CREATE POLICY "users_update_own" ON users
     FOR UPDATE USING (auth_id = auth.uid());
+
+CREATE POLICY "users_update_admin" ON users
+    FOR UPDATE USING (
+        EXISTS (SELECT 1 FROM users u WHERE u.auth_id = auth.uid() AND u.role = 'admin')
+    )
+    WITH CHECK (
+        EXISTS (SELECT 1 FROM users u WHERE u.auth_id = auth.uid() AND u.role = 'admin')
+    );
 
 -- =====================================================
 -- TABLE: user_addresses
@@ -49,6 +65,9 @@ CREATE POLICY "restaurants_select_all" ON restaurants
 CREATE POLICY "restaurants_manage" ON restaurants
     FOR ALL USING (
         EXISTS (SELECT 1 FROM users WHERE auth_id = auth.uid() AND role = 'admin')
+    )
+    WITH CHECK (
+        EXISTS (SELECT 1 FROM users WHERE auth_id = auth.uid() AND role = 'admin')
     );
 
 -- =====================================================
@@ -59,6 +78,26 @@ CREATE POLICY "categories_select" ON categories
 
 CREATE POLICY "categories_manage" ON categories
     FOR ALL USING (
+        EXISTS (SELECT 1 FROM users WHERE auth_id = auth.uid() AND role = 'admin')
+    )
+    WITH CHECK (
+        EXISTS (SELECT 1 FROM users WHERE auth_id = auth.uid() AND role = 'admin')
+    );
+
+-- =====================================================
+-- TABLE: restaurant_staff
+-- =====================================================
+CREATE POLICY "restaurant_staff_select" ON restaurant_staff
+    FOR SELECT USING (
+        user_id IN (SELECT id FROM users WHERE auth_id = auth.uid())
+        OR EXISTS (SELECT 1 FROM users WHERE auth_id = auth.uid() AND role = 'admin')
+    );
+
+CREATE POLICY "restaurant_staff_manage" ON restaurant_staff
+    FOR ALL USING (
+        EXISTS (SELECT 1 FROM users WHERE auth_id = auth.uid() AND role = 'admin')
+    )
+    WITH CHECK (
         EXISTS (SELECT 1 FROM users WHERE auth_id = auth.uid() AND role = 'admin')
     );
 
@@ -74,6 +113,9 @@ CREATE POLICY "menu_items_select" ON menu_items
 
 CREATE POLICY "menu_items_manage" ON menu_items
     FOR ALL USING (
+        EXISTS (SELECT 1 FROM users WHERE auth_id = auth.uid() AND role IN ('admin', 'staff'))
+    )
+    WITH CHECK (
         EXISTS (SELECT 1 FROM users WHERE auth_id = auth.uid() AND role IN ('admin', 'staff'))
     );
 
@@ -134,6 +176,9 @@ CREATE POLICY "promotions_select" ON promotions
 CREATE POLICY "promotions_manage" ON promotions
     FOR ALL USING (
         EXISTS (SELECT 1 FROM users WHERE auth_id = auth.uid() AND role = 'admin')
+    )
+    WITH CHECK (
+        EXISTS (SELECT 1 FROM users WHERE auth_id = auth.uid() AND role = 'admin')
     );
 
 -- =====================================================
@@ -162,6 +207,9 @@ CREATE POLICY "reviews_insert" ON reviews
 CREATE POLICY "reviews_manage" ON reviews
     FOR ALL USING (
         EXISTS (SELECT 1 FROM users WHERE auth_id = auth.uid() AND role = 'admin')
+    )
+    WITH CHECK (
+        EXISTS (SELECT 1 FROM users WHERE auth_id = auth.uid() AND role = 'admin')
     );
 
 -- =====================================================
@@ -176,6 +224,9 @@ CREATE POLICY "banners_select" ON banners
 
 CREATE POLICY "banners_manage" ON banners
     FOR ALL USING (
+        EXISTS (SELECT 1 FROM users WHERE auth_id = auth.uid() AND role = 'admin')
+    )
+    WITH CHECK (
         EXISTS (SELECT 1 FROM users WHERE auth_id = auth.uid() AND role = 'admin')
     );
 
@@ -217,6 +268,9 @@ CREATE POLICY "carts_select_own" ON carts
 CREATE POLICY "carts_manage" ON carts
     FOR ALL USING (
         user_id IN (SELECT id FROM users WHERE auth_id = auth.uid())
+    )
+    WITH CHECK (
+        user_id IN (SELECT id FROM users WHERE auth_id = auth.uid())
     );
 
 -- =====================================================
@@ -224,6 +278,9 @@ CREATE POLICY "carts_manage" ON carts
 -- =====================================================
 CREATE POLICY "cart_items_manage" ON cart_items
     FOR ALL USING (
+        cart_id IN (SELECT id FROM carts WHERE user_id IN (SELECT id FROM users WHERE auth_id = auth.uid()))
+    )
+    WITH CHECK (
         cart_id IN (SELECT id FROM carts WHERE user_id IN (SELECT id FROM users WHERE auth_id = auth.uid()))
     );
 

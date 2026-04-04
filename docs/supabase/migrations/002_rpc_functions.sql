@@ -178,7 +178,7 @@ BEGIN
         'total', v_total
     );
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
 -- =====================================================
 -- FUNCTION: rpc_update_order_status
@@ -250,7 +250,7 @@ BEGIN
         'new_status', p_new_status
     );
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
 -- =====================================================
 -- FUNCTION: rpc_apply_promotion
@@ -306,7 +306,7 @@ BEGIN
         'promotion_id', v_promotion.id
     );
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql SET search_path = public;
 
 -- =====================================================
 -- FUNCTION: rpc_recompute_restaurant_rating
@@ -329,4 +329,4 @@ BEGIN
     SET rating = v_avg_rating, review_count = v_review_count
     WHERE id = p_restaurant_id;
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql SET search_path = public;
