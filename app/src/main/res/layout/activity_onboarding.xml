@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/background"
+    android:paddingHorizontal="@dimen/spacing_lg"
+    android:paddingTop="@dimen/spacing_lg"
+    android:paddingBottom="@dimen/spacing_xl">
+
+    <TextView
+        android:id="@+id/tvSkip"
+        style="@style/TextStyle.Body"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:background="@drawable/bg_button_ghost"
+        android:paddingHorizontal="14dp"
+        android:paddingVertical="8dp"
+        android:text="@string/onboarding_skip"
+        android:textColor="@color/text_secondary"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <androidx.viewpager2.widget.ViewPager2
+        android:id="@+id/viewPagerOnboarding"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:clipToPadding="false"
+        android:paddingBottom="@dimen/spacing_md"
+        app:layout_constraintBottom_toTopOf="@id/layoutFooter"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/tvSkip" />
+
+    <LinearLayout
+        android:id="@+id/layoutFooter"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent">
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_horizontal"
+            android:contentDescription="@string/onboarding_indicator_content_description"
+            android:gravity="center"
+            android:orientation="horizontal">
+
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/indicatorOne"
+                android:layout_width="26dp"
+                android:layout_height="8dp"
+                app:cardBackgroundColor="@color/primary"
+                app:cardCornerRadius="12dp"
+                app:strokeWidth="0dp" />
+
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/indicatorTwo"
+                android:layout_width="8dp"
+                android:layout_height="8dp"
+                android:layout_marginStart="8dp"
+                app:cardBackgroundColor="@color/auth_indicator_inactive"
+                app:cardCornerRadius="12dp"
+                app:strokeWidth="0dp" />
+        </LinearLayout>
+
+        <Button
+            android:id="@+id/btnPrimaryAction"
+            style="@style/ButtonStyle.Primary"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:layout_marginTop="@dimen/spacing_lg"
+            android:text="@string/onboarding_continue"
+            android:textAllCaps="false" />
+
+        <Button
+            android:id="@+id/btnSecondaryAction"
+            style="@style/ButtonStyle.Outline"
+            android:layout_width="match_parent"
+            android:layout_height="52dp"
+            android:layout_marginTop="@dimen/spacing_md"
+            android:text="@string/onboarding_sign_in" />
+    </LinearLayout>
+
+</androidx.constraintlayout.widget.ConstraintLayout>

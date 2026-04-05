@@ -6,17 +6,21 @@
     <dimen name="spacing_lg">16dp</dimen>
     <dimen name="spacing_xl">24dp</dimen>
     <dimen name="spacing_xxl">32dp</dimen>
+    <dimen name="spacing_3xl">40dp</dimen>
 
     <dimen name="radius_small">8dp</dimen>
     <dimen name="radius_medium">12dp</dimen>
     <dimen name="radius_large">16dp</dimen>
+    <dimen name="radius_xlarge">24dp</dimen>
     <dimen name="radius_chip">20dp</dimen>
 
     <dimen name="button_height">48dp</dimen>
     <dimen name="input_height">48dp</dimen>
+    <dimen name="auth_input_height">56dp</dimen>
 
     <dimen name="text_title">20sp</dimen>
     <dimen name="text_title_large">24sp</dimen>
+    <dimen name="text_display">30sp</dimen>
     <dimen name="text_subtitle">16sp</dimen>
     <dimen name="text_body">14sp</dimen>
     <dimen name="text_caption">12sp</dimen>
@@ -31,4 +35,5 @@
     <dimen name="icon_size_sm">16dp</dimen>
     <dimen name="icon_size_md">24dp</dimen>
     <dimen name="icon_size_lg">32dp</dimen>
+    <dimen name="icon_size_xl">48dp</dimen>
 </resources>

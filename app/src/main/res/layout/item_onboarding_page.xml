@@ -1,0 +1,136 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fillViewport="true"
+    android:scrollbars="none">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingTop="@dimen/spacing_lg"
+        android:paddingBottom="@dimen/spacing_md">
+
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:layout_width="match_parent"
+            android:layout_height="320dp"
+            android:background="@drawable/bg_auth_hero_panel">
+
+            <View
+                android:layout_width="108dp"
+                android:layout_height="108dp"
+                android:background="@drawable/bg_blob_peach"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent" />
+
+            <View
+                android:layout_width="120dp"
+                android:layout_height="120dp"
+                android:background="@drawable/bg_blob_mint"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintEnd_toEndOf="parent" />
+
+            <ImageView
+                android:id="@+id/ivMainIllustration"
+                android:layout_width="88dp"
+                android:layout_height="88dp"
+                android:background="@drawable/bg_icon_surface_white"
+                android:padding="20dp"
+                android:tint="@color/primary"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent" />
+
+            <ImageView
+                android:id="@+id/ivTopAccent"
+                android:layout_width="56dp"
+                android:layout_height="56dp"
+                android:layout_marginStart="26dp"
+                android:layout_marginTop="36dp"
+                android:background="@drawable/bg_icon_surface_orange"
+                android:padding="14dp"
+                android:tint="@color/primary_dark"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent" />
+
+            <ImageView
+                android:id="@+id/ivBottomAccent"
+                android:layout_width="56dp"
+                android:layout_height="56dp"
+                android:layout_marginEnd="26dp"
+                android:layout_marginBottom="34dp"
+                android:background="@drawable/bg_icon_surface_mint"
+                android:padding="14dp"
+                android:tint="@color/secondary"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintEnd_toEndOf="parent" />
+        </androidx.constraintlayout.widget.ConstraintLayout>
+
+        <TextView
+            android:id="@+id/tvOnboardingEyebrow"
+            style="@style/TextStyle.AuthEyebrow"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/spacing_xl" />
+
+        <TextView
+            android:id="@+id/tvOnboardingTitle"
+            style="@style/TextStyle.AuthDisplay"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/spacing_sm"
+            android:lineSpacingExtra="4dp" />
+
+        <TextView
+            android:id="@+id/tvOnboardingSubtitle"
+            style="@style/TextStyle.Body"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/spacing_md"
+            android:lineSpacingExtra="3dp"
+            android:textColor="@color/text_secondary" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/spacing_lg"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/tvChipOne"
+                style="@style/TextStyle.Body"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:background="@drawable/bg_auth_chip_warm"
+                android:paddingHorizontal="14dp"
+                android:paddingVertical="10dp"
+                android:textColor="@color/auth_pill_warm_text" />
+
+            <TextView
+                android:id="@+id/tvChipTwo"
+                style="@style/TextStyle.Body"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:background="@drawable/bg_auth_chip_mint"
+                android:paddingHorizontal="14dp"
+                android:paddingVertical="10dp"
+                android:textColor="@color/auth_pill_mint_text" />
+
+            <TextView
+                android:id="@+id/tvChipThree"
+                style="@style/TextStyle.Body"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:background="@drawable/bg_auth_chip_yellow"
+                android:paddingHorizontal="14dp"
+                android:paddingVertical="10dp"
+                android:textColor="@color/auth_pill_yellow_text" />
+        </LinearLayout>
+
+    </LinearLayout>
+</ScrollView>
