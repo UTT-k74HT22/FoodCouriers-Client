@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<EditText xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/et_input_field"
+    android:layout_width="match_parent"
+    android:layout_height="@dimen/input_height"
+    android:paddingHorizontal="@dimen/spacing_lg"
+    android:gravity="center_vertical"
+    android:textSize="@dimen/text_body"
+    android:textColor="@color/text_primary"
+    android:textColorHint="@color/text_hint"
+    android:background="@drawable/selector_input_field"
+    android:inputType="text" />
