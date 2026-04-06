@@ -31,6 +31,7 @@
     <color name="card_shadow">#14000000</color>
     <color name="input_background">#FFFFFF</color>
     <color name="success">#26B593</color>
+    <color name="error">#FF3B30</color>
     <color name="warning">#FFD166</color>
     <color name="orange_light">#FFF3ED</color>
     <color name="mint_light">#E9FBF7</color>
