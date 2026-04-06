@@ -16,7 +16,19 @@
         android:theme="@style/Theme.FoodCouriersClient">
 
         <activity
+            android:name=".ui.auth.RegisterActivity"
+            android:exported="false" />
+
+        <activity
+            android:name=".ui.auth.LoginActivity"
+            android:exported="false" />
+
+        <activity
             android:name=".ClientSystemMain"
+            android:exported="false" />
+
+        <activity
+            android:name=".ui.auth.OnboardingActivity"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

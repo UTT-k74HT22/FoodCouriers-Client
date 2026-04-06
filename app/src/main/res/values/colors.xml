@@ -32,6 +32,7 @@
     <color name="input_background">#FFFFFF</color>
     <color name="success">#26B593</color>
     <color name="warning">#FFD166</color>
+    <color name="error">#EF4444</color>
     <color name="orange_light">#FFF3ED</color>
     <color name="mint_light">#E9FBF7</color>
     <color name="yellow_light">#FFF8E1</color>
@@ -39,6 +40,14 @@
     <color name="chip_text_selected">#FFFFFF</color>
     <color name="decor_orange">#14FF6B35</color>
     <color name="decor_green">#1400C2A8</color>
+    <color name="auth_hero_peach">#FFF6F1</color>
+    <color name="auth_leaf_mint">#F1FFFB</color>
+    <color name="auth_outline">#E9E3DE</color>
+    <color name="auth_surface_alt">#FFFDFB</color>
+    <color name="auth_pill_warm_text">#C75A2A</color>
+    <color name="auth_pill_mint_text">#088A76</color>
+    <color name="auth_pill_yellow_text">#9B7A12</color>
+    <color name="auth_indicator_inactive">#F3D8CD</color>
 
     <color name="black">#000000</color>
     <color name="white">#FFFFFF</color>
