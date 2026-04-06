@@ -1,239 +1,316 @@
-# 🍔 FoodDelivery — App Khách Hàng (Client)
+# FoodDelivery — App Khách Hàng (Client)
 
-> Ứng dụng đặt và giao đồ ăn trực tuyến dành cho người dùng cuối.  
-> Nền tảng: **Java Android · XML Layout · Firebase**
-
----
-
-## 📋 Mục Lục
-
-- [Tổng quan](#-tổng-quan)
-- [Tính năng](#-tính-năng)
-- [Công nghệ sử dụng](#-công-nghệ-sử-dụng)
-- [Cấu trúc project](#-cấu-trúc-project)
-- [Hướng dẫn cài đặt](#-hướng-dẫn-cài-đặt)
-- [Cấu hình Firebase](#-cấu-hình-firebase)
-- [Kiến trúc ứng dụng](#-kiến-trúc-ứng-dụng)
-- [Màn hình chính](#-màn-hình-chính)
-- [Luồng đặt hàng](#-luồng-đặt-hàng)
-- [Biến môi trường](#-biến-môi-trường)
+> Ứng dụng đặt đồ ăn trực tuyến dành cho người dùng cuối.
+> Nền tảng: **Java Android · XML Layout · Supabase**
 
 ---
 
-## 📱 Tổng Quan
+## Mục Lục
+
+- [Tổng quan](#tổng-quan)
+- [Tính năng](#tính-năng)
+- [Công nghệ sử dụng](#công-nghệ-sử-dụng)
+- [Cấu trúc project](#cấu-trúc-project)
+- [Hướng dẫn cài đặt](#hướng-dẫn-cài-đặt)
+- [Kiến trúc ứng dụng](#kiến-trúc-ứng-dụng)
+- [Màn hình chính](#màn-hình-chính)
+- [Luồng đặt hàng](#luồng-đặt-hàng)
+- [Luồng theo dõi đơn hàng](#luồng-theo-dõi-đơn-hàng)
+- [Cart — Local-first strategy](#cart--local-first-strategy)
+- [Design System](#design-system)
+- [Roadmap & Phases](#roadmap--phases)
+
+---
+
+## Tổng Quan
 
 **FoodDelivery Client** là ứng dụng Android dành cho khách hàng, cho phép:
-- Tìm kiếm và đặt món từ các nhà hàng gần đó
-- Theo dõi đơn hàng và vị trí shipper theo thời gian thực
-- Thanh toán qua nhiều hình thức (COD, MoMo, ZaloPay, VNPay)
-- Chat trực tiếp với shipper trong quá trình giao hàng
+
+- Duyệt nhà hàng và thực đơn, tìm kiếm món ăn
+- Thêm món vào giỏ hàng và đặt hàng (thanh toán COD)
+- Theo dõi trạng thái đơn hàng theo thời gian thực
+- Quản lý hồ sơ cá nhân và địa chỉ giao hàng
+- Xem lịch sử đơn hàng
 
 | Thông tin | Chi tiết |
-|-----------|----------|
-| Min SDK | Android 7.0 (API 24) |
+|---|---|
+| Min SDK | Android 8.0 (API 26) |
 | Target SDK | Android 14 (API 34) |
 | Ngôn ngữ | Java |
 | Layout | XML |
-| Architecture | MVVM + LiveData |
+| Architecture | MVVM + Repository Pattern |
+| Backend | Supabase (PostgreSQL + Auth + Storage + Realtime) |
+| Thanh toán | COD (tiền mặt khi nhận hàng) |
 
 ---
 
-## ✨ Tính Năng
+## Tính Năng
 
-### 🔐 Xác thực
-- Đăng nhập / đăng ký bằng số điện thoại (OTP Firebase)
-- Đăng nhập Google (Firebase Google Sign-In)
-- Onboarding 3 slide khi lần đầu mở app
+### Xác thực
 
-### 🏠 Trang Chủ
-- Banner khuyến mãi tự động cuộn (ViewPager2)
-- Danh mục đồ ăn ngang (Burger, Pizza, Cơm, Bún, Trà sữa...)
-- Nhà hàng gần vị trí hiện tại
-- Nhà hàng đang hot / được đề xuất
-- Tải thêm không giới hạn (Firestore pagination)
+- Đăng ký tài khoản bằng email và mật khẩu
+- Đăng nhập / đăng xuất
+- Tự động đăng nhập lại khi có session hợp lệ (token còn hạn)
+- Đặt lại mật khẩu qua email (Supabase Auth)
 
-### 🍽️ Đặt Món
-- Xem thực đơn theo danh mục với sticky header
-- Chọn size / topping / tùy chọn bổ sung
-- Giỏ hàng thông minh (cảnh báo khi đặt từ nhiều nhà hàng)
-- Áp dụng mã giảm giá / voucher
+> Phase 2: Đăng nhập Google / Facebook
 
-### 🚀 Theo Dõi Đơn Hàng
-- Thanh tiến trình đơn hàng (5 bước)
-- Bản đồ Google Maps theo dõi vị trí shipper realtime
-- Vẽ đường đi từ nhà hàng đến địa chỉ giao
-- Thông tin shipper (tên, SĐT, biển số, rating)
+### Trang Chủ
 
-### 💬 Tiện Ích Khác
-- Chat với shipper (Firebase Realtime Database)
-- Push notification (FCM) khi cập nhật đơn hàng
-- Lịch sử đơn hàng + đặt lại nhanh
-- Đánh giá nhà hàng & shipper sau khi nhận hàng
-- Quản lý nhiều địa chỉ giao hàng
+- Banner khuyến mãi (ViewPager2 auto-scroll)
+- Danh mục đồ ăn cuộn ngang (Cơm, Phở, Pizza, Bún, ...)
+- Danh sách nhà hàng nổi bật
+- Truy cập nhanh đơn hàng gần nhất
+
+> Phase 2: Banner được quản lý từ Admin App
+
+### Khám Phá & Tìm Kiếm
+
+- Tìm kiếm theo tên món ăn hoặc nhà hàng (full-text search qua PostgreSQL)
+- Lọc theo danh mục
+- Kết quả tìm kiếm hiển thị cả nhà hàng lẫn món ăn
+
+> Phase 2: Sort theo giá, lọc theo rating
+
+### Chi Tiết Nhà Hàng & Thực Đơn
+
+- Thông tin nhà hàng: tên, địa chỉ, giờ mở cửa, rating
+- Thực đơn nhóm theo danh mục (sticky header)
+- Chi tiết món ăn: ảnh, mô tả, giá
+- Nút thêm vào giỏ hàng trực tiếp từ danh sách
+
+### Giỏ Hàng
+
+- Thêm / bớt số lượng / xóa món
+- Hiển thị tổng tiền (subtotal + phí giao hàng)
+- Cảnh báo khi thêm món từ nhà hàng khác (chỉ 1 nhà hàng/đơn)
+- Nhập mã giảm giá / voucher (Phase 2)
+- Giỏ hàng được lưu local — không mất khi tắt app
+
+### Đặt Hàng
+
+- Nhập hoặc chọn địa chỉ giao hàng
+- Ghi chú cho đơn hàng
+- Xem tóm tắt đơn hàng trước khi xác nhận
+- Chọn phương thức thanh toán: COD (mặc định)
+- Xác nhận đặt hàng → tạo đơn ngay lập tức
+
+### Theo Dõi Đơn Hàng
+
+- Thanh tiến trình trực quan (5 bước)
+- Trạng thái cập nhật theo thời gian thực (Supabase Realtime)
+- Xem chi tiết từng bước: thời gian xác nhận, thời gian bắt đầu giao
+
+> Lưu ý: Không có bản đồ GPS tracking shipper trong phạm vi hiện tại. Trạng thái được cập nhật thủ công bởi admin/staff.
+
+### Lịch Sử Đơn Hàng
+
+- Danh sách đơn hàng theo thời gian
+- Lọc theo trạng thái (đang xử lý / hoàn thành / đã hủy)
+- Xem chi tiết từng đơn (items, giá, địa chỉ, timeline)
+- Đặt lại nhanh từ đơn cũ (Phase 2)
+
+### Hồ Sơ Cá Nhân
+
+- Xem và chỉnh sửa thông tin: tên, số điện thoại, avatar
+- Đổi mật khẩu
+- Quản lý địa chỉ giao hàng (Phase 2)
+- Đăng xuất
+
+### Đánh Giá (Phase 2)
+
+- Đánh giá sau khi nhận hàng (rating 1–5 sao + comment)
+- Xem đánh giá của người dùng khác trên trang nhà hàng
 
 ---
 
-## 🛠️ Công Nghệ Sử Dụng
+## Công Nghệ Sử Dụng
 
-### Firebase
+### Supabase Platform
+
 | Dịch vụ | Mục đích |
-|---------|----------|
-| Firebase Authentication | Đăng nhập OTP + Google |
-| Cloud Firestore | Database chính (nhà hàng, đơn hàng, user) |
-| Firebase Realtime Database | Chat realtime giữa khách & shipper |
-| Firebase Storage | Lưu ảnh avatar, ảnh đánh giá |
-| Firebase Cloud Messaging | Push notification |
+|---|---|
+| **Supabase Auth** | Đăng ký / đăng nhập, JWT token, session management |
+| **PostgreSQL** | Database chính: users, orders, restaurants, menu_items, ... |
+| **Row Level Security (RLS)** | Customer chỉ đọc/ghi dữ liệu của chính mình |
+| **Supabase Storage** | Ảnh nhà hàng, ảnh món ăn, avatar người dùng |
+| **Supabase Realtime** | Cập nhật trạng thái đơn hàng theo thời gian thực (WebSocket) |
+| **PostgREST** | REST API tự động từ schema — không cần viết server riêng |
+| **PostgreSQL RPC** | Đặt hàng (atomic transaction), báo cáo |
 
-### Third-party Libraries
+### Android Libraries
+
 | Thư viện | Version | Mục đích |
-|----------|---------|----------|
+|---|---|---|
+| Supabase Kotlin SDK | 2.x | Giao tiếp với Supabase (Auth, DB, Storage, Realtime) |
 | Glide | 4.16.0 | Tải và cache hình ảnh |
-| Google Maps SDK | 18.2.0 | Bản đồ + tracking shipper |
-| Google Places API | 3.3.0 | Tìm kiếm và tự động hoàn thiện địa chỉ |
+| Room | 2.x | Lưu cart local (offline-first) |
 | Material Design 3 | 1.10.0 | UI Components |
-| Facebook Shimmer | 0.5.0 | Skeleton loading |
-| MoMo SDK | latest | Thanh toán MoMo |
-| ZaloPay SDK | latest | Thanh toán ZaloPay |
+| Navigation Component | 2.x | Điều hướng Fragment (Bottom Navigation) |
+| ViewPager2 | 1.x | Banner tự động cuộn, tab layout |
+| SwipeRefreshLayout | — | Pull-to-refresh danh sách |
+| CircleImageView | 3.1.0 | Ảnh avatar hình tròn |
+
+> **Lưu ý về SDK:** Supabase SDK chính thức viết bằng Kotlin nhưng tương thích với Java project qua interop. Fallback: gọi Supabase REST API trực tiếp qua OkHttp nếu cần.
 
 ---
 
-## 📁 Cấu Trúc Project
+## Cấu Trúc Project
 
 ```
 app/
-├── src/main/
-│   ├── java/com/fooddelivery/client/
-│   │   │
-│   │   ├── data/                          # Tầng dữ liệu
-│   │   │   ├── model/                     # Java Model classes
-│   │   │   │   ├── User.java              # Thông tin người dùng
-│   │   │   │   ├── Restaurant.java        # Thông tin nhà hàng
-│   │   │   │   ├── MenuItem.java          # Món ăn trong menu
-│   │   │   │   ├── Order.java             # Đơn hàng
-│   │   │   │   ├── CartItem.java          # Item trong giỏ hàng
-│   │   │   │   ├── Address.java           # Địa chỉ giao hàng
-│   │   │   │   ├── Shipper.java           # Thông tin shipper
-│   │   │   │   ├── Review.java            # Đánh giá
-│   │   │   │   └── Promotion.java         # Khuyến mãi / voucher
-│   │   │   │
-│   │   │   ├── repository/                # Xử lý logic truy vấn Firebase
-│   │   │   │   ├── AuthRepository.java    # Đăng nhập / đăng ký
-│   │   │   │   ├── RestaurantRepository.java
-│   │   │   │   ├── OrderRepository.java
-│   │   │   │   ├── UserRepository.java
-│   │   │   │   └── ChatRepository.java
-│   │   │   │
-│   │   │   └── remote/                    # Firebase helpers
-│   │   │       ├── FirestoreHelper.java   # CRUD Firestore dùng chung
-│   │   │       ├── StorageHelper.java     # Upload / download ảnh
-│   │   │       └── RealtimeDbHelper.java  # Firebase Realtime DB (chat)
-│   │   │
-│   │   ├── ui/                            # Tầng giao diện
-│   │   │   ├── auth/                      # Xác thực
-│   │   │   │   ├── SplashActivity.java
-│   │   │   │   ├── OnboardingActivity.java
-│   │   │   │   ├── LoginActivity.java
-│   │   │   │   ├── RegisterActivity.java
-│   │   │   │   └── OtpVerifyActivity.java
-│   │   │   │
-│   │   │   ├── main/                      # Màn hình chính sau đăng nhập
-│   │   │   │   └── MainActivity.java      # BottomNavigationView container
-│   │   │   │
-│   │   │   ├── home/                      # Tab Trang chủ
-│   │   │   │   ├── HomeFragment.java
-│   │   │   │   ├── RestaurantListFragment.java
-│   │   │   │   ├── SearchActivity.java
-│   │   │   │   └── adapter/
-│   │   │   │       ├── BannerAdapter.java
-│   │   │   │       ├── CategoryAdapter.java
-│   │   │   │       └── RestaurantAdapter.java
-│   │   │   │
-│   │   │   ├── restaurant/                # Chi tiết nhà hàng
-│   │   │   │   ├── RestaurantDetailActivity.java
-│   │   │   │   ├── MenuItemDetailBottomSheet.java
-│   │   │   │   └── adapter/
-│   │   │   │       ├── MenuSectionAdapter.java
-│   │   │   │       └── MenuItemAdapter.java
-│   │   │   │
-│   │   │   ├── cart/                      # Giỏ hàng
-│   │   │   │   ├── CartFragment.java
-│   │   │   │   ├── CartManager.java       # Singleton quản lý giỏ hàng
-│   │   │   │   └── adapter/
-│   │   │   │       └── CartItemAdapter.java
-│   │   │   │
-│   │   │   ├── order/                     # Đặt hàng & theo dõi
-│   │   │   │   ├── CheckoutActivity.java
-│   │   │   │   ├── OrderSuccessActivity.java
-│   │   │   │   ├── OrderTrackingActivity.java
-│   │   │   │   ├── OrderDetailActivity.java
-│   │   │   │   └── OrderHistoryFragment.java
-│   │   │   │
-│   │   │   ├── chat/                      # Chat với shipper
-│   │   │   │   ├── ChatActivity.java
-│   │   │   │   └── adapter/
-│   │   │   │       └── MessageAdapter.java
-│   │   │   │
-│   │   │   ├── profile/                   # Hồ sơ cá nhân
-│   │   │   │   ├── ProfileFragment.java
-│   │   │   │   ├── EditProfileActivity.java
-│   │   │   │   ├── AddressManagerActivity.java
-│   │   │   │   ├── AddEditAddressActivity.java
-│   │   │   │   └── ReviewActivity.java
-│   │   │   │
-│   │   │   └── common/                    # Dùng chung
-│   │   │       ├── BaseActivity.java      # Base với loading, permission
-│   │   │       ├── BaseFragment.java
-│   │   │       ├── LoadingDialog.java
-│   │   │       └── EmptyStateView.java
-│   │   │
-│   │   ├── viewmodel/                     # MVVM ViewModels
-│   │   │   ├── HomeViewModel.java
-│   │   │   ├── RestaurantViewModel.java
-│   │   │   ├── CartViewModel.java
-│   │   │   ├── OrderViewModel.java
-│   │   │   └── ProfileViewModel.java
-│   │   │
-│   │   ├── service/                       # Background services
-│   │   │   ├── MyFirebaseMessagingService.java  # Nhận FCM notification
-│   │   │   └── LocationService.java             # Cập nhật vị trí
-│   │   │
-│   │   └── utils/                         # Tiện ích
-│   │       ├── Constants.java             # Hằng số toàn app
-│   │       ├── SharedPrefManager.java     # Lưu session, cart data
-│   │       ├── CurrencyUtils.java         # Format tiền VND
-│   │       ├── DateTimeUtils.java         # Format ngày giờ
-│   │       ├── ImageUtils.java            # Compress, resize ảnh
-│   │       ├── NetworkUtils.java          # Kiểm tra kết nối mạng
-│   │       ├── DistanceUtils.java         # Tính khoảng cách Haversine
-│   │       └── ValidationUtils.java       # Validate form input
-│   │
-│   └── res/
-│       ├── layout/                        # Tất cả file XML layout
-│       │   ├── activity_*.xml
-│       │   ├── fragment_*.xml
-│       │   └── item_*.xml
-│       ├── drawable/                      # Icons, shapes, backgrounds
-│       ├── anim/                          # Animation XML
-│       ├── values/
-│       │   ├── colors.xml                 # Bảng màu (#FF6B35, #1A237E...)
-│       │   ├── strings.xml                # Tất cả chuỗi văn bản
-│       │   ├── styles.xml                 # Styles & themes
-│       │   └── dimens.xml                 # Kích thước
-│       └── font/                          # File font tùy chỉnh
-│
-├── google-services.json                   # ⚠️ Firebase config (không commit)
-└── build.gradle                           # Dependencies
+└── src/main/
+    └── java/com/fooddelivery/client/
+        │
+        ├── data/
+        │   ├── model/                           # Domain models (Java POJOs)
+        │   │   ├── User.java
+        │   │   ├── Restaurant.java
+        │   │   ├── Category.java
+        │   │   ├── MenuItem.java
+        │   │   ├── Cart.java
+        │   │   ├── CartItem.java
+        │   │   ├── Order.java
+        │   │   ├── OrderItem.java
+        │   │   ├── Address.java
+        │   │   ├── Banner.java
+        │   │   └── Review.java
+        │   │
+        │   ├── remote/
+        │   │   ├── SupabaseClient.java           # Singleton Supabase client
+        │   │   └── dto/                          # Data Transfer Objects (JSON → model)
+        │   │       ├── RestaurantDto.java
+        │   │       ├── MenuItemDto.java
+        │   │       ├── OrderDto.java
+        │   │       └── UserDto.java
+        │   │
+        │   ├── local/
+        │   │   ├── AppDatabase.java              # Room database (cart local cache)
+        │   │   ├── dao/
+        │   │   │   └── CartDao.java
+        │   │   └── entity/
+        │   │       └── CartItemEntity.java
+        │   │
+        │   └── repository/
+        │       ├── AuthRepository.java           # Đăng ký, đăng nhập, session
+        │       ├── RestaurantRepository.java     # Danh sách, chi tiết nhà hàng
+        │       ├── MenuRepository.java           # Danh sách món ăn theo nhà hàng
+        │       ├── CartRepository.java           # Giỏ hàng (Room DB)
+        │       ├── OrderRepository.java          # Tạo, xem, theo dõi đơn hàng
+        │       ├── SearchRepository.java         # Full-text search
+        │       ├── UserRepository.java           # Profile, địa chỉ
+        │       └── BannerRepository.java         # Banner trang chủ
+        │
+        ├── domain/
+        │   └── usecase/
+        │       ├── PlaceOrderUseCase.java        # Tính giá, validate, tạo đơn (RPC)
+        │       ├── AddToCartUseCase.java         # Validate 1 nhà hàng/giỏ
+        │       └── GetMenuGroupedUseCase.java    # Nhóm món theo danh mục
+        │
+        ├── ui/
+        │   ├── splash/
+        │   │   ├── SplashActivity.java           # Kiểm tra session → redirect
+        │   │   └── activity_splash.xml
+        │   │
+        │   ├── auth/
+        │   │   ├── LoginActivity.java
+        │   │   ├── RegisterActivity.java
+        │   │   ├── ForgotPasswordActivity.java
+        │   │   ├── activity_login.xml
+        │   │   └── activity_register.xml
+        │   │
+        │   ├── main/
+        │   │   ├── MainActivity.java             # BottomNavigationView container
+        │   │   └── activity_main.xml
+        │   │
+        │   ├── home/
+        │   │   ├── HomeFragment.java             # Banner + Category + Restaurant list
+        │   │   ├── fragment_home.xml
+        │   │   └── adapter/
+        │   │       ├── BannerAdapter.java        # ViewPager2 banner
+        │   │       ├── CategoryAdapter.java      # RecyclerView ngang
+        │   │       └── RestaurantAdapter.java
+        │   │
+        │   ├── search/
+        │   │   ├── SearchFragment.java
+        │   │   ├── fragment_search.xml
+        │   │   └── adapter/
+        │   │       └── SearchResultAdapter.java
+        │   │
+        │   ├── restaurant/
+        │   │   ├── RestaurantDetailActivity.java # Info + menu grouped by category
+        │   │   ├── activity_restaurant_detail.xml
+        │   │   └── adapter/
+        │   │       ├── MenuGroupAdapter.java     # Outer adapter (category header)
+        │   │       └── MenuItemAdapter.java      # Inner adapter (items)
+        │   │
+        │   ├── menu/
+        │   │   └── MenuItemDetailBottomSheet.java  # Ảnh, mô tả, giá, nút thêm giỏ
+        │   │
+        │   ├── cart/
+        │   │   ├── CartActivity.java
+        │   │   ├── activity_cart.xml
+        │   │   └── adapter/
+        │   │       └── CartItemAdapter.java
+        │   │
+        │   ├── checkout/
+        │   │   ├── CheckoutActivity.java         # Địa chỉ, ghi chú, tóm tắt, xác nhận
+        │   │   └── activity_checkout.xml
+        │   │
+        │   ├── order/
+        │   │   ├── OrdersFragment.java           # Danh sách lịch sử đơn (tabs)
+        │   │   ├── OrderDetailActivity.java      # Chi tiết đơn + timeline
+        │   │   ├── OrderTrackingActivity.java    # Theo dõi realtime status
+        │   │   ├── fragment_orders.xml
+        │   │   ├── activity_order_detail.xml
+        │   │   ├── activity_order_tracking.xml
+        │   │   └── adapter/
+        │   │       └── OrderAdapter.java
+        │   │
+        │   ├── profile/
+        │   │   ├── ProfileFragment.java
+        │   │   ├── EditProfileActivity.java
+        │   │   ├── AddressListActivity.java      # Phase 2
+        │   │   ├── AddressFormActivity.java      # Phase 2
+        │   │   ├── fragment_profile.xml
+        │   │   └── activity_edit_profile.xml
+        │   │
+        │   └── common/
+        │       ├── BaseActivity.java
+        │       ├── BaseFragment.java
+        │       ├── BaseViewModel.java
+        │       ├── LoadingDialog.java
+        │       └── EmptyStateView.java           # Custom view empty/error state
+        │
+        ├── viewmodel/
+        │   ├── AuthViewModel.java
+        │   ├── HomeViewModel.java
+        │   ├── SearchViewModel.java
+        │   ├── RestaurantViewModel.java
+        │   ├── CartViewModel.java
+        │   ├── CheckoutViewModel.java
+        │   ├── OrderViewModel.java
+        │   └── ProfileViewModel.java
+        │
+        └── utils/
+            ├── Constants.java
+            ├── SessionManager.java               # JWT token (EncryptedSharedPreferences)
+            ├── CurrencyUtils.java                # Format VND
+            ├── DateTimeUtils.java
+            ├── ImageUtils.java                   # Compress ảnh trước upload
+            └── NetworkUtils.java                 # Check connectivity
 ```
 
 ---
 
-## 🚀 Hướng Dẫn Cài Đặt
+## Hướng Dẫn Cài Đặt
 
 ### Yêu cầu
+
 - Android Studio **Hedgehog** (2023.1.1) trở lên
 - JDK 17
 - Gradle 8.x
-- Thiết bị / emulator Android API 24+
+- Thiết bị / emulator Android API 26+
 
 ### Các bước
 
@@ -245,171 +322,288 @@ cd food-delivery-client
 # 2. Mở bằng Android Studio
 # File → Open → chọn thư mục vừa clone
 
-# 3. Thêm file cấu hình Firebase
-# Tải google-services.json từ Firebase Console
-# Đặt vào thư mục: app/google-services.json
+# 3. Tạo file local.properties (không commit lên git)
+echo "SUPABASE_URL=https://your-project.supabase.co" >> local.properties
+echo "SUPABASE_ANON_KEY=eyJ..." >> local.properties
 
-# 4. Thêm API keys vào local.properties
-echo "MAPS_API_KEY=your_google_maps_key" >> local.properties
-echo "MOMO_APP_ID=your_momo_id" >> local.properties
-
-# 5. Sync Gradle và chạy
-# Nhấn "Sync Now" trong Android Studio
-# Chọn thiết bị → Run (Shift + F10)
+# 4. Sync Gradle và chạy
+# Nhấn "Sync Now" → Run (Shift + F10)
 ```
 
----
+### Tài khoản test
 
-## 🔥 Cấu Hình Firebase
+| Role | Email | Password |
+|---|---|---|
+| Customer | customer@demo.com | Demo@1234 |
+| Customer 2 | customer2@demo.com | Demo@1234 |
 
-### Firestore Collections cần tạo
-```
-users/           → thông tin người dùng
-restaurants/     → danh sách nhà hàng
-  └── menuItems/ → subcollection menu của từng nhà hàng
-orders/          → đơn hàng
-shippers/        → thông tin shipper
-reviews/         → đánh giá
-promotions/      → mã giảm giá
-notifications/   → thông báo
-```
-
-### Firestore Indexes cần tạo
-```
-orders:   userId ASC, createdAt DESC
-orders:   restaurantId ASC, createdAt DESC
-orders:   status ASC, createdAt DESC
-restaurants: isActive ASC, rating DESC
-```
-
-### Firebase Authentication
-Bật các provider sau trong Firebase Console:
-- ✅ Phone Authentication
-- ✅ Google Sign-In
-
----
-
-## 🏗️ Kiến Trúc Ứng Dụng
-
-```
-┌─────────────────────────────────────────┐
-│              UI Layer                    │
-│   Activity / Fragment / Adapter          │
-│   (Quan sát LiveData, gọi ViewModel)     │
-└───────────────┬─────────────────────────┘
-                │ observe / call
-┌───────────────▼─────────────────────────┐
-│           ViewModel Layer                │
-│   (Xử lý UI logic, giữ trạng thái)      │
-│   HomeViewModel / OrderViewModel...      │
-└───────────────┬─────────────────────────┘
-                │ call
-┌───────────────▼─────────────────────────┐
-│          Repository Layer                │
-│   (Tổng hợp dữ liệu từ Firebase)        │
-│   RestaurantRepo / OrderRepo...          │
-└───────────────┬─────────────────────────┘
-                │ query
-┌───────────────▼─────────────────────────┐
-│         Firebase Services               │
-│   Firestore │ RealtimeDB │ Storage      │
-│   Auth      │ FCM        │ Maps API     │
-└─────────────────────────────────────────┘
-```
-
-**Luồng dữ liệu một chiều:**
-`User Action → ViewModel → Repository → Firebase → LiveData → UI Update`
-
----
-
-## 📲 Màn Hình Chính
-
-| Màn hình | File | Mô tả |
-|----------|------|-------|
-| Splash | `SplashActivity` | Logo animation, kiểm tra session |
-| Onboarding | `OnboardingActivity` | 3 slide giới thiệu, ViewPager2 |
-| Đăng nhập | `LoginActivity` | OTP / Google Sign-in |
-| OTP | `OtpVerifyActivity` | 6 ô nhập, đếm ngược 60s |
-| Trang chủ | `HomeFragment` | Banner, danh mục, nhà hàng |
-| Chi tiết NHÀ HÀNG | `RestaurantDetailActivity` | Menu theo danh mục, sticky header |
-| Giỏ hàng | `CartFragment` | Danh sách, voucher, tóm tắt |
-| Thanh toán | `CheckoutActivity` | Địa chỉ, PT thanh toán |
-| Theo dõi đơn | `OrderTrackingActivity` | Maps + shipper realtime |
-| Chat | `ChatActivity` | Nhắn tin với shipper |
-| Hồ sơ | `ProfileFragment` | Thông tin, địa chỉ, lịch sử |
-
----
-
-## 🔄 Luồng Đặt Hàng
-
-```
-Chọn nhà hàng
-      ↓
-Thêm món vào giỏ  →  [CartManager.addItem()]
-      ↓
-Xem giỏ hàng      →  Nhập voucher, ghi chú
-      ↓
-Checkout           →  Chọn địa chỉ + thanh toán
-      ↓
-Tạo Order          →  [Firestore transaction]
-      ↓
-Chờ xác nhận       →  [Realtime listener]
-      ↓
-Đang chuẩn bị      →  Notification FCM
-      ↓
-Shipper nhận hàng  →  Hiển thị thông tin shipper
-      ↓
-Đang giao          →  Tracking bản đồ realtime
-      ↓
-Đã giao            →  Màn hình đánh giá
-```
-
----
-
-## 🔑 Biến Môi Trường
-
-Tạo / cập nhật file `local.properties` (không commit lên git):
+### Biến môi trường (`local.properties`)
 
 ```properties
-# Google Maps
-MAPS_API_KEY=AIzaSy...
+# Supabase project URL
+SUPABASE_URL=https://xxxxxxxxxxxx.supabase.co
 
-# MoMo Payment
-MOMO_APP_ID=your_app_id
-MOMO_APP_SCHEME=your_scheme
+# Supabase anon/public key (safe để expose trong client app)
+SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+```
 
-# ZaloPay
-ZALOPAY_APP_ID=your_app_id
+> `SUPABASE_ANON_KEY` là public key, an toàn để dùng trong client app. Bảo mật dữ liệu được thực hiện qua **Supabase RLS**, không qua việc giấu key.
 
-# VNPay
-VNPAY_TMN_CODE=your_code
-VNPAY_HASH_SECRET=your_secret
+---
+
+## Kiến Trúc Ứng Dụng
+
+```
+┌────────────────────────────────────────────────┐
+│                   UI Layer                      │
+│   Activity / Fragment / BottomSheet             │
+│   XML Layout / Adapter / ViewHolder             │
+│   BottomNavigationView: Home/Search/Orders/Profile│
+└───────────────────┬────────────────────────────┘
+                    │ observe LiveData / call
+┌───────────────────▼────────────────────────────┐
+│              ViewModel Layer                    │
+│   Xử lý business logic, giữ trạng thái UI      │
+│   Không phụ thuộc Android framework             │
+│   HomeVM / CartVM / CheckoutVM / OrderVM...     │
+└───────────────────┬────────────────────────────┘
+                    │ call
+┌───────────────────▼────────────────────────────┐
+│   Domain Layer (UseCase — chỉ khi cần thiết)   │
+│   PlaceOrderUseCase (validate + tạo đơn)        │
+│   AddToCartUseCase (validate 1 nhà hàng/giỏ)   │
+└───────────────────┬────────────────────────────┘
+                    │ call
+┌───────────────────▼────────────────────────────┐
+│            Repository Layer                     │
+│   Kết hợp dữ liệu local (Room) + remote (Supabase)│
+│   CartRepo / OrderRepo / RestaurantRepo...      │
+└──────────┬────────────────────┬────────────────┘
+           │                    │
+┌──────────▼──────┐    ┌────────▼───────────────┐
+│  Room Database  │    │   Supabase Platform     │
+│  (Cart local    │    │   Auth / PostgreSQL      │
+│   cache)        │    │   Storage / Realtime     │
+└─────────────────┘    └────────────────────────┘
+```
+
+**Điểm thiết kế quan trọng:**
+
+- **Cart là local-first:** Lưu trong Room DB, không phụ thuộc mạng. Chỉ sync lên Supabase khi checkout.
+- **PlaceOrderUseCase** gọi PostgreSQL RPC để đảm bảo atomic transaction (insert orders + order_items trong 1 lần).
+- **Supabase Realtime** subscription trên `orders` table — màn hình tracking tự cập nhật khi admin đổi trạng thái.
+- **AddToCartUseCase** validate conflict nhà hàng trước khi add vào Room DB.
+
+---
+
+## Màn Hình Chính
+
+### Auth Flow
+
+| Màn hình | File | Mô tả |
+|---|---|---|
+| Splash | `SplashActivity` | Kiểm tra session → tự động vào Home hoặc Login |
+| Đăng nhập | `LoginActivity` | Email + mật khẩu |
+| Đăng ký | `RegisterActivity` | Tên, email, số điện thoại, mật khẩu |
+| Quên mật khẩu | `ForgotPasswordActivity` | Gửi email đặt lại mật khẩu |
+
+### Main Flow (Bottom Navigation)
+
+| Tab | Fragment | Mô tả |
+|---|---|---|
+| Home | `HomeFragment` | Banner, danh mục, nhà hàng nổi bật |
+| Search | `SearchFragment` | Tìm kiếm món ăn / nhà hàng |
+| Orders | `OrdersFragment` | Lịch sử và đơn đang xử lý |
+| Profile | `ProfileFragment` | Hồ sơ cá nhân, cài đặt |
+
+### Detail Screens
+
+| Màn hình | File | Điều hướng từ |
+|---|---|---|
+| Chi tiết nhà hàng + menu | `RestaurantDetailActivity` | Home, Search |
+| Chi tiết món ăn | `MenuItemDetailBottomSheet` | Restaurant Detail |
+| Giỏ hàng | `CartActivity` | Cart icon (bất kỳ màn nào) |
+| Thanh toán | `CheckoutActivity` | Cart |
+| Theo dõi đơn | `OrderTrackingActivity` | Checkout (sau khi đặt) |
+| Chi tiết đơn hàng | `OrderDetailActivity` | Orders list |
+| Chỉnh sửa hồ sơ | `EditProfileActivity` | Profile |
+
+---
+
+## Luồng Đặt Hàng
+
+```
+[HomeFragment]
+    │ Chọn nhà hàng
+    ▼
+[RestaurantDetailActivity]
+    │ Xem thực đơn theo category
+    │ Tap "Thêm vào giỏ"
+    ▼
+[AddToCartUseCase.execute(menuItem)]
+    ├── Validate: cùng nhà hàng với giỏ hiện tại?
+    │       └── Khác nhà hàng → Hiện ConfirmDialog "Xóa giỏ cũ?"
+    ├── Upsert CartItemEntity vào Room DB
+    └── Notify CartViewModel → update badge số lượng
+    │
+    ▼ (User tap Cart icon)
+[CartActivity]
+    │ Xem/sửa items, tổng tiền
+    │ Tap "Đặt hàng"
+    ▼
+[CheckoutActivity]
+    │ Nhập địa chỉ giao hàng
+    │ Thêm ghi chú (tuỳ chọn)
+    │ Xem lại tóm tắt đơn hàng
+    │ Tap "Xác nhận đặt hàng"
+    ▼
+[PlaceOrderUseCase.execute()]
+    ├── Tính: subtotal, delivery_fee, total
+    ├── Tạo order_code (ORD-YYYYMMDD-xxxx)
+    ├── Gọi Supabase RPC: place_order(...)
+    │       ├── INSERT orders (status = 'pending')
+    │       ├── INSERT order_items (snapshot name + price)
+    │       └── INSERT notification cho admin
+    ├── Xóa cart khỏi Room DB
+    └── Navigate → OrderTrackingActivity
 ```
 
 ---
 
-## 🎨 Design System
+## Luồng Theo Dõi Đơn Hàng
+
+```
+[OrderTrackingActivity]
+    │
+    ├── Subscribe Supabase Realtime: orders WHERE id = {orderId}
+    │
+    │   Admin App cập nhật status:
+    │   pending → confirmed → preparing → delivering → delivered
+    │
+    ├── Nhận Realtime event → update LiveData
+    │
+    └── UI tự cập nhật thanh tiến trình:
+
+    [●]──────[●]──────[○]──────[○]──────[○]
+   Đặt     Xác        Đang     Đang     Đã
+   hàng    nhận      chuẩn     giao   nhận
+                      bị
+
+    Mỗi bước hiển thị: tên trạng thái + thời gian cập nhật
+```
+
+**Fallback khi Realtime không khả dụng:**
+
+```java
+// OrderTrackingActivity.java
+// Nếu WebSocket fail, polling mỗi 15 giây
+private void startPolling() {
+    handler.postDelayed(() -> {
+        orderViewModel.refreshOrder(orderId);
+        startPolling();
+    }, 15_000);
+}
+```
+
+---
+
+## Cart — Local-first Strategy
+
+Giỏ hàng được thiết kế theo nguyên tắc **local-first** để hoạt động mượt mà kể cả khi mạng chậm.
+
+```
+User Action           Room DB (local)        Supabase (remote)
+─────────────         ───────────────        ─────────────────
+Thêm món         →    Upsert CartItem         (không gọi)
+Xóa món          →    Delete CartItem         (không gọi)
+Đổi số lượng     →    Update quantity         (không gọi)
+Tắt app          →    Dữ liệu vẫn còn        (không gọi)
+Mở lại app       →    Load từ Room            (không gọi)
+Đặt hàng         →    Xóa toàn bộ cart   →   INSERT order + items
+```
+
+**Tại sao không lưu cart trên Supabase ngay?**
+- Giảm số lần gọi API (mỗi thao tác giỏ hàng không cần network)
+- UX mượt hơn, không bị loading spinner khi add/remove
+- Đơn giản hơn cho MVP
+
+> Phase 2: Sync cart lên Supabase để hỗ trợ multi-device (user đặt trên điện thoại khác vẫn thấy giỏ hàng).
+
+---
+
+## Design System
 
 | Token | Giá trị | Dùng cho |
-|-------|---------|----------|
-| `colorPrimary` | `#FF6B35` | Nút chính, accent, icon active |
-| `colorPrimaryDark` | `#E55A25` | Trạng thái pressed |
-| `colorSecondary` | `#1A237E` | Header, badge thông tin |
-| `colorBackground` | `#F8F9FA` | Nền màn hình |
-| `colorSurface` | `#FFFFFF` | Card, bottom sheet |
-| `colorSuccess` | `#4CAF50` | Đơn thành công |
-| `colorError` | `#F44336` | Lỗi, hủy đơn |
+|---|---|---|
+| `colorPrimary` | `#FF6B35` | Nút chính, Bottom Nav active, highlight |
+| `colorPrimaryDark` | `#E55A2B` | Pressed state của nút chính |
+| `colorSecondary` | `#1A237E` | Header, text tiêu đề quan trọng |
+| `colorBackground` | `#F8F8F8` | Nền màn hình |
+| `colorSurface` | `#FFFFFF` | Card, bottom sheet, dialog |
+| `colorOnSurface` | `#212121` | Text chính trên card |
+| `colorTextSecondary` | `#757575` | Text phụ, mô tả, placeholder |
+| `colorSuccess` | `#4CAF50` | Đơn hoàn thành, trạng thái active |
+| `colorWarning` | `#FFC107` | Đơn đang xử lý, cảnh báo |
+| `colorError` | `#F44336` | Lỗi, đơn bị hủy |
+| `colorDivider` | `#E0E0E0` | Đường kẻ ngăn cách |
+
+### Typography
+
+| Style | Size | Weight | Dùng cho |
+|---|---|---|---|
+| `titleLarge` | 22sp | Bold | Tên nhà hàng, tên màn hình |
+| `titleMedium` | 16sp | SemiBold | Tên món ăn, tên section |
+| `bodyLarge` | 16sp | Regular | Nội dung chính |
+| `bodyMedium` | 14sp | Regular | Mô tả, địa chỉ |
+| `labelSmall` | 12sp | Regular | Badge, tag, timestamp |
+| `priceText` | 16sp | Bold | Giá tiền (màu `colorPrimary`) |
 
 ---
 
-## 📝 Quy Tắc Code
+## Quy Tắc Code
 
-- Comment tiếng Việt cho logic nghiệp vụ phức tạp
-- Xử lý `null` trước khi sử dụng object từ Firestore
-- Luôn hiển thị loading khi gọi Firebase
-- Hiển thị `EmptyStateView` khi danh sách rỗng
-- Dùng `Log.d(TAG, ...)` để debug, không log thông tin nhạy cảm
+- Không gọi Supabase trực tiếp từ Activity/Fragment — luôn qua ViewModel → Repository
+- Cart operations chỉ dùng Room DB, không gọi network
+- Mọi màn hình cần có 3 state: **loading** / **content** / **empty/error**
+- Ảnh từ Supabase Storage load bằng Glide với placeholder và error drawable
+- Validate input phía client trước khi gọi API (email format, mật khẩu tối thiểu 6 ký tự, ...)
+- JWT token lưu trong `EncryptedSharedPreferences`, không dùng plain SharedPreferences
+- Compress ảnh xuống tối đa 800KB trước khi upload avatar lên Supabase Storage
+- `PlaceOrderUseCase` phải gọi qua RPC (không INSERT trực tiếp nhiều bảng từ client)
 
 ---
 
-*FoodDelivery Client App · Java Android · Phiên bản 1.0.0*
+## Roadmap & Phases
+
+### Phase 1 — MVP (Tuần 1–10)
+
+- [x] Auth: đăng ký / đăng nhập / đăng xuất / auto-login
+- [x] Home: banner, danh mục, danh sách nhà hàng
+- [x] Browse: xem menu nhà hàng, chi tiết món ăn
+- [x] Search: tìm kiếm theo tên món / nhà hàng
+- [x] Cart: local-first (Room DB), validate 1 nhà hàng/giỏ
+- [x] Checkout: địa chỉ text, ghi chú, COD
+- [x] Order tracking: trạng thái realtime (Supabase Realtime)
+- [x] Order history: danh sách + chi tiết đơn hàng
+- [x] Profile: xem và chỉnh sửa thông tin cá nhân
+
+### Phase 2 — Enhancement (Tuần 11–13)
+
+- [ ] Địa chỉ giao hàng: lưu nhiều địa chỉ, chọn khi checkout
+- [ ] Review & Rating: đánh giá sau khi nhận hàng
+- [ ] Promotion code: nhập mã giảm giá tại checkout
+- [ ] Notification in-app: danh sách thông báo cập nhật đơn
+- [ ] Filter nâng cao: theo giá, danh mục, rating
+- [ ] Đặt lại nhanh từ đơn hàng cũ
+
+### Phase 3 — Polish (Tuần 14–16)
+
+- [ ] Nhà hàng yêu thích (Favorites)
+- [ ] Onboarding screens (lần đầu mở app)
+- [ ] Animations & transitions mượt hơn
+- [ ] Dark mode
+- [ ] Đăng nhập Google
+
+---
+
+*FoodDelivery Client App · Java Android · Supabase · Version 1.0.0*
