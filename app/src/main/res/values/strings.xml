@@ -1,5 +1,10 @@
 <resources>
     <string name="app_name">FoodCouriers-Client</string>
+    <string name="nav_home">Home</string>
+    <string name="nav_search">Search</string>
+    <string name="nav_cart">Cart</string>
+    <string name="nav_orders">Orders</string>
+    <string name="nav_profile">Profile</string>
     <string name="home_greeting">Good afternoon</string>
     <string name="home_title">Find food that fits your mood</string>
     <string name="home_location">District 1, Ho Chi Minh City</string>
