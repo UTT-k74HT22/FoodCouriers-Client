@@ -2,33 +2,203 @@ package com.utt.foodcouriers_client.ui.auth;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.text.TextUtils;
+import android.util.Patterns;
+import android.view.View;
 import android.widget.Button;
 import android.widget.ImageButton;
 import android.widget.TextView;
 
+import com.google.android.material.progressindicator.CircularProgressIndicator;
+import com.google.android.material.textfield.TextInputEditText;
+import com.google.android.material.textfield.TextInputLayout;
 import com.utt.foodcouriers_client.R;
+import com.utt.foodcouriers_client.data.common.RepositoryCallback;
+import com.utt.foodcouriers_client.data.model.UserProfile;
+import com.utt.foodcouriers_client.data.remote.AuthClient;
+import com.utt.foodcouriers_client.data.repository.AuthRepository;
 import com.utt.foodcouriers_client.ui.common.BaseActivity;
 import com.utt.foodcouriers_client.ui.main.MainActivity;
+import com.utt.foodcouriers_client.utils.SessionManager;
+import com.utt.foodcouriers_client.utils.ToastBanner;
 
 public class RegisterActivity extends BaseActivity {
+
+    private static final long TOKEN_EXPIRY_MILLIS = 3600000L;
+
+    private TextInputLayout tilName;
+    private TextInputLayout tilEmail;
+    private TextInputLayout tilPhone;
+    private TextInputLayout tilPassword;
+    private TextInputLayout tilConfirmPassword;
+    private TextInputEditText etName;
+    private TextInputEditText etEmail;
+    private TextInputEditText etPhone;
+    private TextInputEditText etPassword;
+    private TextInputEditText etConfirmPassword;
+    private Button btnRegister;
+
+    private AuthRepository authRepository;
+    private SessionManager sessionManager;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_register);
 
-        ImageButton backButton = findViewById(R.id.btnBack);
-        Button registerButton = findViewById(R.id.btnRegister);
-        TextView loginAction = findViewById(R.id.tvSwitchToLogin);
+        authRepository = AuthRepository.getInstance();
+        sessionManager = SessionManager.getInstance(this);
 
+        initViews();
+        setupListeners();
+    }
+
+    private void initViews() {
+        tilName = findViewById(R.id.tilName);
+        tilEmail = findViewById(R.id.tilEmail);
+        tilPhone = findViewById(R.id.tilPhone);
+        tilPassword = findViewById(R.id.tilPassword);
+        tilConfirmPassword = findViewById(R.id.tilConfirmPassword);
+        etName = findViewById(R.id.etName);
+        etEmail = findViewById(R.id.etEmail);
+        etPhone = findViewById(R.id.etPhone);
+        etPassword = findViewById(R.id.etPassword);
+        etConfirmPassword = findViewById(R.id.etConfirmPassword);
+        btnRegister = findViewById(R.id.btnRegister);
+    }
+
+    private void setupListeners() {
+        ImageButton backButton = findViewById(R.id.btnBack);
         backButton.setOnClickListener(v -> finish());
+
+        TextView loginAction = findViewById(R.id.tvSwitchToLogin);
         loginAction.setOnClickListener(v -> {
             startActivity(new Intent(this, LoginActivity.class));
             finish();
         });
-        registerButton.setOnClickListener(v -> {
-            startActivity(new Intent(this, MainActivity.class));
-            finish();
+
+        btnRegister.setOnClickListener(v -> {
+            if (validateInput()) {
+                performRegister();
+            }
         });
+    }
+
+    private boolean validateInput() {
+        String name = getName();
+        String email = getEmail();
+        String phone = getPhone();
+        String password = getPassword();
+        String confirmPassword = getConfirmPassword();
+
+        tilName.setError(null);
+        tilEmail.setError(null);
+        tilPhone.setError(null);
+        tilPassword.setError(null);
+        tilConfirmPassword.setError(null);
+
+        if (TextUtils.isEmpty(name)) {
+            tilName.setError(getString(R.string.error_name_required));
+            return false;
+        }
+
+        if (TextUtils.isEmpty(email)) {
+            tilEmail.setError(getString(R.string.error_email_required));
+            return false;
+        }
+
+        if (!Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
+            tilEmail.setError(getString(R.string.error_email_invalid));
+            return false;
+        }
+
+        if (TextUtils.isEmpty(phone)) {
+            tilPhone.setError(getString(R.string.error_phone_required));
+            return false;
+        }
+
+        if (phone.length() < 10) {
+            tilPhone.setError(getString(R.string.error_phone_invalid));
+            return false;
+        }
+
+        if (TextUtils.isEmpty(password)) {
+            tilPassword.setError(getString(R.string.error_password_required));
+            return false;
+        }
+
+        if (password.length() < 6) {
+            tilPassword.setError(getString(R.string.error_password_min_length));
+            return false;
+        }
+
+        if (!password.equals(confirmPassword)) {
+            tilConfirmPassword.setError(getString(R.string.error_password_mismatch));
+            return false;
+        }
+
+        return true;
+    }
+
+    private void performRegister() {
+        String name = getName().trim();
+        String email = getEmail().trim();
+        String phone = getPhone().trim();
+        String password = getPassword();
+
+        showLoading(true);
+
+        authRepository.register(name, email, phone, password, new RepositoryCallback<UserProfile>() {
+            @Override
+            public void onSuccess(UserProfile user) {
+                showLoading(false);
+
+                String accessToken = AuthClient.getInstance().getAccessToken();
+                String refreshToken = AuthClient.getInstance().getRefreshToken();
+
+                sessionManager.saveSession(accessToken, refreshToken, user, TOKEN_EXPIRY_MILLIS);
+
+                ToastBanner.showSuccess(getString(R.string.register_success));
+                navigateToMain();
+            }
+
+            @Override
+            public void onError(String error) {
+                showLoading(false);
+                ToastBanner.showError(error);
+            }
+        });
+    }
+
+    private String getName() {
+        return etName.getText() != null ? etName.getText().toString().trim() : "";
+    }
+
+    private String getEmail() {
+        return etEmail.getText() != null ? etEmail.getText().toString().trim() : "";
+    }
+
+    private String getPhone() {
+        return etPhone.getText() != null ? etPhone.getText().toString().trim() : "";
+    }
+
+    private String getPassword() {
+        return etPassword.getText() != null ? etPassword.getText().toString() : "";
+    }
+
+    private String getConfirmPassword() {
+        return etConfirmPassword.getText() != null ? etConfirmPassword.getText().toString() : "";
+    }
+
+    private void showLoading(boolean show) {
+        btnRegister.setEnabled(!show);
+        btnRegister.setText(show ? "" : getString(R.string.register_cta));
+    }
+
+    private void navigateToMain() {
+        Intent intent = new Intent(this, LoginActivity.class);
+        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+        startActivity(intent);
+        finish();
     }
 }

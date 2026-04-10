@@ -51,7 +51,7 @@ public class ToastBanner implements Application.ActivityLifecycleCallbacks {
     }
 
     private static void show(String message, ToastBannerType type) {
-        if (currentActivity == null || message == null || message.isBlank()) {
+        if (currentActivity == null || message == null || message.trim().isEmpty()) {
             return;
         }
 
