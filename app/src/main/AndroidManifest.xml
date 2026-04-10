@@ -43,6 +43,9 @@
         <activity
             android:name=".ui.order.OrderDetailActivity"
             android:exported="false" />
+        <activity
+            android:name=".ui.order.OrderTrackingActivity"
+            android:exported="false" />
 
         <activity
             android:name=".ui.profile.EditProfileActivity"
