@@ -1,0 +1,27 @@
+package com.utt.foodcouriers_client.ui.checkout;
+
+import android.content.Intent;
+import android.os.Bundle;
+import android.widget.Button;
+
+import androidx.annotation.Nullable;
+import androidx.appcompat.widget.Toolbar;
+
+import com.utt.foodcouriers_client.R;
+import com.utt.foodcouriers_client.ui.common.BaseActivity;
+import com.utt.foodcouriers_client.ui.order.OrderSuccessActivity;
+
+public class CheckoutActivity extends BaseActivity {
+
+    @Override
+    protected void onCreate(@Nullable Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_checkout);
+
+        Toolbar toolbar = findViewById(R.id.toolbar);
+        configureToolbar(toolbar, true);
+
+        Button placeOrderButton = findViewById(R.id.btn_place_order);
+        placeOrderButton.setOnClickListener(v -> startActivity(new Intent(this, OrderSuccessActivity.class)));
+    }
+}

@@ -9,10 +9,6 @@
         android:icon="@drawable/ic_search"
         android:title="@string/nav_search" />
     <item
-        android:id="@+id/navigation_cart"
-        android:icon="@drawable/ic_cart"
-        android:title="@string/nav_cart" />
-    <item
         android:id="@+id/navigation_orders"
         android:icon="@drawable/ic_orders"
         android:title="@string/nav_orders" />

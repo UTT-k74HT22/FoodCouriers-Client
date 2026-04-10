@@ -6,6 +6,7 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
     <application
+        android:name=".FoodCouriersClientApp"
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
@@ -24,7 +25,39 @@
             android:exported="false" />
 
         <activity
-            android:name=".ClientSystemMain"
+            android:name=".ui.auth.ResetPasswordActivity"
+            android:exported="false" />
+
+        <activity
+            android:name=".ui.restaurant.RestaurantDetailActivity"
+            android:exported="false" />
+
+        <activity
+            android:name=".ui.checkout.CheckoutActivity"
+            android:exported="false" />
+
+        <activity
+            android:name=".ui.order.OrderSuccessActivity"
+            android:exported="false" />
+
+        <activity
+            android:name=".ui.order.OrderDetailActivity"
+            android:exported="false" />
+
+        <activity
+            android:name=".ui.profile.EditProfileActivity"
+            android:exported="false" />
+
+        <activity
+            android:name=".ui.profile.AddressListActivity"
+            android:exported="false" />
+
+        <activity
+            android:name=".ui.profile.AddressFormActivity"
+            android:exported="false" />
+
+        <activity
+            android:name=".ui.main.MainActivity"
             android:exported="false" />
 
         <activity

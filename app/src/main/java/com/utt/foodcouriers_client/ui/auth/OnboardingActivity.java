@@ -8,16 +8,16 @@ import android.widget.Button;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
-import androidx.appcompat.app.AppCompatActivity;
 import androidx.viewpager2.widget.ViewPager2;
 
 import com.google.android.material.card.MaterialCardView;
 import com.utt.foodcouriers_client.R;
+import com.utt.foodcouriers_client.ui.common.BaseActivity;
 
 import java.util.Arrays;
 import java.util.List;
 
-public class OnboardingActivity extends AppCompatActivity {
+public class OnboardingActivity extends BaseActivity {
     private static final String PREFS_NAME = "foodcouriers_prefs";
     private static final String KEY_ONBOARDING_SEEN = "onboarding_seen";
 

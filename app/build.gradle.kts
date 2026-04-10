@@ -1,5 +1,14 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
+}
+
+val localProperties = Properties().apply {
+    val localPropertiesFile = rootProject.file("local.properties")
+    if (localPropertiesFile.exists()) {
+        localPropertiesFile.inputStream().use(::load)
+    }
 }
 
 android {
@@ -18,6 +27,22 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        buildConfigField(
+            "String",
+            "SUPABASE_URL",
+            "\"${localProperties.getProperty("SUPABASE_URL", "")}\""
+        )
+        buildConfigField(
+            "String",
+            "SUPABASE_ANON_KEY",
+            "\"${localProperties.getProperty("SUPABASE_ANON_KEY", "")}\""
+        )
+        buildConfigField(
+            "String",
+            "SUPABASE_STORAGE_BUCKET",
+            "\"${localProperties.getProperty("SUPABASE_STORAGE_BUCKET", "images")}\""
+        )
     }
 
     buildTypes {
@@ -35,7 +60,25 @@ android {
     }
 
     buildFeatures {
+        buildConfig = true
         viewBinding = true
+    }
+
+    sourceSets {
+        getByName("main") {
+            res.srcDirs(
+                "src/main/res",
+                "src/main/res-layouts/common",
+                "src/main/res-layouts/auth",
+                "src/main/res-layouts/home",
+                "src/main/res-layouts/search",
+                "src/main/res-layouts/cart",
+                "src/main/res-layouts/order",
+                "src/main/res-layouts/profile",
+                "src/main/res-layouts/restaurant",
+                "src/main/res-layouts/notification"
+            )
+        }
     }
 }
 

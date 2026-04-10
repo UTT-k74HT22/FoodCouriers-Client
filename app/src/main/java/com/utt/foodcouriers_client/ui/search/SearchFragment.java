@@ -7,11 +7,11 @@ import android.view.ViewGroup;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.fragment.app.Fragment;
 
 import com.utt.foodcouriers_client.databinding.FragmentSearchBinding;
+import com.utt.foodcouriers_client.ui.common.BaseFragment;
 
-public class SearchFragment extends Fragment {
+public class SearchFragment extends BaseFragment {
 
     private FragmentSearchBinding binding;
 

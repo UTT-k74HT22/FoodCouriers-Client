@@ -7,11 +7,11 @@ import android.view.ViewGroup;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.fragment.app.Fragment;
 
 import com.utt.foodcouriers_client.databinding.FragmentOrdersBinding;
+import com.utt.foodcouriers_client.ui.common.BaseFragment;
 
-public class OrdersFragment extends Fragment {
+public class OrdersFragment extends BaseFragment {
 
     private FragmentOrdersBinding binding;
 

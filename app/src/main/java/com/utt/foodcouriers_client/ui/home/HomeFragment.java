@@ -7,12 +7,11 @@ import android.view.ViewGroup;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.fragment.app.Fragment;
 
-import com.utt.foodcouriers_client.R;
 import com.utt.foodcouriers_client.databinding.FragmentHomeBinding;
+import com.utt.foodcouriers_client.ui.common.BaseFragment;
 
-public class HomeFragment extends Fragment {
+public class HomeFragment extends BaseFragment {
 
     private FragmentHomeBinding binding;
 
