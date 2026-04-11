@@ -1,7 +1,6 @@
 package com.utt.foodcouriers_client.ui.home.adapter;
 
 import android.content.Context;
-import android.graphics.drawable.Drawable;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -9,13 +8,12 @@ import android.widget.ImageView;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
 import androidx.viewpager2.widget.ViewPager2;
 
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.load.engine.DiskCacheStrategy;
 import com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions;
-import com.bumptech.glide.request.target.Target;
+import com.bumptech.glide.request.RequestOptions;
 import com.utt.foodcouriers_client.R;
 import com.utt.foodcouriers_client.data.model.BannerItem;
 
@@ -23,6 +21,12 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class BannerAdapter extends androidx.recyclerview.widget.RecyclerView.Adapter<BannerAdapter.BannerViewHolder> {
+
+    private static final RequestOptions BANNER_REQUEST_OPTIONS = new RequestOptions()
+            .placeholder(R.drawable.banner_placeholder)
+            .error(R.drawable.banner_placeholder)
+            .diskCacheStrategy(DiskCacheStrategy.ALL)
+            .centerCrop();
 
     private final List<BannerItem> banners = new ArrayList<>();
     private final OnBannerClickListener listener;
@@ -84,16 +88,14 @@ public class BannerAdapter extends androidx.recyclerview.widget.RecyclerView.Ada
 
         void bind(BannerItem banner) {
             tvBannerTitle.setText(banner.getTitle());
+            ivBannerImage.setContentDescription(banner.getTitle());
 
             String imageUrl = banner.getImageUrl();
             if (imageUrl != null && !imageUrl.isEmpty()) {
                 Glide.with(context)
                         .load(imageUrl)
-                        .placeholder(R.drawable.banner_placeholder)
-                        .error(R.drawable.banner_placeholder)
-                        .diskCacheStrategy(DiskCacheStrategy.ALL)
+                        .apply(BANNER_REQUEST_OPTIONS)
                         .transition(DrawableTransitionOptions.withCrossFade())
-                        .centerCrop()
                         .into(ivBannerImage);
             } else {
                 ivBannerImage.setImageResource(R.drawable.banner_placeholder);

@@ -11,6 +11,8 @@ import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.bumptech.glide.Glide;
+import com.bumptech.glide.load.engine.DiskCacheStrategy;
+import com.bumptech.glide.request.RequestOptions;
 import com.utt.foodcouriers_client.R;
 import com.utt.foodcouriers_client.data.model.MenuItem;
 
@@ -20,6 +22,12 @@ import java.util.List;
 import java.util.Locale;
 
 public class MenuItemAdapter extends RecyclerView.Adapter<MenuItemAdapter.ViewHolder> {
+
+    private static final RequestOptions MENU_ITEM_REQUEST_OPTIONS = new RequestOptions()
+            .placeholder(R.drawable.ic_food_bowl)
+            .error(R.drawable.ic_food_bowl)
+            .diskCacheStrategy(DiskCacheStrategy.ALL)
+            .centerCrop();
 
     private List<MenuItem> items = new ArrayList<>();
     private OnMenuItemClickListener listener;
@@ -41,7 +49,6 @@ public class MenuItemAdapter extends RecyclerView.Adapter<MenuItemAdapter.ViewHo
     }
 
     public void filterByCategory(String categoryId) {
-        // Filter logic - will be called from HomeFragment
     }
 
     @NonNull
@@ -83,13 +90,12 @@ public class MenuItemAdapter extends RecyclerView.Adapter<MenuItemAdapter.ViewHo
         public void bind(MenuItem item) {
             tvMenuName.setText(item.getName());
             tvMenuPrice.setText(formatter.format(item.getPrice()));
+            ivMenuImage.setContentDescription(context.getString(R.string.food_image_description, item.getName()));
 
             if (item.getImageUrl() != null && !item.getImageUrl().isEmpty()) {
                 Glide.with(itemView.getContext())
                         .load(item.getImageUrl())
-                        .placeholder(R.drawable.ic_food_bowl)
-                        .error(R.drawable.ic_food_bowl)
-                        .centerCrop()
+                        .apply(MENU_ITEM_REQUEST_OPTIONS)
                         .into(ivMenuImage);
             } else {
                 ivMenuImage.setImageResource(R.drawable.ic_food_bowl);

@@ -1,6 +1,7 @@
 package com.utt.foodcouriers_client.ui.home;
 
 import android.content.Intent;
+import android.net.Uri;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -28,6 +29,7 @@ import com.utt.foodcouriers_client.ui.restaurant.RestaurantDetailActivity;
 import com.utt.foodcouriers_client.viewmodel.HomeViewModel;
 
 import java.util.List;
+import java.util.Locale;
 
 public class HomeFragment extends BaseFragment {
 
@@ -166,6 +168,7 @@ public class HomeFragment extends BaseFragment {
         viewModel.getErrorMessage().observe(getViewLifecycleOwner(), error -> {
             if (error != null && !error.isEmpty()) {
                 showBannerError();
+                showErrorSnackbar(error);
             }
         });
     }
@@ -281,11 +284,30 @@ public class HomeFragment extends BaseFragment {
         startActivity(intent);
     }
 
-    private void navigateToCategory(String categoryId) {}
+    private void navigateToCategory(String categoryId) {
+        if (categoryId == null || categoryId.isEmpty()) return;
+        
+        currentCategoryId = categoryId;
+        viewModel.filterMenuItemsByCategory(categoryId);
+    }
 
-    private void showPromotionDetail(String promotionId) {}
+    private void showPromotionDetail(String promotionId) {
+        if (promotionId == null || promotionId.isEmpty()) return;
+        
+    }
 
-    private void openUrl(String url) {}
+    private void openUrl(String url) {
+        if (url == null || url.isEmpty()) return;
+        
+        try {
+            if (!url.startsWith("http://") && !url.startsWith("https://")) {
+                url = "https://" + url;
+            }
+            Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
+            startActivity(intent);
+        } catch (Exception e) {
+        }
+    }
 
     private void showBannerError() {
         binding.vpBanners.setVisibility(View.GONE);
