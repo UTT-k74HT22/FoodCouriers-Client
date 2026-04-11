@@ -29,7 +29,7 @@
     <dimen name="screen_padding">16dp</dimen>
 
     <dimen name="search_bar_height">48dp</dimen>
-    <dimen name="category_chip_height">36dp</dimen>
+    <dimen name="category_chip_height">42dp</dimen>
     <dimen name="food_card_image_height">120dp</dimen>
 
     <dimen name="icon_size_sm">16dp</dimen>
