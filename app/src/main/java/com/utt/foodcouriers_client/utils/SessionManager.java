@@ -15,6 +15,7 @@ public class SessionManager {
     private static final String KEY_USER_EMAIL = "user_email";
     private static final String KEY_USER_NAME = "user_name";
     private static final String KEY_USER_PHONE = "user_phone";
+    private static final String KEY_USER_ROLE = "user_role";
     private static final String KEY_TOKEN_EXPIRES_AT = "token_expires_at";
 
     private static SessionManager instance;
@@ -32,10 +33,6 @@ public class SessionManager {
         return instance;
     }
 
-    public void saveSession(UserProfile userProfile) {
-        saveSession("demo-access-token", "demo-refresh-token", userProfile, 3_600_000L);
-    }
-
     public void saveSession(String accessToken, String refreshToken, UserProfile userProfile, long expiresInMillis) {
         preferences.edit()
                 .putBoolean(KEY_IS_LOGGED_IN, true)
@@ -45,6 +42,7 @@ public class SessionManager {
                 .putString(KEY_USER_EMAIL, userProfile.getEmail())
                 .putString(KEY_USER_NAME, userProfile.getFullName())
                 .putString(KEY_USER_PHONE, userProfile.getPhone())
+                .putString(KEY_USER_ROLE, userProfile.getRole())
                 .putLong(KEY_TOKEN_EXPIRES_AT, System.currentTimeMillis() + expiresInMillis)
                 .apply();
     }
@@ -58,11 +56,19 @@ public class SessionManager {
                 .putString(KEY_USER_EMAIL, userProfile.getEmail())
                 .putString(KEY_USER_NAME, userProfile.getFullName())
                 .putString(KEY_USER_PHONE, userProfile.getPhone())
+                .putString(KEY_USER_ROLE, userProfile.getRole())
                 .apply();
     }
 
     public boolean isLoggedIn() {
-        return preferences.getBoolean(KEY_IS_LOGGED_IN, false);
+        if (!preferences.getBoolean(KEY_IS_LOGGED_IN, false)) {
+            return false;
+        }
+        if (isTokenExpired()) {
+            clearSession();
+            return false;
+        }
+        return true;
     }
 
     public String getAccessToken() {
@@ -89,6 +95,10 @@ public class SessionManager {
         return preferences.getString(KEY_USER_PHONE, null);
     }
 
+    public String getUserRole() {
+        return preferences.getString(KEY_USER_ROLE, null);
+    }
+
     public long getTokenExpiresAt() {
         return preferences.getLong(KEY_TOKEN_EXPIRES_AT, 0L);
     }
@@ -103,15 +113,15 @@ public class SessionManager {
             return null;
         }
         return new UserProfile(
-                getUserId() != null ? getUserId() : "customer-01",
-                getUserName() != null ? getUserName() : "Demo Customer",
-                getUserEmail() != null ? getUserEmail() : "demo@foodcouriers.app",
-                getUserPhone() != null ? getUserPhone() : "0900000000"
+                getUserId(),
+                getUserName(),
+                getUserEmail(),
+                getUserPhone()
         );
     }
 
     public void updateSession(String accessToken, String refreshToken) {
-        updateSession(accessToken, refreshToken, 3_600_000L);
+        updateSession(accessToken, refreshToken, 3600000L);
     }
 
     public void updateSession(String accessToken, String refreshToken, long expiresInMillis) {
@@ -130,6 +140,7 @@ public class SessionManager {
                 .remove(KEY_USER_EMAIL)
                 .remove(KEY_USER_NAME)
                 .remove(KEY_USER_PHONE)
+                .remove(KEY_USER_ROLE)
                 .remove(KEY_TOKEN_EXPIRES_AT)
                 .putBoolean(KEY_IS_LOGGED_IN, false)
                 .apply();

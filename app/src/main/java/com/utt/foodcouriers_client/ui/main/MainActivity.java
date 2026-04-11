@@ -101,6 +101,10 @@ public class MainActivity extends BaseActivity {
     private void syncChrome() {
         boolean isSecondaryScreen = getSupportFragmentManager().getBackStackEntryCount() > 0;
         binding.bottomNavigation.setVisibility(isSecondaryScreen ? View.GONE : View.VISIBLE);
-        binding.topToolbar.setNavigationIcon(isSecondaryScreen ? R.drawable.ic_back : 0);
+        if (isSecondaryScreen) {
+            binding.topToolbar.setNavigationIcon(R.drawable.ic_back);
+        } else {
+            binding.topToolbar.setNavigationIcon(null);
+        }
     }
 }
