@@ -8,6 +8,8 @@ import androidx.annotation.Nullable;
 import androidx.appcompat.widget.Toolbar;
 
 import com.utt.foodcouriers_client.R;
+import com.utt.foodcouriers_client.data.model.OrderSummary;
+import com.utt.foodcouriers_client.data.repository.OrderRepository;
 import com.utt.foodcouriers_client.ui.common.BaseActivity;
 import com.utt.foodcouriers_client.ui.order.OrderSuccessActivity;
 
@@ -22,6 +24,11 @@ public class CheckoutActivity extends BaseActivity {
         configureToolbar(toolbar, true);
 
         Button placeOrderButton = findViewById(R.id.btn_place_order);
-        placeOrderButton.setOnClickListener(v -> startActivity(new Intent(this, OrderSuccessActivity.class)));
+        placeOrderButton.setOnClickListener(v -> {
+            OrderSummary order = OrderRepository.getInstance().createCheckoutOrder();
+            Intent intent = new Intent(this, OrderSuccessActivity.class);
+            intent.putExtra(OrderSuccessActivity.EXTRA_ORDER_ID, order.getId());
+            startActivity(intent);
+        });
     }
 }

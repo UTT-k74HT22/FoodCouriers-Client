@@ -7,6 +7,7 @@ public class OrderSummary implements Serializable {
     private final String id;
     private final String orderCode;
     private final String restaurantName;
+    private final String restaurantAddress;
     private final String status;
     private final String createdAtLabel;
     private final int subtotal;
@@ -14,12 +15,14 @@ public class OrderSummary implements Serializable {
     private final int discount;
     private final int total;
     private final String deliveryAddress;
+    private final String note;
     private final List<OrderLineItem> items;
 
     public OrderSummary(
             String id,
             String orderCode,
             String restaurantName,
+            String restaurantAddress,
             String status,
             String createdAtLabel,
             int subtotal,
@@ -27,11 +30,13 @@ public class OrderSummary implements Serializable {
             int discount,
             int total,
             String deliveryAddress,
+            String note,
             List<OrderLineItem> items
     ) {
         this.id = id;
         this.orderCode = orderCode;
         this.restaurantName = restaurantName;
+        this.restaurantAddress = restaurantAddress;
         this.status = status;
         this.createdAtLabel = createdAtLabel;
         this.subtotal = subtotal;
@@ -39,6 +44,7 @@ public class OrderSummary implements Serializable {
         this.discount = discount;
         this.total = total;
         this.deliveryAddress = deliveryAddress;
+        this.note = note;
         this.items = items;
     }
 
@@ -52,6 +58,10 @@ public class OrderSummary implements Serializable {
 
     public String getRestaurantName() {
         return restaurantName;
+    }
+
+    public String getRestaurantAddress() {
+        return restaurantAddress;
     }
 
     public String getStatus() {
@@ -80,6 +90,10 @@ public class OrderSummary implements Serializable {
 
     public String getDeliveryAddress() {
         return deliveryAddress;
+    }
+
+    public String getNote() {
+        return note;
     }
 
     public List<OrderLineItem> getItems() {
