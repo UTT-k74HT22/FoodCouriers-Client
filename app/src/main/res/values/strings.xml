@@ -22,6 +22,7 @@
     <string name="home_cta">Order now</string>
     <string name="home_category_title">Categories</string>
     <string name="home_popular_title">Popular this week</string>
+    <string name="home_nearby_title">Nearby restaurants</string>
     <string name="home_see_all">See all</string>
     <string name="category_all">All</string>
     <string name="category_burger">Burger</string>
@@ -157,4 +158,11 @@
     <string name="address_save">Save address</string>
     <string name="address_cancel">Cancel</string>
     <string name="profile_save">Save changes</string>
+    <string name="error_title">Something went wrong</string>
+    <string name="error_message">Please check your connection and try again.</string>
+    <string name="retry">Retry</string>
+    <string name="loading">Loading...</string>
+    <string name="food_image_description">Image of %1$s</string>
+    <string name="banner_image_description">Banner image</string>
+<string name="restaurant_image_description">Photo of %1$s</string>
 </resources>

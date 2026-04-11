@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@color/background"
@@ -11,6 +12,21 @@
         android:orientation="vertical"
         android:padding="16dp">
 
+        <!-- Banner Carousel -->
+        <androidx.viewpager2.widget.ViewPager2
+            android:id="@+id/vpBanners"
+            android:layout_width="match_parent"
+            android:layout_height="200dp"
+            android:layout_marginBottom="16dp" />
+
+        <LinearLayout
+            android:id="@+id/bannerIndicator"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:orientation="horizontal" />
+
+        <!-- Greeting & Location -->
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
@@ -55,39 +71,7 @@
                 android:textSize="12sp" />
         </LinearLayout>
 
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="20dp"
-            android:gravity="center_vertical"
-            android:orientation="horizontal">
-
-            <EditText
-                android:layout_width="0dp"
-                android:layout_height="48dp"
-                android:layout_weight="1"
-                android:background="@drawable/input_background"
-                android:drawableStart="@android:drawable/ic_menu_search"
-                android:drawablePadding="10dp"
-                android:hint="@string/home_search_hint"
-                android:inputType="text"
-                android:paddingStart="14dp"
-                android:paddingEnd="14dp"
-                android:textColor="@color/text_primary"
-                android:textColorHint="@color/text_hint"
-                android:textSize="14sp" />
-
-            <ImageView
-                android:layout_width="48dp"
-                android:layout_height="48dp"
-                android:layout_marginStart="12dp"
-                android:background="@drawable/button_background"
-                android:contentDescription="@string/home_filter_content_description"
-                android:padding="13dp"
-                android:src="@android:drawable/ic_menu_sort_by_size"
-                android:tint="@color/white" />
-        </LinearLayout>
-
+        <!-- Promo Banner -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -137,6 +121,7 @@
                 android:textSize="15sp" />
         </LinearLayout>
 
+        <!-- Categories Section -->
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -146,70 +131,18 @@
             android:textSize="18sp"
             android:textStyle="bold" />
 
-        <HorizontalScrollView
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/categoryContainer"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="12dp"
-            android:scrollbars="none">
+            android:clipToPadding="false"
+            android:orientation="horizontal"
+            android:paddingStart="16dp"
+            android:paddingEnd="16dp"
+            app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager" />
 
-            <LinearLayout
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal">
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="40dp"
-                    android:background="@drawable/category_chip_selected_background"
-                    android:gravity="center"
-                    android:minWidth="72dp"
-                    android:paddingStart="18dp"
-                    android:paddingEnd="18dp"
-                    android:text="@string/category_all"
-                    android:textColor="@color/white"
-                    android:textSize="14sp" />
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="40dp"
-                    android:layout_marginStart="8dp"
-                    android:background="@drawable/category_chip_background"
-                    android:gravity="center"
-                    android:minWidth="86dp"
-                    android:paddingStart="18dp"
-                    android:paddingEnd="18dp"
-                    android:text="@string/category_burger"
-                    android:textColor="@color/text_primary"
-                    android:textSize="14sp" />
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="40dp"
-                    android:layout_marginStart="8dp"
-                    android:background="@drawable/category_chip_background"
-                    android:gravity="center"
-                    android:minWidth="88dp"
-                    android:paddingStart="18dp"
-                    android:paddingEnd="18dp"
-                    android:text="@string/category_healthy"
-                    android:textColor="@color/text_primary"
-                    android:textSize="14sp" />
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="40dp"
-                    android:layout_marginStart="8dp"
-                    android:background="@drawable/category_chip_background"
-                    android:gravity="center"
-                    android:minWidth="82dp"
-                    android:paddingStart="18dp"
-                    android:paddingEnd="18dp"
-                    android:text="@string/category_pasta"
-                    android:textColor="@color/text_primary"
-                    android:textSize="14sp" />
-            </LinearLayout>
-        </HorizontalScrollView>
-
+        <!-- Popular Menu Items Section -->
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -219,240 +152,34 @@
             android:textSize="18sp"
             android:textStyle="bold" />
 
-        <GridLayout
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/popularMenuContainer"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="12dp"
-            android:columnCount="2"
-            android:useDefaultMargins="true">
+            android:clipToPadding="false"
+            android:orientation="horizontal"
+            android:paddingStart="16dp"
+            android:paddingEnd="16dp"
+            app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager" />
 
-            <LinearLayout
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_columnWeight="1"
-                android:background="@drawable/card_background"
-                android:elevation="4dp"
-                android:orientation="vertical"
-                android:padding="12dp">
+        <!-- Nearby Restaurants Section -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:text="@string/home_nearby_title"
+            android:textColor="@color/text_primary"
+            android:textSize="18sp"
+            android:textStyle="bold" />
 
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="112dp"
-                    android:background="@drawable/food_placeholder_burger"
-                    android:gravity="center"
-                    android:text="@string/food_burger_art"
-                    android:textColor="@color/primary_dark"
-                    android:textSize="14sp"
-                    android:textStyle="bold" />
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/nearbyRestaurantContainer"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:nestedScrollingEnabled="false"
+            app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager" />
 
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="12dp"
-                    android:text="@string/food_burger_name"
-                    android:textColor="@color/text_primary"
-                    android:textSize="16sp"
-                    android:textStyle="bold" />
-
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="6dp"
-                    android:text="@string/food_burger_price"
-                    android:textColor="@color/text_secondary"
-                    android:textSize="14sp" />
-
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="2dp"
-                    android:text="@string/food_burger_rating"
-                    android:textColor="@color/primary"
-                    android:textSize="13sp" />
-
-                <TextView
-                    android:layout_width="36dp"
-                    android:layout_height="36dp"
-                    android:layout_gravity="end"
-                    android:layout_marginTop="10dp"
-                    android:background="@drawable/button_background"
-                    android:gravity="center"
-                    android:text="+"
-                    android:textColor="@color/white"
-                    android:textSize="18sp"
-                    android:textStyle="bold" />
-            </LinearLayout>
-
-            <LinearLayout
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_columnWeight="1"
-                android:background="@drawable/card_background"
-                android:elevation="4dp"
-                android:orientation="vertical"
-                android:padding="12dp">
-
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="112dp"
-                    android:background="@drawable/food_placeholder_salad"
-                    android:gravity="center"
-                    android:text="@string/food_salad_art"
-                    android:textColor="@color/secondary"
-                    android:textSize="14sp"
-                    android:textStyle="bold" />
-
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="12dp"
-                    android:text="@string/food_salad_name"
-                    android:textColor="@color/text_primary"
-                    android:textSize="16sp"
-                    android:textStyle="bold" />
-
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="6dp"
-                    android:text="@string/food_salad_price"
-                    android:textColor="@color/text_secondary"
-                    android:textSize="14sp" />
-
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="2dp"
-                    android:text="@string/food_salad_rating"
-                    android:textColor="@color/primary"
-                    android:textSize="13sp" />
-
-                <TextView
-                    android:layout_width="36dp"
-                    android:layout_height="36dp"
-                    android:layout_gravity="end"
-                    android:layout_marginTop="10dp"
-                    android:background="@drawable/button_background"
-                    android:gravity="center"
-                    android:text="+"
-                    android:textColor="@color/white"
-                    android:textSize="18sp"
-                    android:textStyle="bold" />
-            </LinearLayout>
-
-            <LinearLayout
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_columnWeight="1"
-                android:background="@drawable/card_background"
-                android:elevation="4dp"
-                android:orientation="vertical"
-                android:padding="12dp">
-
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="112dp"
-                    android:background="@drawable/food_placeholder_pasta"
-                    android:gravity="center"
-                    android:text="@string/food_pasta_art"
-                    android:textColor="@color/primary_dark"
-                    android:textSize="14sp"
-                    android:textStyle="bold" />
-
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="12dp"
-                    android:text="@string/food_pasta_name"
-                    android:textColor="@color/text_primary"
-                    android:textSize="16sp"
-                    android:textStyle="bold" />
-
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="6dp"
-                    android:text="@string/food_pasta_price"
-                    android:textColor="@color/text_secondary"
-                    android:textSize="14sp" />
-
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="2dp"
-                    android:text="@string/food_pasta_rating"
-                    android:textColor="@color/primary"
-                    android:textSize="13sp" />
-
-                <TextView
-                    android:layout_width="36dp"
-                    android:layout_height="36dp"
-                    android:layout_gravity="end"
-                    android:layout_marginTop="10dp"
-                    android:background="@drawable/button_background"
-                    android:gravity="center"
-                    android:text="+"
-                    android:textColor="@color/white"
-                    android:textSize="18sp"
-                    android:textStyle="bold" />
-            </LinearLayout>
-
-            <LinearLayout
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_columnWeight="1"
-                android:background="@drawable/card_background"
-                android:elevation="4dp"
-                android:orientation="vertical"
-                android:padding="12dp">
-
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="112dp"
-                    android:background="@drawable/food_placeholder_dessert"
-                    android:gravity="center"
-                    android:text="@string/food_dessert_art"
-                    android:textColor="@color/secondary"
-                    android:textSize="14sp"
-                    android:textStyle="bold" />
-
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="12dp"
-                    android:text="@string/food_dessert_name"
-                    android:textColor="@color/text_primary"
-                    android:textSize="16sp"
-                    android:textStyle="bold" />
-
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="6dp"
-                    android:text="@string/food_dessert_price"
-                    android:textColor="@color/text_secondary"
-                    android:textSize="14sp" />
-
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="2dp"
-                    android:text="@string/food_dessert_rating"
-                    android:textColor="@color/primary"
-                    android:textSize="13sp" />
-
-                <TextView
-                    android:layout_width="36dp"
-                    android:layout_height="36dp"
-                    android:layout_gravity="end"
-                    android:layout_marginTop="10dp"
-                    android:background="@drawable/button_background"
-                    android:gravity="center"
-                    android:text="+"
-                    android:textColor="@color/white"
-                    android:textSize="18sp"
-                    android:textStyle="bold" />
-            </LinearLayout>
-        </GridLayout>
     </LinearLayout>
 </ScrollView>

@@ -1,51 +1,58 @@
 package com.utt.foodcouriers_client.data.model;
 
+import com.google.gson.annotations.SerializedName;
 import java.io.Serializable;
 
 public class MenuItem implements Serializable {
-    private final String id;
-    private final String restaurantId;
-    private final String category;
-    private final String name;
-    private final String description;
-    private final int price;
-    private final double rating;
+    private String id;
+    @SerializedName("restaurant_id")
+    private String restaurantId;
+    @SerializedName("category_id")
+    private String categoryId;
+    private String category;
+    private String name;
+    private String description;
+    private int price;
+    @SerializedName("image_url")
+    private String imageUrl;
+    private double rating;
+    @SerializedName("is_featured")
+    private boolean isFeatured;
+    @SerializedName("is_available")
+    private boolean isAvailable;
 
-    public MenuItem(String id, String restaurantId, String category, String name, String description, int price, double rating) {
-        this.id = id;
-        this.restaurantId = restaurantId;
-        this.category = category;
-        this.name = name;
-        this.description = description;
-        this.price = price;
-        this.rating = rating;
-    }
+    public MenuItem() {}
 
-    public String getId() {
-        return id;
-    }
+    public String getId() { return id; }
+    public void setId(String id) { this.id = id; }
 
-    public String getRestaurantId() {
-        return restaurantId;
-    }
+    public String getRestaurantId() { return restaurantId; }
+    public void setRestaurantId(String restaurantId) { this.restaurantId = restaurantId; }
 
-    public String getCategory() {
-        return category;
-    }
+    public String getCategoryId() { return categoryId; }
+    public void setCategoryId(String categoryId) { this.categoryId = categoryId; }
 
-    public String getName() {
-        return name;
-    }
+    public String getCategory() { return category; }
+    public void setCategory(String category) { this.category = category; }
 
-    public String getDescription() {
-        return description;
-    }
+    public String getName() { return name; }
+    public void setName(String name) { this.name = name; }
 
-    public int getPrice() {
-        return price;
-    }
+    public String getDescription() { return description; }
+    public void setDescription(String description) { this.description = description; }
 
-    public double getRating() {
-        return rating;
-    }
+    public int getPrice() { return price; }
+    public void setPrice(int price) { this.price = price; }
+
+    public String getImageUrl() { return imageUrl; }
+    public void setImageUrl(String imageUrl) { this.imageUrl = imageUrl; }
+
+    public double getRating() { return rating; }
+    public void setRating(double rating) { this.rating = rating; }
+
+    public boolean isFeatured() { return isFeatured; }
+    public void setFeatured(boolean featured) { isFeatured = featured; }
+
+    public boolean isAvailable() { return isAvailable; }
+    public void setAvailable(boolean available) { isAvailable = available; }
 }
