@@ -1,11 +1,8 @@
 package com.utt.foodcouriers_client.ui.main;
 
 import android.os.Bundle;
-import android.view.Menu;
-import android.view.MenuItem;
 import android.view.View;
 
-import androidx.annotation.NonNull;
 import androidx.fragment.app.Fragment;
 
 import com.utt.foodcouriers_client.R;
@@ -32,6 +29,12 @@ public class MainActivity extends BaseActivity {
         binding.topToolbar.setNavigationOnClickListener(v -> getOnBackPressedDispatcher().onBackPressed());
         getSupportFragmentManager().addOnBackStackChangedListener(this::syncChrome);
 
+        binding.btnCart.setOnClickListener(v ->
+                openSecondaryFragment(new CartFragment(), getString(R.string.cart_title)));
+
+        binding.btnNotification.setOnClickListener(v ->
+                openSecondaryFragment(new NotificationsFragment(), getString(R.string.notifications_title)));
+
         binding.bottomNavigation.setOnItemSelectedListener(item -> {
             if (item.getItemId() == R.id.navigation_home) {
                 showPrimaryFragment(new HomeFragment(), getString(R.string.nav_home));
@@ -57,25 +60,6 @@ public class MainActivity extends BaseActivity {
         } else {
             syncChrome();
         }
-    }
-
-    @Override
-    public boolean onCreateOptionsMenu(Menu menu) {
-        getMenuInflater().inflate(R.menu.menu_main_actions, menu);
-        return true;
-    }
-
-    @Override
-    public boolean onOptionsItemSelected(@NonNull MenuItem item) {
-        if (item.getItemId() == R.id.action_cart) {
-            openSecondaryFragment(new CartFragment(), getString(R.string.cart_title));
-            return true;
-        }
-        if (item.getItemId() == R.id.action_notifications) {
-            openSecondaryFragment(new NotificationsFragment(), getString(R.string.notifications_title));
-            return true;
-        }
-        return super.onOptionsItemSelected(item);
     }
 
     public void openSecondaryFragment(Fragment fragment, String title) {
@@ -105,6 +89,7 @@ public class MainActivity extends BaseActivity {
             binding.topToolbar.setNavigationIcon(R.drawable.ic_back);
         } else {
             binding.topToolbar.setNavigationIcon(null);
+            binding.topToolbar.setTitle(getString(R.string.nav_home));
         }
     }
 }
