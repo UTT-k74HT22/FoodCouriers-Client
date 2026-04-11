@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.cardview.widget.CardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginVertical="@dimen/spacing_xs"
+    app:cardCornerRadius="@dimen/radius_medium"
+    app:cardElevation="1dp"
+    app:cardBackgroundColor="@color/surface">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:padding="@dimen/spacing_md"
+        android:gravity="center_vertical">
+
+        <ImageView
+            android:layout_width="@dimen/icon_size_lg"
+            android:layout_height="@dimen/icon_size_lg"
+            android:src="@android:drawable/ic_menu_mylocation"
+            app:tint="@color/primary" />
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginStart="@dimen/spacing_md"
+            android:orientation="vertical">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+
+                <TextView
+                    android:id="@+id/tv_label"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textSize="@dimen/text_body"
+                    android:textStyle="bold"
+                    android:textColor="@color/text_primary" />
+
+                <TextView
+                    android:id="@+id/tv_default"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="@dimen/spacing_sm"
+                    android:paddingHorizontal="@dimen/spacing_sm"
+                    android:paddingVertical="2dp"
+                    android:text="Mặc định"
+                    android:textSize="@dimen/text_caption"
+                    android:textColor="@color/white"
+                    android:background="@drawable/badge_featured"
+                    android:visibility="gone" />
+
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/tv_address"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/spacing_xs"
+                android:textSize="@dimen/text_caption"
+                android:textColor="@color/text_secondary" />
+
+            <TextView
+                android:id="@+id/tv_note"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/spacing_xs"
+                android:textSize="@dimen/text_caption"
+                android:textColor="@color/text_secondary"
+                android:visibility="gone" />
+
+        </LinearLayout>
+
+        <ImageView
+            android:id="@+id/btn_more"
+            android:layout_width="@dimen/icon_size_md"
+            android:layout_height="@dimen/icon_size_md"
+            android:src="@android:drawable/ic_menu_more"
+            app:tint="@color/text_secondary" />
+
+    </LinearLayout>
+
+</androidx.cardview.widget.CardView>
