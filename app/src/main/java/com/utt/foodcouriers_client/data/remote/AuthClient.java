@@ -34,7 +34,10 @@ public class AuthClient extends BaseSupabaseClient {
     }
 
     public void signIn(String email, String password, ApiCallback<UserProfile> callback) {
+        Log.d(TAG, "signIn called: email=" + email);
+        
         if (!SupabaseConfig.isConfigured()) {
+            Log.e(TAG, "signIn: Supabase is not configured");
             postError(callback, "Supabase is not configured");
             return;
         }
@@ -50,6 +53,8 @@ public class AuthClient extends BaseSupabaseClient {
                 .addHeader(SupabaseConfig.HEADER_CONTENT_TYPE, SupabaseConfig.CONTENT_TYPE_JSON)
                 .build();
 
+        Log.d(TAG, "signIn request URL: " + request.url());
+
         client.newCall(request).enqueue(new Callback() {
             @Override
             public void onFailure(Call call, IOException exception) {
@@ -59,8 +64,10 @@ public class AuthClient extends BaseSupabaseClient {
 
             @Override
             public void onResponse(Call call, Response response) throws IOException {
+                Log.d(TAG, "signIn response code: " + response.code());
                 try (ResponseBody responseBody = response.body()) {
                     String json = responseBody != null ? responseBody.string() : "";
+                    Log.d(TAG, "signIn response body: " + json);
                     if (!response.isSuccessful()) {
                         postError(callback, parseAuthError(json));
                         return;
@@ -72,6 +79,7 @@ public class AuthClient extends BaseSupabaseClient {
                         return;
                     }
 
+                    Log.d(TAG, "signIn success - setting session, userId: " + authResponse.getUser().getId());
                     setSession(authResponse.getAccessToken(), authResponse.getRefreshToken());
                     fetchUserProfile(authResponse.getUser().getId(), callback);
                 }

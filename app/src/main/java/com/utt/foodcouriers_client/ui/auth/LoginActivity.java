@@ -3,6 +3,7 @@ package com.utt.foodcouriers_client.ui.auth;
 import android.content.Intent;
 import android.os.Bundle;
 import android.text.TextUtils;
+import android.util.Log;
 import android.util.Patterns;
 import android.view.View;
 import android.widget.Button;
@@ -21,7 +22,7 @@ import com.utt.foodcouriers_client.utils.SessionManager;
 import com.utt.foodcouriers_client.utils.ToastBanner;
 
 public class LoginActivity extends BaseActivity {
-
+    private static final String TAG = "LoginActivity";
     private static final long TOKEN_EXPIRY_MILLIS = 3600000L;
 
     private TextInputLayout tilEmail;
@@ -86,6 +87,7 @@ public class LoginActivity extends BaseActivity {
 
     private void loginAction() {
         btnLogin.setOnClickListener(v -> {
+            Log.d(TAG, "loginAction called - attempting login");
             if (validateInput()) {
                 performLogin();
             }
@@ -126,14 +128,17 @@ public class LoginActivity extends BaseActivity {
         String email = getEmail().trim();
         String password = getPassword();
 
+        Log.d(TAG, "performLogin: email=" + email);
         showLoading(true);
 
         authRepository.login(email, password, new com.utt.foodcouriers_client.data.common.RepositoryCallback<UserProfile>() {
             @Override
             public void onSuccess(UserProfile user) {
+                Log.d(TAG, "performLogin onSuccess: user=" + (user != null ? user.getEmail() : "null"));
                 showLoading(false);
 
                 if (!user.isActive()) {
+                    Log.w(TAG, "performLogin: user account is disabled");
                     authRepository.logout(new com.utt.foodcouriers_client.data.common.RepositoryCallback<Boolean>() {
                         @Override
                         public void onSuccess(Boolean result) {
@@ -150,6 +155,7 @@ public class LoginActivity extends BaseActivity {
                 String accessToken = com.utt.foodcouriers_client.data.remote.AuthClient.getInstance().getAccessToken();
                 String refreshToken = com.utt.foodcouriers_client.data.remote.AuthClient.getInstance().getRefreshToken();
 
+                Log.d(TAG, "performLogin: accessToken=" + (accessToken != null ? "present" : "null") + ", refreshToken=" + (refreshToken != null ? "present" : "null"));
                 sessionManager.saveSession(accessToken, refreshToken, user, TOKEN_EXPIRY_MILLIS);
 
                 ToastBanner.showSuccess(getString(R.string.login_success));
@@ -158,6 +164,7 @@ public class LoginActivity extends BaseActivity {
 
             @Override
             public void onError(String error) {
+                Log.e(TAG, "performLogin onError: " + error);
                 showLoading(false);
                 ToastBanner.showError(error);
             }
