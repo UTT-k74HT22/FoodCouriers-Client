@@ -71,6 +71,7 @@ android {
                 "src/main/res-layouts/common",
                 "src/main/res-layouts/auth",
                 "src/main/res-layouts/home",
+                "src/main/res-layouts/discover",
                 "src/main/res-layouts/search",
                 "src/main/res-layouts/cart",
                 "src/main/res-layouts/order",

@@ -9,11 +9,11 @@ import com.utt.foodcouriers_client.R;
 import com.utt.foodcouriers_client.databinding.ActivityMainBinding;
 import com.utt.foodcouriers_client.ui.cart.CartFragment;
 import com.utt.foodcouriers_client.ui.common.BaseActivity;
+import com.utt.foodcouriers_client.ui.discover.DiscoverFragment;
 import com.utt.foodcouriers_client.ui.home.HomeFragment;
 import com.utt.foodcouriers_client.ui.notification.NotificationsFragment;
 import com.utt.foodcouriers_client.ui.order.OrdersFragment;
 import com.utt.foodcouriers_client.ui.profile.ProfileFragment;
-import com.utt.foodcouriers_client.ui.search.SearchFragment;
 
 public class MainActivity extends BaseActivity {
 
@@ -40,8 +40,8 @@ public class MainActivity extends BaseActivity {
                 showPrimaryFragment(new HomeFragment(), getString(R.string.nav_home));
                 return true;
             }
-            if (item.getItemId() == R.id.navigation_search) {
-                showPrimaryFragment(new SearchFragment(), getString(R.string.nav_search));
+            if (item.getItemId() == R.id.navigation_discover) {
+                showPrimaryFragment(new DiscoverFragment(), getString(R.string.nav_discover));
                 return true;
             }
             if (item.getItemId() == R.id.navigation_orders) {

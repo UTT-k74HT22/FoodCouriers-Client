@@ -145,4 +145,18 @@ public class CatalogRepository {
             }
         });
     }
+
+    public void getMenuItemsByRestaurant(String restaurantId, RepositoryCallback<List<MenuItem>> callback) {
+        menuItemClient.fetchMenuItemsByRestaurant(restaurantId, new MenuItemClient.ApiCallback<List<MenuItem>>() {
+            @Override
+            public void onSuccess(List<MenuItem> result) {
+                callback.onSuccess(result);
+            }
+
+            @Override
+            public void onError(String error) {
+                callback.onError(error);
+            }
+        });
+    }
 }
