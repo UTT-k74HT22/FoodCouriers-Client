@@ -80,12 +80,15 @@ public class CategoryCardAdapter extends RecyclerView.Adapter<CategoryCardAdapte
         }
 
         private void bind(FoodCategory category, boolean isLast) {
-            boolean selected = category.getId().equals(selectedCategoryId);
+            String categoryId = category.getId();
+            boolean selected = categoryId != null && categoryId.equals(selectedCategoryId);
             CategoryVisuals.CategoryStyle style = CategoryVisuals.resolve(binding.getRoot().getContext(), category);
+            String description = category.getDescription();
+            boolean hasDescription = description != null && !description.trim().isEmpty();
 
             binding.tvCategoryEyebrow.setText(style.eyebrow);
-            binding.tvCategoryName.setText(category.getName());
-            binding.tvCategoryDescription.setText(style.description);
+            binding.tvCategoryName.setText(category.getName() != null ? category.getName() : "");
+            binding.tvCategoryDescription.setText(hasDescription ? description : style.description);
             binding.tvCategoryAction.setText(selected ? R.string.category_card_selected : R.string.category_card_action);
             binding.tvCategoryAction.setTextColor(selected ? style.textAccentColor : ContextCompat.getColor(binding.getRoot().getContext(), R.color.text_secondary));
             binding.tvCategoryMeta.setText(selected ? R.string.category_meta_selected : R.string.category_meta_default);

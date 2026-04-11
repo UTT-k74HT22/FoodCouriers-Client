@@ -26,20 +26,13 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="@dimen/spacing_lg"
-        android:background="@drawable/bg_category_hero"
-        android:orientation="vertical"
-        android:padding="20dp">
+        android:orientation="vertical">
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:background="@drawable/bg_category_metric"
-            android:paddingStart="12dp"
-            android:paddingTop="8dp"
-            android:paddingEnd="12dp"
-            android:paddingBottom="8dp"
             android:text="@string/search_category_badge"
-            android:textColor="@color/white"
+            android:textColor="@color/primary"
             android:textSize="@dimen/text_caption"
             android:textStyle="bold" />
 
@@ -48,107 +41,28 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="@dimen/spacing_sm"
             android:text="@string/search_category_title"
-            android:textColor="@color/white"
-            android:textSize="24sp"
-            android:textStyle="bold" />
-
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="6dp"
-            android:text="@string/search_category_subtitle"
-            android:textColor="@color/category_hero_text_muted"
-            android:textSize="@dimen/text_body" />
-
-        <HorizontalScrollView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="18dp"
-            android:scrollbars="none">
-
-            <LinearLayout
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal">
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:background="@drawable/bg_category_metric"
-                    android:paddingStart="12dp"
-                    android:paddingTop="8dp"
-                    android:paddingEnd="12dp"
-                    android:paddingBottom="8dp"
-                    android:text="@string/search_category_metric_one"
-                    android:textColor="@color/white"
-                    android:textSize="@dimen/text_caption"
-                    android:textStyle="bold" />
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="10dp"
-                    android:background="@drawable/bg_category_metric"
-                    android:paddingStart="12dp"
-                    android:paddingTop="8dp"
-                    android:paddingEnd="12dp"
-                    android:paddingBottom="8dp"
-                    android:text="@string/search_category_metric_two"
-                    android:textColor="@color/white"
-                    android:textSize="@dimen/text_caption"
-                    android:textStyle="bold" />
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="10dp"
-                    android:background="@drawable/bg_category_metric"
-                    android:paddingStart="12dp"
-                    android:paddingTop="8dp"
-                    android:paddingEnd="12dp"
-                    android:paddingBottom="8dp"
-                    android:text="@string/search_category_metric_three"
-                    android:textColor="@color/white"
-                    android:textSize="@dimen/text_caption"
-                    android:textStyle="bold" />
-            </LinearLayout>
-        </HorizontalScrollView>
-    </LinearLayout>
-
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="@dimen/spacing_lg"
-        android:background="@drawable/bg_category_panel"
-        android:orientation="vertical"
-        android:padding="18dp">
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="@string/search_category_section_title"
             android:textColor="@color/text_primary"
-            android:textSize="18sp"
+            android:textSize="22sp"
             android:textStyle="bold" />
 
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="4dp"
-            android:text="@string/search_category_section_subtitle"
+            android:text="@string/search_category_subtitle"
             android:textColor="@color/text_secondary"
             android:textSize="@dimen/text_body" />
-
-        <androidx.recyclerview.widget.RecyclerView
-            android:id="@+id/rv_search_category_filters"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            android:clipToPadding="false"
-            android:nestedScrollingEnabled="false"
-            android:paddingEnd="@dimen/spacing_sm"
-            android:scrollbars="none" />
     </LinearLayout>
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/rv_search_category_filters"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/spacing_lg"
+        android:clipToPadding="false"
+        android:nestedScrollingEnabled="false"
+        android:paddingEnd="@dimen/spacing_sm"
+        android:scrollbars="none" />
 
     <FrameLayout
         android:layout_width="match_parent"

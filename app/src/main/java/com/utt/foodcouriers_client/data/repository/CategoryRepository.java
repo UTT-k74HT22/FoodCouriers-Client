@@ -41,9 +41,9 @@ public class CategoryRepository extends BaseSupabaseRepository {
         Log.d(TAG, "Fetching categories from Supabase");
 
         String url = SupabaseConfig.REST_URL + "/" + TABLE
-                + "?select=id, name, image_url, sort_order, description"
+                + "?select=id,name,image_url,sort_order,description"
                 + "&is_active=eq.true"
-                + "&order=sort_order.asc, name.asc";
+                + "&order=sort_order.asc,name.asc";
         Request request = new Request.Builder()
                 .url(url)
                 .get()
@@ -61,6 +61,9 @@ public class CategoryRepository extends BaseSupabaseRepository {
             public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
                 Log.d(TAG, "Received response for categories: " + response.code());
                 String body = response.body().string();
+
+                Log.d(TAG, "Response body: " + body);
+
                 if (!response.isSuccessful()) {
                     Log.e(TAG, "Failed to fetch categories: " + body);
                     mainHandler.post(() -> callback.onError("Failed to fetch categories"));
@@ -77,14 +80,22 @@ public class CategoryRepository extends BaseSupabaseRepository {
         for (JsonElement element : array) {
             JsonObject object = element.getAsJsonObject();
             FoodCategory category = new FoodCategory();
-            category.setId(object.get("id").getAsString());
-            category.setName(object.get("name").getAsString());
-            category.setImageUrl(object.get("image_url").getAsString());
-            category.setSortOrder(object.get("sort_order").getAsInt());
-            category.setDescription(object.get("description").getAsString());
+            category.setId(getNullableString(object, "id"));
+            category.setName(getNullableString(object, "name"));
+            category.setImageUrl(getNullableString(object, "image_url"));
+            category.setSortOrder(object.has("sort_order") && !object.get("sort_order").isJsonNull()
+                    ? object.get("sort_order").getAsInt()
+                    : Integer.MAX_VALUE);
+            category.setDescription(getNullableString(object, "description"));
             categories.add(category);
         }
         categories.sort(Comparator.comparingInt(FoodCategory::getSortOrder));
         return categories;
+    }
+
+    private String getNullableString(JsonObject object, String key) {
+        return object.has(key) && !object.get(key).isJsonNull()
+                ? object.get(key).getAsString()
+                : null;
     }
 }

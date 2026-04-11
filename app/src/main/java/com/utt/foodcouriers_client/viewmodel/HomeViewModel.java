@@ -11,12 +11,10 @@ import java.util.List;
 
 public class HomeViewModel extends BaseViewModel {
 
-    private static final String ALL_CATEGORY_ID = "all";
-
     private final CategoryRepository catalogRepository = CategoryRepository.getInstance();
     private final MutableLiveData<List<FoodCategory>> categoryFilters = new MutableLiveData<>(Collections.emptyList());
     private final MutableLiveData<List<FoodCategory>> spotlightCategories = new MutableLiveData<>(Collections.emptyList());
-    private final MutableLiveData<String> selectedCategoryId = new MutableLiveData<>(ALL_CATEGORY_ID);
+    private final MutableLiveData<String> selectedCategoryId = new MutableLiveData<>(null);
     private List<FoodCategory> sourceCategories = Collections.emptyList();
 
     public HomeViewModel() {
@@ -58,24 +56,25 @@ public class HomeViewModel extends BaseViewModel {
         if (category == null) {
             return;
         }
-        selectedCategoryId.setValue(category.getId());
+        String currentId = selectedCategoryId.getValue();
+        String nextId = category.getId();
+        selectedCategoryId.setValue(nextId != null && nextId.equals(currentId) ? null : nextId);
         publishState();
     }
 
     private void publishState() {
-        List<FoodCategory> filters = new ArrayList<>();
-        filters.addAll(sourceCategories);
-        categoryFilters.setValue(filters);
+        categoryFilters.setValue(new ArrayList<>(sourceCategories));
 
         String selectedId = selectedCategoryId.getValue();
-        if (selectedId == null) {
-            selectedId = ALL_CATEGORY_ID;
-            selectedCategoryId.setValue(selectedId);
+        final String currentSelectedId = selectedId;
+        if (currentSelectedId != null && sourceCategories.stream().noneMatch(category -> currentSelectedId.equals(category.getId()))) {
+            selectedId = null;
+            selectedCategoryId.setValue(null);
         }
         final String finalSelectedId = selectedId;
 
         List<FoodCategory> ordered = new ArrayList<>(sourceCategories);
-        if (!ALL_CATEGORY_ID.equals(finalSelectedId)) {
+        if (finalSelectedId != null) {
             ordered.sort((left, right) -> {
                 boolean leftSelected = finalSelectedId.equals(left.getId());
                 boolean rightSelected = finalSelectedId.equals(right.getId());

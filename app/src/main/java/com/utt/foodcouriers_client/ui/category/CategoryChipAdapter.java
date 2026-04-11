@@ -66,8 +66,9 @@ public class CategoryChipAdapter extends RecyclerView.Adapter<CategoryChipAdapte
         }
 
         private void bind(FoodCategory category, boolean isLast) {
-            boolean selected = category.getId().equals(selectedCategoryId);
-            binding.tvCategoryChip.setText(category.getName());
+            String categoryId = category.getId();
+            boolean selected = categoryId != null && categoryId.equals(selectedCategoryId);
+            binding.tvCategoryChip.setText(category.getName() != null ? category.getName() : "");
             binding.tvCategoryChip.setSelected(selected);
             binding.tvCategoryChip.setTextColor(ContextCompat.getColor(
                     binding.getRoot().getContext(),

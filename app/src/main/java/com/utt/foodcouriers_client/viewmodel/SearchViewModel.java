@@ -5,6 +5,7 @@ import androidx.lifecycle.MutableLiveData;
 
 import com.utt.foodcouriers_client.data.common.RepositoryCallback;
 import com.utt.foodcouriers_client.data.model.FoodCategory;
+import com.utt.foodcouriers_client.data.repository.CategoryRepository;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -12,11 +13,10 @@ import java.util.Locale;
 
 public class SearchViewModel extends BaseViewModel {
 
-    private static final String ALL_CATEGORY_ID = "all";
-
+    private final CategoryRepository catalogRepository = CategoryRepository.getInstance();
     private final MutableLiveData<List<FoodCategory>> categoryFilters = new MutableLiveData<>(Collections.emptyList());
     private final MutableLiveData<List<FoodCategory>> visibleCategories = new MutableLiveData<>(Collections.emptyList());
-    private final MutableLiveData<String> selectedCategoryId = new MutableLiveData<>(ALL_CATEGORY_ID);
+    private final MutableLiveData<String> selectedCategoryId = new MutableLiveData<>(null);
     private final MutableLiveData<String> query = new MutableLiveData<>("");
     private List<FoodCategory> sourceCategories = Collections.emptyList();
 
@@ -68,24 +68,30 @@ public class SearchViewModel extends BaseViewModel {
         if (category == null) {
             return;
         }
-        selectedCategoryId.setValue(category.getId());
+        String currentId = selectedCategoryId.getValue();
+        String nextId = category.getId();
+        selectedCategoryId.setValue(nextId != null && nextId.equals(currentId) ? null : nextId);
         publishState();
     }
 
     private void publishState() {
-        List<FoodCategory> filters = new ArrayList<>();
-        filters.addAll(sourceCategories);
-        categoryFilters.setValue(filters);
+        categoryFilters.setValue(new ArrayList<>(sourceCategories));
 
         String selectedId = selectedCategoryId.getValue();
+        final String currentSelectedId = selectedId;
+        if (currentSelectedId != null && sourceCategories.stream().noneMatch(category -> currentSelectedId.equals(category.getId()))) {
+            selectedId = null;
+            selectedCategoryId.setValue(null);
+        }
         String rawQuery = query.getValue();
         String normalizedQuery = rawQuery == null ? "" : rawQuery.toLowerCase(Locale.ROOT);
 
         List<FoodCategory> filtered = new ArrayList<>();
         for (FoodCategory category : sourceCategories) {
-            boolean matchesSelection = ALL_CATEGORY_ID.equals(selectedId) || category.getId().equals(selectedId);
+            String categoryName = category.getName() != null ? category.getName() : "";
+            boolean matchesSelection = selectedId == null || selectedId.equals(category.getId());
             boolean matchesQuery = normalizedQuery.isEmpty()
-                    || category.getName().toLowerCase(Locale.ROOT).contains(normalizedQuery);
+                    || categoryName.toLowerCase(Locale.ROOT).contains(normalizedQuery);
             if (matchesSelection && matchesQuery) {
                 filtered.add(category);
             }

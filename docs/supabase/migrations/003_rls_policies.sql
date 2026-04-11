@@ -76,11 +76,24 @@ CREATE POLICY "restaurants_manage" ON restaurants
 CREATE POLICY "categories_select" ON categories
     FOR SELECT USING (is_active = true);
 
-CREATE POLICY "categories_manage" ON categories
-    FOR ALL USING (
+CREATE POLICY "categories_insert_admin" ON categories
+    FOR INSERT
+    WITH CHECK (
+        EXISTS (SELECT 1 FROM users WHERE auth_id = auth.uid() AND role = 'admin')
+    );
+
+CREATE POLICY "categories_update_admin" ON categories
+    FOR UPDATE
+    USING (
         EXISTS (SELECT 1 FROM users WHERE auth_id = auth.uid() AND role = 'admin')
     )
     WITH CHECK (
+        EXISTS (SELECT 1 FROM users WHERE auth_id = auth.uid() AND role = 'admin')
+    );
+
+CREATE POLICY "categories_delete_admin" ON categories
+    FOR DELETE
+    USING (
         EXISTS (SELECT 1 FROM users WHERE auth_id = auth.uid() AND role = 'admin')
     );
 
