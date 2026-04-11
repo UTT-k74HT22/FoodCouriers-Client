@@ -22,6 +22,7 @@
     <string name="home_cta">Order now</string>
     <string name="home_category_title">Categories</string>
     <string name="home_popular_title">Popular this week</string>
+    <string name="home_nearby_title">Nearby restaurants</string>
     <string name="home_see_all">See all</string>
     <string name="category_all">All</string>
     <string name="category_burger">Burger</string>

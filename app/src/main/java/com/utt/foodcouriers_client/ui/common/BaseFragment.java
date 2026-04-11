@@ -1,14 +1,16 @@
 package com.utt.foodcouriers_client.ui.common;
 
-import android.widget.Toast;
-
 import androidx.fragment.app.Fragment;
+
+import com.utt.foodcouriers_client.utils.ToastBanner;
 
 public abstract class BaseFragment extends Fragment {
 
     protected void showToast(String message) {
-        if (getContext() != null) {
-            Toast.makeText(getContext(), message, Toast.LENGTH_SHORT).show();
-        }
+        ToastBanner.showSuccess(message);
+    }
+
+    protected void showError(String message) {
+        ToastBanner.showError(message);
     }
 }
