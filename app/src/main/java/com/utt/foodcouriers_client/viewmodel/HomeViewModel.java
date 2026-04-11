@@ -2,11 +2,9 @@ package com.utt.foodcouriers_client.viewmodel;
 
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
-
 import com.utt.foodcouriers_client.data.common.RepositoryCallback;
 import com.utt.foodcouriers_client.data.model.FoodCategory;
-import com.utt.foodcouriers_client.data.repository.CatalogRepository;
-
+import com.utt.foodcouriers_client.data.repository.CategoryRepository;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -15,7 +13,7 @@ public class HomeViewModel extends BaseViewModel {
 
     private static final String ALL_CATEGORY_ID = "all";
 
-    private final CatalogRepository catalogRepository = CatalogRepository.getInstance();
+    private final CategoryRepository catalogRepository = CategoryRepository.getInstance();
     private final MutableLiveData<List<FoodCategory>> categoryFilters = new MutableLiveData<>(Collections.emptyList());
     private final MutableLiveData<List<FoodCategory>> spotlightCategories = new MutableLiveData<>(Collections.emptyList());
     private final MutableLiveData<String> selectedCategoryId = new MutableLiveData<>(ALL_CATEGORY_ID);
@@ -66,7 +64,6 @@ public class HomeViewModel extends BaseViewModel {
 
     private void publishState() {
         List<FoodCategory> filters = new ArrayList<>();
-        filters.add(new FoodCategory(ALL_CATEGORY_ID, "All", null, 0));
         filters.addAll(sourceCategories);
         categoryFilters.setValue(filters);
 
