@@ -1,86 +1,141 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.cardview.widget.CardView xmlns:android="http://schemas.android.com/apk/res/android"
+<com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_marginVertical="@dimen/spacing_sm"
-    app:cardCornerRadius="@dimen/radius_medium"
-    app:cardElevation="2dp"
-    app:cardBackgroundColor="@color/surface">
+    android:layout_marginTop="@dimen/spacing_xs"
+    app:cardBackgroundColor="@color/surface"
+    app:cardCornerRadius="12dp"
+    app:cardElevation="0dp">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:gravity="center_vertical"
         android:orientation="horizontal"
-        android:padding="@dimen/spacing_md"
-        android:gravity="center_vertical">
+        android:padding="@dimen/spacing_md">
 
-        <ImageView
-            android:id="@+id/iv_food_image"
-            android:layout_width="64dp"
-            android:layout_height="64dp"
-            android:scaleType="centerCrop"
-            android:background="@color/background" />
+        <CheckBox
+            android:id="@+id/cb_select_item"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:buttonTint="@color/primary" />
+
+        <FrameLayout
+            android:id="@+id/layout_visual"
+            android:layout_width="56dp"
+            android:layout_height="56dp"
+            android:layout_marginStart="@dimen/spacing_sm"
+            android:background="@drawable/bg_cart_item_visual">
+
+            <ImageView
+                android:id="@+id/iv_food_image"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:layout_gravity="center"
+                android:contentDescription="@null"
+                android:scaleType="centerCrop"
+                android:src="@drawable/ic_food_bowl"
+                app:tint="@color/primary_dark" />
+        </FrameLayout>
 
         <LinearLayout
             android:layout_width="0dp"
             android:layout_height="wrap_content"
+            android:layout_marginStart="@dimen/spacing_md"
             android:layout_weight="1"
-            android:orientation="vertical"
-            android:layout_marginStart="@dimen/spacing_md">
+            android:orientation="vertical">
 
             <TextView
                 android:id="@+id/tv_food_name"
-                android:layout_width="match_parent"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:textColor="@color/text_primary"
                 android:textSize="@dimen/text_body"
                 android:textStyle="bold"
-                android:textColor="@color/text_primary"
-                android:maxLines="2" />
+                tools:text="Smoky Beef Burger" />
 
             <TextView
                 android:id="@+id/tv_food_price"
-                android:layout_width="match_parent"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:textColor="@color/text_secondary"
+                android:textSize="@dimen/text_caption"
+                tools:text="89.000 ₫" />
+
+            <TextView
+                android:id="@+id/tv_line_total"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:textColor="@color/primary"
+                android:textSize="@dimen/text_body"
+                android:textStyle="bold"
+                tools:text="178.000 ₫" />
+
+            <TextView
+                android:id="@+id/tv_food_note"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="@dimen/spacing_xs"
-                android:textSize="@dimen/text_body"
-                android:textColor="@color/primary" />
+                android:textColor="@color/text_hint"
+                android:textSize="@dimen/text_caption"
+                android:visibility="gone"
+                tools:text="Extra cheese" />
 
+            <TextView
+                android:id="@+id/tv_remove_hint"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/cart_remove_hint"
+                android:textColor="@color/text_hint"
+                android:textSize="@dimen/text_caption"
+                android:visibility="gone" />
         </LinearLayout>
 
         <LinearLayout
+            android:id="@+id/layout_stepper"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center_vertical">
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
 
-            <ImageView
+            <TextView
                 android:id="@+id/btn_decrease"
-                android:layout_width="@dimen/icon_size_md"
-                android:layout_height="@dimen/icon_size_md"
-                android:src="@android:drawable/ic_media_previous"
-                app:tint="@color/text_secondary"
-                android:background="?attr/selectableItemBackgroundBorderless" />
+                android:layout_width="28dp"
+                android:layout_height="28dp"
+                android:background="@drawable/bg_cart_quantity_button"
+                android:gravity="center"
+                android:text="−"
+                android:textColor="@color/text_primary"
+                android:textSize="16sp"
+                android:textStyle="bold" />
 
             <TextView
                 android:id="@+id/tv_quantity"
-                android:layout_width="@dimen/icon_size_lg"
+                android:layout_width="32dp"
                 android:layout_height="wrap_content"
                 android:gravity="center"
-                android:textSize="@dimen/text_subtitle"
+                android:textColor="@color/text_primary"
+                android:textSize="@dimen/text_body"
                 android:textStyle="bold"
-                android:textColor="@color/text_primary" />
+                tools:text="2" />
 
-            <ImageView
+            <TextView
                 android:id="@+id/btn_increase"
-                android:layout_width="@dimen/icon_size_md"
-                android:layout_height="@dimen/icon_size_md"
-                android:src="@android:drawable/ic_media_next"
-                app:tint="@color/primary"
-                android:background="?attr/selectableItemBackgroundBorderless" />
-
+                android:layout_width="28dp"
+                android:layout_height="28dp"
+                android:background="@drawable/bg_cart_quantity_button_primary"
+                android:gravity="center"
+                android:text="+"
+                android:textColor="@color/white"
+                android:textSize="16sp"
+                android:textStyle="bold" />
         </LinearLayout>
-
     </LinearLayout>
 
-</androidx.cardview.widget.CardView>
+</com.google.android.material.card.MaterialCardView>

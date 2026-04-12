@@ -62,6 +62,14 @@ public class RestaurantMenuAdapter extends RecyclerView.Adapter<RestaurantMenuAd
         notifyDataSetChanged();
     }
 
+    public void setQuantities(Map<String, Integer> newQuantities) {
+        quantities.clear();
+        if (newQuantities != null) {
+            quantities.putAll(newQuantities);
+        }
+        notifyDataSetChanged();
+    }
+
     @Override
     public int getItemViewType(int position) {
         int count = 0;
@@ -155,8 +163,8 @@ public class RestaurantMenuAdapter extends RecyclerView.Adapter<RestaurantMenuAd
         private final FrameLayout flQuantity;
         private final LinearLayout llQuantity;
         private final MaterialButton btnAdd;
-        private final ImageView btnDecrease;
-        private final ImageView btnIncrease;
+        private final TextView btnDecrease;
+        private final TextView btnIncrease;
         private final TextView tvQuantity;
 
         MenuItemViewHolder(@NonNull View itemView) {
@@ -201,10 +209,6 @@ public class RestaurantMenuAdapter extends RecyclerView.Adapter<RestaurantMenuAd
             }
 
             btnAdd.setOnClickListener(v -> {
-                quantities.put(item.getId(), 1);
-                llQuantity.setVisibility(View.VISIBLE);
-                btnAdd.setVisibility(View.GONE);
-                tvQuantity.setText("1");
                 if (quantityListener != null) {
                     quantityListener.onQuantityChange(item, 1);
                 }
@@ -214,12 +218,6 @@ public class RestaurantMenuAdapter extends RecyclerView.Adapter<RestaurantMenuAd
                 int current = quantities.getOrDefault(item.getId(), 0);
                 if (current > 0) {
                     int newQty = current - 1;
-                    quantities.put(item.getId(), newQty);
-                    tvQuantity.setText(String.valueOf(newQty));
-                    if (newQty == 0) {
-                        llQuantity.setVisibility(View.GONE);
-                        btnAdd.setVisibility(View.VISIBLE);
-                    }
                     if (quantityListener != null) {
                         quantityListener.onQuantityChange(item, newQty);
                     }
@@ -229,8 +227,6 @@ public class RestaurantMenuAdapter extends RecyclerView.Adapter<RestaurantMenuAd
             btnIncrease.setOnClickListener(v -> {
                 int current = quantities.getOrDefault(item.getId(), 0);
                 int newQty = current + 1;
-                quantities.put(item.getId(), newQty);
-                tvQuantity.setText(String.valueOf(newQty));
                 if (quantityListener != null) {
                     quantityListener.onQuantityChange(item, newQty);
                 }

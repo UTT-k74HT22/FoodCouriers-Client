@@ -185,11 +185,12 @@ CREATE INDEX idx_menu_items_name_gin ON public.menu_items USING gin(name gin_trg
 
 **Purpose:** Server-side cart for multi-device sync
 
+`carts` chi la container cart cua user. Cart khong khoa theo restaurant. Viec group theo restaurant se duoc suy ra tu `menu_items.restaurant_id` cua tung `cart_items`.
+
 ```sql
 CREATE TABLE public.carts (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    restaurant_id UUID NOT NULL REFERENCES restaurants(id) ON DELETE CASCADE,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     UNIQUE(user_id)
 );
@@ -202,6 +203,8 @@ CREATE INDEX idx_carts_user ON public.carts(user_id);
 ### 8. cart_items
 
 **Purpose:** Cart items
+
+1 cart co the chua item tu nhieu restaurant. UI cart se group cac item nay theo restaurant.
 
 ```sql
 CREATE TABLE public.cart_items (
@@ -216,6 +219,12 @@ CREATE TABLE public.cart_items (
 
 CREATE INDEX idx_cart_items_cart ON public.cart_items(cart_id);
 ```
+
+**Checkout rule:**
+
+- `cart_items` co the thuoc nhieu restaurant
+- `orders` van chi thuoc 1 restaurant
+- khi checkout, app hoac RPC se group selected `cart_items` theo restaurant va tao nhieu order
 
 ---
 

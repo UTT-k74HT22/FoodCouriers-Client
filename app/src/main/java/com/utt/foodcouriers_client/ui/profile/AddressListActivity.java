@@ -19,6 +19,7 @@ public class AddressListActivity extends BaseActivity {
 
         Toolbar toolbar = findViewById(R.id.toolbar);
         configureToolbar(toolbar, true);
+        setToolbarTitle(getString(R.string.address_title));
 
         FloatingActionButton fabAdd = findViewById(R.id.fab_add);
         fabAdd.setOnClickListener(v -> startActivity(new Intent(this, AddressFormActivity.class)));

@@ -280,6 +280,8 @@
         android:text="View Cart (0)"
         android:textColor="@color/white"
         android:visibility="gone"
+        android:clickable="true"
+        android:focusable="true"
         app:backgroundTint="@color/primary"
         app:icon="@drawable/ic_cart"
         app:iconTint="@color/white" />

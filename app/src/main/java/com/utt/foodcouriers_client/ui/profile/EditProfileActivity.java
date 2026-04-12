@@ -17,5 +17,6 @@ public class EditProfileActivity extends BaseActivity {
 
         Toolbar toolbar = findViewById(R.id.toolbar);
         configureToolbar(toolbar, true);
+        setToolbarTitle(getString(R.string.profile_edit_profile));
     }
 }

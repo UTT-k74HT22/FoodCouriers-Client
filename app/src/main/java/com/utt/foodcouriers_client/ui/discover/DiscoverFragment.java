@@ -1,5 +1,6 @@
 package com.utt.foodcouriers_client.ui.discover;
 
+import android.content.Intent;
 import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextWatcher;
@@ -15,8 +16,11 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import com.utt.foodcouriers_client.data.model.MenuItem;
 import com.utt.foodcouriers_client.data.model.Restaurant;
 import com.utt.foodcouriers_client.databinding.FragmentDiscoverBinding;
+import com.utt.foodcouriers_client.ui.auth.LoginActivity;
 import com.utt.foodcouriers_client.ui.common.BaseFragment;
 import com.utt.foodcouriers_client.ui.discover.adapter.RestaurantWithMenuAdapter;
+import com.utt.foodcouriers_client.utils.ToastBanner;
+import com.utt.foodcouriers_client.viewmodel.CartViewModel;
 import com.utt.foodcouriers_client.viewmodel.DiscoverViewModel;
 
 import java.util.List;
@@ -25,8 +29,8 @@ public class DiscoverFragment extends BaseFragment {
 
     private FragmentDiscoverBinding binding;
     private DiscoverViewModel viewModel;
+    private CartViewModel cartViewModel;
     private RestaurantWithMenuAdapter adapter;
-
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
@@ -39,6 +43,7 @@ public class DiscoverFragment extends BaseFragment {
         super.onViewCreated(view, savedInstanceState);
         
         viewModel = new ViewModelProvider(this).get(DiscoverViewModel.class);
+        cartViewModel = new ViewModelProvider(requireActivity()).get(CartViewModel.class);
         
         setupRecyclerView();
         setupSearch();
@@ -84,6 +89,20 @@ public class DiscoverFragment extends BaseFragment {
                 showErrorSnackbar(error);
             }
         });
+
+        cartViewModel.getErrorMessage().observe(getViewLifecycleOwner(), error -> {
+            if (error == null || error.isEmpty()) {
+                return;
+            }
+            showErrorSnackbar(error);
+        });
+
+        cartViewModel.getSuccessMessage().observe(getViewLifecycleOwner(), message -> {
+            if (message == null || message.isEmpty()) {
+                return;
+            }
+            ToastBanner.showSuccess(message);
+        });
     }
 
     private void displayRestaurants(List<RestaurantWithMenuAdapter.RestaurantWithMenu> restaurants) {
@@ -97,7 +116,11 @@ public class DiscoverFragment extends BaseFragment {
     }
 
     private void handleFoodAddClick(MenuItem menuItem, Restaurant restaurant) {
-        showToast("Added " + menuItem.getName() + " from " + restaurant.getName());
+        if (!cartViewModel.isLoggedIn(requireContext())) {
+            startActivity(new Intent(requireContext(), LoginActivity.class));
+            return;
+        }
+        cartViewModel.addMenuItem(requireContext(), menuItem, restaurant, 1, "");
     }
 
     @Override

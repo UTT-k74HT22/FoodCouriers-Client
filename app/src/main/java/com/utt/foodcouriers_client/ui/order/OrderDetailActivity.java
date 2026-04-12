@@ -33,6 +33,7 @@ public class OrderDetailActivity extends BaseActivity {
 
         Toolbar toolbar = findViewById(R.id.toolbar);
         configureToolbar(toolbar, true);
+        setToolbarTitle(getString(R.string.order_detail_title));
 
         viewModel = new ViewModelProvider(this).get(OrdersViewModel.class);
         setupRecyclerView();
