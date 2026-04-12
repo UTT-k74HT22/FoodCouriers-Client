@@ -31,6 +31,12 @@ public abstract class BaseActivity extends AppCompatActivity {
         }
     }
 
+    protected void setToolbarTitle(@Nullable String title) {
+        if (getSupportActionBar() != null) {
+            getSupportActionBar().setTitle(title);
+        }
+    }
+
     protected void showLoading() {
         if (progressBar == null) {
             progressBar = findViewById(R.id.progress_bar);

@@ -163,8 +163,8 @@ public class RestaurantMenuAdapter extends RecyclerView.Adapter<RestaurantMenuAd
         private final FrameLayout flQuantity;
         private final LinearLayout llQuantity;
         private final MaterialButton btnAdd;
-        private final ImageView btnDecrease;
-        private final ImageView btnIncrease;
+        private final TextView btnDecrease;
+        private final TextView btnIncrease;
         private final TextView tvQuantity;
 
         MenuItemViewHolder(@NonNull View itemView) {

@@ -117,22 +117,22 @@ public class MainActivity extends BaseActivity {
     }
 
     public void openSecondaryFragment(Fragment fragment, String title) {
+        binding.topToolbar.setTitle(title);
         getSupportFragmentManager()
                 .beginTransaction()
                 .replace(R.id.fragment_container, fragment)
                 .addToBackStack(title)
                 .commit();
-        binding.topToolbar.setTitle(title);
         syncChrome();
     }
 
     private void showPrimaryFragment(Fragment fragment, String title) {
+        binding.topToolbar.setTitle(title);
         getSupportFragmentManager().popBackStack();
         getSupportFragmentManager()
                 .beginTransaction()
                 .replace(R.id.fragment_container, fragment)
                 .commit();
-        binding.topToolbar.setTitle(title);
         syncChrome();
     }
 
@@ -143,7 +143,6 @@ public class MainActivity extends BaseActivity {
             binding.topToolbar.setNavigationIcon(R.drawable.ic_back);
         } else {
             binding.topToolbar.setNavigationIcon(null);
-            binding.topToolbar.setTitle(resolvePrimaryTitle());
         }
     }
 

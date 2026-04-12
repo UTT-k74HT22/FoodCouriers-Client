@@ -20,6 +20,7 @@ import com.utt.foodcouriers_client.data.model.Restaurant;
 import com.utt.foodcouriers_client.ui.auth.LoginActivity;
 import com.utt.foodcouriers_client.ui.common.BaseActivity;
 import com.utt.foodcouriers_client.ui.main.MainActivity;
+import com.utt.foodcouriers_client.utils.ToastBanner;
 import com.utt.foodcouriers_client.viewmodel.CartViewModel;
 import com.utt.foodcouriers_client.viewmodel.RestaurantDetailViewModel;
 
@@ -72,6 +73,8 @@ public class RestaurantDetailActivity extends BaseActivity {
         fabCart = findViewById(R.id.fab_cart);
 
         fabCart.setOnClickListener(v -> openCartScreen());
+        fabCart.setClickable(true);
+        fabCart.setEnabled(true);
         fabCart.setVisibility(View.GONE);
     }
 
@@ -113,6 +116,12 @@ public class RestaurantDetailActivity extends BaseActivity {
                 return;
             }
             showErrorSnackbar(error);
+        });
+        cartViewModel.getSuccessMessage().observe(this, message -> {
+            if (message == null || message.isEmpty()) {
+                return;
+            }
+            ToastBanner.showSuccess(message);
         });
         if (cartViewModel.isLoggedIn(this)) {
             cartViewModel.loadCart(this);
@@ -222,7 +231,7 @@ public class RestaurantDetailActivity extends BaseActivity {
     private void openCartScreen() {
         Intent intent = new Intent(this, MainActivity.class);
         intent.putExtra(MainActivity.EXTRA_OPEN_CART, true);
-        intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+        intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
         startActivity(intent);
     }
 }

@@ -22,6 +22,7 @@ public class CheckoutActivity extends BaseActivity {
 
         Toolbar toolbar = findViewById(R.id.toolbar);
         configureToolbar(toolbar, true);
+        setToolbarTitle(getString(R.string.checkout_title));
 
         Button placeOrderButton = findViewById(R.id.btn_place_order);
         placeOrderButton.setOnClickListener(v -> {

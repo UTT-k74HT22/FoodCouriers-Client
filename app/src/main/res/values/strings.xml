@@ -162,6 +162,7 @@
     <string name="cart_remove_hint">Tap minus once more to remove</string>
     <string name="cart_free_delivery">Free delivery unlocked</string>
     <string name="checkout_title">Checkout</string>
+    <string name="order_detail_title">Order detail</string>
     <string name="checkout_place_order">Place order</string>
     <string name="checkout_apply_promo">Apply</string>
     <string name="order_success_back_home">Back home</string>

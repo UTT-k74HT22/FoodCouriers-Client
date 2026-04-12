@@ -1,10 +1,13 @@
 package com.utt.foodcouriers_client.ui.cart.adapter;
 
 import android.content.Context;
-import android.content.res.ColorStateList;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.CheckBox;
+import android.widget.ImageView;
+import android.widget.LinearLayout;
+import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.core.content.ContextCompat;
@@ -16,8 +19,6 @@ import com.bumptech.glide.request.RequestOptions;
 import com.utt.foodcouriers_client.R;
 import com.utt.foodcouriers_client.data.model.CartItem;
 import com.utt.foodcouriers_client.data.model.CartRestaurantGroup;
-import com.utt.foodcouriers_client.databinding.ComponentCartItemBinding;
-import com.utt.foodcouriers_client.databinding.ComponentCartRestaurantGroupBinding;
 
 import java.text.NumberFormat;
 import java.util.ArrayList;
@@ -26,10 +27,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 
-public class CartItemAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
-
-    private static final int VIEW_TYPE_RESTAURANT = 0;
-    private static final int VIEW_TYPE_ITEM = 1;
+public class CartItemAdapter extends RecyclerView.Adapter<CartItemAdapter.GroupViewHolder> {
 
     private static final RequestOptions IMAGE_REQUEST_OPTIONS = new RequestOptions()
             .placeholder(R.drawable.ic_food_bowl)
@@ -40,7 +38,7 @@ public class CartItemAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
     private final Context context;
     private final CartItemListener listener;
     private final NumberFormat currencyFormatter = NumberFormat.getCurrencyInstance(new Locale("vi", "VN"));
-    private final List<Row> rows = new ArrayList<>();
+    private final List<CartRestaurantGroup> groups = new ArrayList<>();
     private final Set<String> selectedCartItemIds = new LinkedHashSet<>();
 
     public interface CartItemListener {
@@ -56,15 +54,14 @@ public class CartItemAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
         this.listener = listener;
     }
 
-    public void submitGroups(List<CartRestaurantGroup> groups) {
-        rows.clear();
+    public void submitGroups(List<CartRestaurantGroup> newGroups) {
+        groups.clear();
         Set<String> availableIds = new LinkedHashSet<>();
 
-        if (groups != null) {
-            for (CartRestaurantGroup group : groups) {
-                rows.add(Row.forRestaurant(group));
+        if (newGroups != null) {
+            groups.addAll(newGroups);
+            for (CartRestaurantGroup group : newGroups) {
                 for (CartItem item : group.getItems()) {
-                    rows.add(Row.forItem(group, item));
                     if (item.getId() != null) {
                         availableIds.add(item.getId());
                     }
@@ -86,9 +83,11 @@ public class CartItemAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
     }
 
     public int getQuantityForItem(String cartItemId) {
-        for (Row row : rows) {
-            if (row.type == VIEW_TYPE_ITEM && row.cartItem != null && cartItemId.equals(row.cartItem.getId())) {
-                return row.cartItem.getQuantity();
+        for (CartRestaurantGroup group : groups) {
+            for (CartItem item : group.getItems()) {
+                if (item.getId() != null && cartItemId.equals(item.getId())) {
+                    return item.getQuantity();
+                }
             }
         }
         return 0;
@@ -101,12 +100,9 @@ public class CartItemAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
         int selectedRestaurantCount = 0;
         List<String> selectedIds = new ArrayList<>(selectedCartItemIds);
 
-        for (Row row : rows) {
-            if (row.type != VIEW_TYPE_RESTAURANT || row.group == null) {
-                continue;
-            }
+        for (CartRestaurantGroup group : groups) {
             boolean hasSelection = false;
-            for (CartItem item : row.group.getItems()) {
+            for (CartItem item : group.getItems()) {
                 if (item.getId() != null && selectedCartItemIds.contains(item.getId())) {
                     hasSelection = true;
                     selectedItemCount += item.getQuantity();
@@ -115,7 +111,7 @@ public class CartItemAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
             }
             if (hasSelection) {
                 selectedRestaurantCount += 1;
-                selectedDeliveryFee += row.group.getDeliveryFee();
+                selectedDeliveryFee += group.getDeliveryFee();
             }
         }
 
@@ -130,43 +126,8 @@ public class CartItemAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
     }
 
     @Override
-    public int getItemViewType(int position) {
-        return rows.get(position).type;
-    }
-
-    @NonNull
-    @Override
-    public RecyclerView.ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-        if (viewType == VIEW_TYPE_RESTAURANT) {
-            ComponentCartRestaurantGroupBinding binding = ComponentCartRestaurantGroupBinding.inflate(
-                    LayoutInflater.from(parent.getContext()),
-                    parent,
-                    false
-            );
-            return new RestaurantGroupViewHolder(binding);
-        }
-
-        ComponentCartItemBinding binding = ComponentCartItemBinding.inflate(
-                LayoutInflater.from(parent.getContext()),
-                parent,
-                false
-        );
-        return new CartItemViewHolder(binding);
-    }
-
-    @Override
-    public void onBindViewHolder(@NonNull RecyclerView.ViewHolder holder, int position) {
-        Row row = rows.get(position);
-        if (holder instanceof RestaurantGroupViewHolder) {
-            ((RestaurantGroupViewHolder) holder).bind(row.group);
-        } else if (holder instanceof CartItemViewHolder) {
-            ((CartItemViewHolder) holder).bind(row.cartItem);
-        }
-    }
-
-    @Override
     public int getItemCount() {
-        return rows.size();
+        return groups.size();
     }
 
     private void toggleRestaurant(CartRestaurantGroup group, boolean checked) {
@@ -218,108 +179,91 @@ public class CartItemAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
         return true;
     }
 
-    private boolean isRestaurantPartiallySelected(CartRestaurantGroup group) {
-        if (group == null || group.getItems().isEmpty()) {
-            return false;
-        }
-        boolean hasSelected = false;
-        boolean hasUnselected = false;
-        for (CartItem item : group.getItems()) {
-            boolean selected = item.getId() != null && selectedCartItemIds.contains(item.getId());
-            hasSelected |= selected;
-            hasUnselected |= !selected;
-        }
-        return hasSelected && hasUnselected;
+    @NonNull
+    @Override
+    public GroupViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+        View view = LayoutInflater.from(parent.getContext())
+                .inflate(R.layout.component_cart_group_section, parent, false);
+        return new GroupViewHolder(view);
     }
 
-    private class RestaurantGroupViewHolder extends RecyclerView.ViewHolder {
-        private final ComponentCartRestaurantGroupBinding binding;
+    @Override
+    public void onBindViewHolder(@NonNull GroupViewHolder holder, int position) {
+        holder.bind(groups.get(position));
+    }
 
-        private RestaurantGroupViewHolder(ComponentCartRestaurantGroupBinding binding) {
-            super(binding.getRoot());
-            this.binding = binding;
+    class GroupViewHolder extends RecyclerView.ViewHolder {
+        private final View rootView;
+        private final CheckBox cbSelectRestaurant;
+        private final TextView tvRestaurantName;
+        private final TextView tvRestaurantMeta;
+        private final LinearLayout llItemsContainer;
+
+        GroupViewHolder(@NonNull View itemView) {
+            super(itemView);
+            rootView = itemView;
+            cbSelectRestaurant = itemView.findViewById(R.id.cb_select_restaurant);
+            tvRestaurantName = itemView.findViewById(R.id.tv_restaurant_name);
+            tvRestaurantMeta = itemView.findViewById(R.id.tv_restaurant_meta);
+            llItemsContainer = itemView.findViewById(R.id.ll_items_container);
         }
 
-        private void bind(CartRestaurantGroup group) {
+        void bind(CartRestaurantGroup group) {
             if (group == null) {
                 return;
             }
-            binding.tvRestaurantName.setText(group.getRestaurantName());
-            binding.tvRestaurantMeta.setText(
+
+            tvRestaurantName.setText(group.getRestaurantName());
+            tvRestaurantMeta.setText(
                     group.getItems().size() + " mon • Phi giao " + currencyFormatter.format(group.getDeliveryFee())
             );
 
-            binding.cbSelectRestaurant.setOnCheckedChangeListener(null);
-            binding.cbSelectRestaurant.setChecked(isRestaurantFullySelected(group));
-            binding.cbSelectRestaurant.setButtonTintList(ColorStateList.valueOf(ContextCompat.getColor(context, R.color.primary)));
-            binding.cbSelectRestaurant.setEnabled(true);
-            binding.cbSelectRestaurant.setOnCheckedChangeListener((buttonView, isChecked) -> toggleRestaurant(group, isChecked));
-            binding.cbSelectRestaurant.setAlpha(isRestaurantPartiallySelected(group) ? 0.7f : 1f);
+            cbSelectRestaurant.setOnCheckedChangeListener(null);
+            cbSelectRestaurant.setChecked(isRestaurantFullySelected(group));
+            cbSelectRestaurant.setOnCheckedChangeListener((buttonView, isChecked) -> toggleRestaurant(group, isChecked));
 
-            binding.getRoot().setOnClickListener(v -> toggleRestaurant(group, !isRestaurantFullySelected(group)));
-        }
-    }
-
-    private class CartItemViewHolder extends RecyclerView.ViewHolder {
-        private final ComponentCartItemBinding binding;
-
-        private CartItemViewHolder(ComponentCartItemBinding binding) {
-            super(binding.getRoot());
-            this.binding = binding;
-        }
-
-        private void bind(CartItem item) {
-            if (item == null) {
-                return;
+            llItemsContainer.removeAllViews();
+            for (CartItem item : group.getItems()) {
+                View itemView = createItemView(item);
+                llItemsContainer.addView(itemView);
             }
-            binding.tvFoodName.setText(item.getName());
-            binding.tvFoodPrice.setText(currencyFormatter.format(item.getPrice()));
-            binding.tvLineTotal.setText(currencyFormatter.format(item.getPrice() * item.getQuantity()));
-            binding.tvQuantity.setText(String.valueOf(item.getQuantity()));
-            binding.tvFoodNote.setVisibility(item.getNote() == null || item.getNote().trim().isEmpty() ? View.GONE : View.VISIBLE);
-            binding.tvFoodNote.setText(item.getNote());
-            binding.tvRemoveHint.setVisibility(item.getQuantity() == 1 ? View.VISIBLE : View.GONE);
-            binding.ivFoodImage.setContentDescription(context.getString(R.string.food_image_description, item.getName()));
+        }
+
+        private View createItemView(CartItem item) {
+            View itemView = LayoutInflater.from(context)
+                    .inflate(R.layout.component_cart_item, llItemsContainer, false);
+
+            ImageView ivFoodImage = itemView.findViewById(R.id.iv_food_image);
+            TextView tvFoodName = itemView.findViewById(R.id.tv_food_name);
+            TextView tvFoodPrice = itemView.findViewById(R.id.tv_food_price);
+            TextView tvLineTotal = itemView.findViewById(R.id.tv_line_total);
+            TextView tvQuantity = itemView.findViewById(R.id.tv_quantity);
+            CheckBox cbSelectItem = itemView.findViewById(R.id.cb_select_item);
+            TextView btnIncrease = itemView.findViewById(R.id.btn_increase);
+            TextView btnDecrease = itemView.findViewById(R.id.btn_decrease);
+
+            tvFoodName.setText(item.getName());
+            tvFoodPrice.setText(currencyFormatter.format(item.getPrice()));
+            tvLineTotal.setText(currencyFormatter.format(item.getPrice() * item.getQuantity()));
+            tvQuantity.setText(String.valueOf(item.getQuantity()));
 
             if (item.getImageUrl() != null && !item.getImageUrl().isEmpty()) {
-                binding.ivFoodImage.setImageTintList(null);
-                Glide.with(itemView.getContext())
+                Glide.with(context)
                         .load(item.getImageUrl())
                         .apply(IMAGE_REQUEST_OPTIONS)
-                        .into(binding.ivFoodImage);
+                        .into(ivFoodImage);
             } else {
-                binding.ivFoodImage.setImageTintList(ColorStateList.valueOf(
-                        ContextCompat.getColor(context, R.color.primary_dark)
-                ));
-                binding.ivFoodImage.setImageResource(R.drawable.ic_food_bowl);
+                ivFoodImage.setImageResource(R.drawable.ic_food_bowl);
             }
 
-            binding.cbSelectItem.setOnCheckedChangeListener(null);
-            binding.cbSelectItem.setChecked(item.getId() != null && selectedCartItemIds.contains(item.getId()));
-            binding.cbSelectItem.setOnCheckedChangeListener((buttonView, isChecked) -> toggleItem(item, isChecked));
-            binding.btnIncrease.setOnClickListener(v -> listener.onIncrease(item.getId()));
-            binding.btnDecrease.setOnClickListener(v -> listener.onDecrease(item.getId()));
-            binding.getRoot().setOnClickListener(v -> toggleItem(item, !(item.getId() != null && selectedCartItemIds.contains(item.getId()))));
-        }
-    }
+            cbSelectItem.setOnCheckedChangeListener(null);
+            cbSelectItem.setChecked(item.getId() != null && selectedCartItemIds.contains(item.getId()));
+            cbSelectItem.setOnCheckedChangeListener((buttonView, isChecked) -> toggleItem(item, isChecked));
 
-    private static class Row {
-        private final int type;
-        private final CartRestaurantGroup group;
-        private final CartItem cartItem;
+            btnIncrease.setOnClickListener(v -> listener.onIncrease(item.getId()));
+            btnDecrease.setOnClickListener(v -> listener.onDecrease(item.getId()));
 
-        private Row(int type, CartRestaurantGroup group, CartItem cartItem) {
-            this.type = type;
-            this.group = group;
-            this.cartItem = cartItem;
-        }
-
-        private static Row forRestaurant(CartRestaurantGroup group) {
-            return new Row(VIEW_TYPE_RESTAURANT, group, null);
-        }
-
-        private static Row forItem(CartRestaurantGroup group, CartItem item) {
-            return new Row(VIEW_TYPE_ITEM, group, item);
+            return itemView;
         }
     }
 

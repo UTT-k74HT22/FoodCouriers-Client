@@ -70,6 +70,7 @@ public class CartViewModel extends BaseViewModel {
             @Override
             public void onSuccess(CartRepository.CartState result) {
                 publishState(result);
+                postSuccess("Đã thêm " + menuItem.getName() + " vào giỏ hàng");
                 setLoading(false);
             }
 
@@ -87,6 +88,11 @@ public class CartViewModel extends BaseViewModel {
             @Override
             public void onSuccess(CartRepository.CartState result) {
                 publishState(result);
+                if (quantity <= 0) {
+                    postSuccess("Đã xóa món khỏi giỏ hàng");
+                } else {
+                    postSuccess("Đã cập nhật giỏ hàng");
+                }
                 setLoading(false);
             }
 
@@ -104,6 +110,11 @@ public class CartViewModel extends BaseViewModel {
             @Override
             public void onSuccess(CartRepository.CartState result) {
                 publishState(result);
+                if (quantity <= 0) {
+                    postSuccess("Đã xóa " + menuItem.getName() + " khỏi giỏ hàng");
+                } else {
+                    postSuccess("Đã cập nhật " + menuItem.getName());
+                }
                 setLoading(false);
             }
 

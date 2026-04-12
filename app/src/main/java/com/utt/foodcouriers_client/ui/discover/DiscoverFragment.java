@@ -19,6 +19,7 @@ import com.utt.foodcouriers_client.databinding.FragmentDiscoverBinding;
 import com.utt.foodcouriers_client.ui.auth.LoginActivity;
 import com.utt.foodcouriers_client.ui.common.BaseFragment;
 import com.utt.foodcouriers_client.ui.discover.adapter.RestaurantWithMenuAdapter;
+import com.utt.foodcouriers_client.utils.ToastBanner;
 import com.utt.foodcouriers_client.viewmodel.CartViewModel;
 import com.utt.foodcouriers_client.viewmodel.DiscoverViewModel;
 
@@ -94,6 +95,13 @@ public class DiscoverFragment extends BaseFragment {
                 return;
             }
             showErrorSnackbar(error);
+        });
+
+        cartViewModel.getSuccessMessage().observe(getViewLifecycleOwner(), message -> {
+            if (message == null || message.isEmpty()) {
+                return;
+            }
+            ToastBanner.showSuccess(message);
         });
     }
 

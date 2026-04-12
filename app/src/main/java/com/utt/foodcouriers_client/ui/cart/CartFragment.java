@@ -17,6 +17,7 @@ import com.utt.foodcouriers_client.ui.auth.LoginActivity;
 import com.utt.foodcouriers_client.ui.cart.adapter.CartItemAdapter;
 import com.utt.foodcouriers_client.ui.checkout.CheckoutActivity;
 import com.utt.foodcouriers_client.ui.common.BaseFragment;
+import com.utt.foodcouriers_client.utils.ToastBanner;
 import com.utt.foodcouriers_client.viewmodel.CartViewModel;
 
 import java.text.NumberFormat;
@@ -105,10 +106,9 @@ public class CartFragment extends BaseFragment {
 
             binding.tvCartCount.setText(getString(R.string.cart_item_count, summary.getItemCount()));
             binding.tvEtaValue.setText(getString(R.string.cart_grouped_eta_hint));
-            binding.tvRestaurantValue.setText(getString(R.string.cart_restaurant_selected_count, 0));
-            binding.tvSubtotalValue.setText(currencyFormatter.format(0));
-            binding.tvDeliveryValue.setText(currencyFormatter.format(0));
-            binding.tvTotalPrice.setText(currencyFormatter.format(0));
+            binding.tvSubtotalValue.setText(currencyFormatter.format(summary.getSubtotal()));
+            binding.tvDeliveryValue.setText(currencyFormatter.format(summary.getDeliveryFee()));
+            binding.tvTotalPrice.setText(currencyFormatter.format(summary.getTotal()));
         });
 
         viewModel.getEmptyState().observe(getViewLifecycleOwner(), isEmpty -> {
@@ -128,6 +128,13 @@ public class CartFragment extends BaseFragment {
                 binding.tvSubtitle.setText(R.string.cart_grouped_subtitle);
             }
         });
+
+        viewModel.getSuccessMessage().observe(getViewLifecycleOwner(), message -> {
+            if (message == null || message.isEmpty()) {
+                return;
+            }
+            ToastBanner.showSuccess(message);
+        });
     }
 
     private void renderSelectionSummary(CartItemAdapter.SelectionState selectionState) {
@@ -140,6 +147,7 @@ public class CartFragment extends BaseFragment {
         binding.tvTotalPrice.setText(currencyFormatter.format(selectionState.getTotal()));
         binding.btnCheckout.setEnabled(!selectionState.getSelectedCartItemIds().isEmpty());
         binding.btnCheckout.setAlpha(selectionState.getSelectedCartItemIds().isEmpty() ? 0.5f : 1f);
+        binding.tvCartCount.setText(getString(R.string.cart_item_count, selectionState.getSelectedItemCount()));
     }
 
     @Override
