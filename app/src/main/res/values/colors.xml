@@ -32,6 +32,7 @@
     <color name="input_background">#FFFFFF</color>
     <color name="success">#26B593</color>
     <color name="warning">#FFD166</color>
+    <color name="yellow">#FFD166</color>
     <color name="error">#EF4444</color>
     <color name="orange_light">#FFF3ED</color>
     <color name="mint_light">#E9FBF7</color>

@@ -46,6 +46,59 @@ public class RestaurantClient extends BaseSupabaseClient {
         fetchRestaurants("nearby", null, null, 20, 0, callback);
     }
 
+    public void fetchRestaurantsById(String restaurantId, ApiCallback<Restaurant> callback) {
+        if (!SupabaseConfig.isConfigured()) {
+            postError(callback, "Supabase is not configured");
+            return;
+        }
+
+        String url = SupabaseConfig.REST_URL + "/" + TABLE +
+                "?select=*" +
+                "&id=eq." + restaurantId;
+
+        String accessToken = AuthClient.getInstance().getAccessToken();
+        String authToken = (accessToken != null && !accessToken.isEmpty()) 
+                ? accessToken 
+                : SupabaseConfig.SUPABASE_ANON_KEY;
+        
+        Request request = new Request.Builder()
+                .url(url)
+                .get()
+                .addHeader(SupabaseConfig.HEADER_AUTH, SupabaseConfig.SUPABASE_ANON_KEY)
+                .addHeader(SupabaseConfig.HEADER_AUTHORIZATION, "Bearer " + authToken)
+                .addHeader(SupabaseConfig.HEADER_CONTENT_TYPE, SupabaseConfig.CONTENT_TYPE_JSON)
+                .addHeader(SupabaseConfig.HEADER_PREFER, SupabaseConfig.PREF_RETURN_REPRESENTATION)
+                .build();
+
+        client.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(Call call, IOException exception) {
+                postError(callback, "Network error: " + exception.getMessage());
+            }
+
+            @Override
+            public void onResponse(Call call, Response response) throws IOException {
+                try (ResponseBody responseBody = response.body()) {
+                    String json = responseBody != null ? responseBody.string() : "";
+
+                    if (!response.isSuccessful()) {
+                        postError(callback, parseRestError("Failed to fetch restaurant", response.code(), json));
+                        return;
+                    }
+
+                    Restaurant[] restaurants = gson.fromJson(json, Restaurant[].class);
+                    if (restaurants != null && restaurants.length > 0) {
+                        postSuccess(callback, restaurants[0]);
+                    } else {
+                        postError(callback, "Restaurant not found");
+                    }
+                } catch (Exception e) {
+                    postError(callback, "Failed to parse restaurant");
+                }
+            }
+        });
+    }
+
     private void fetchRestaurants(
             String filterType,
             String categoryId,
