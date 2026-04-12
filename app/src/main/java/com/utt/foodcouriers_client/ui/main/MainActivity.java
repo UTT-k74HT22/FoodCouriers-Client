@@ -25,6 +25,8 @@ public class MainActivity extends BaseActivity {
         binding = ActivityMainBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
 
+        applyTopWindowInset(binding.topToolbar);
+        applyBottomWindowInset(binding.bottomNavigation);
         setSupportActionBar(binding.topToolbar);
         binding.topToolbar.setNavigationOnClickListener(v -> getOnBackPressedDispatcher().onBackPressed());
         getSupportFragmentManager().addOnBackStackChangedListener(this::syncChrome);
@@ -57,6 +59,7 @@ public class MainActivity extends BaseActivity {
 
         if (savedInstanceState == null) {
             binding.bottomNavigation.setSelectedItemId(R.id.navigation_home);
+            showPrimaryFragment(new HomeFragment(), getString(R.string.nav_home));
         } else {
             syncChrome();
         }
@@ -89,7 +92,21 @@ public class MainActivity extends BaseActivity {
             binding.topToolbar.setNavigationIcon(R.drawable.ic_back);
         } else {
             binding.topToolbar.setNavigationIcon(null);
-            binding.topToolbar.setTitle(getString(R.string.nav_home));
+            binding.topToolbar.setTitle(resolvePrimaryTitle());
         }
+    }
+
+    private String resolvePrimaryTitle() {
+        int selectedItemId = binding.bottomNavigation.getSelectedItemId();
+        if (selectedItemId == R.id.navigation_discover) {
+            return getString(R.string.nav_discover);
+        }
+        if (selectedItemId == R.id.navigation_orders) {
+            return getString(R.string.nav_orders);
+        }
+        if (selectedItemId == R.id.navigation_profile) {
+            return getString(R.string.nav_profile);
+        }
+        return getString(R.string.nav_home);
     }
 }
