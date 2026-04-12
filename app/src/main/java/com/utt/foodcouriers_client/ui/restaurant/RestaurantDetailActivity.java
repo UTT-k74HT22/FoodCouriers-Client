@@ -1,11 +1,13 @@
 package com.utt.foodcouriers_client.ui.restaurant;
 
+import android.content.Intent;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.ImageView;
 import android.widget.TextView;
 
 import androidx.annotation.Nullable;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.widget.Toolbar;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
@@ -16,7 +18,11 @@ import com.google.android.material.floatingactionbutton.ExtendedFloatingActionBu
 import com.utt.foodcouriers_client.R;
 import com.utt.foodcouriers_client.data.model.MenuItem;
 import com.utt.foodcouriers_client.data.model.Restaurant;
+import com.utt.foodcouriers_client.data.repository.CartRepository;
+import com.utt.foodcouriers_client.ui.auth.LoginActivity;
 import com.utt.foodcouriers_client.ui.common.BaseActivity;
+import com.utt.foodcouriers_client.ui.main.MainActivity;
+import com.utt.foodcouriers_client.viewmodel.CartViewModel;
 import com.utt.foodcouriers_client.viewmodel.RestaurantDetailViewModel;
 
 import java.util.ArrayList;
@@ -29,6 +35,8 @@ public class RestaurantDetailActivity extends BaseActivity {
     public static final String EXTRA_MENU_ITEM_ID = "menu_item_id";
 
     private RestaurantDetailViewModel viewModel;
+    private CartViewModel cartViewModel;
+    private Restaurant currentRestaurant;
     private RecyclerView rvMenuItems;
     private RestaurantMenuAdapter menuAdapter;
     private TextView tvRestaurantName, tvRestaurantAddress, tvRating, tvReviewCount;
@@ -36,6 +44,8 @@ public class RestaurantDetailActivity extends BaseActivity {
     private TextView tvDescription;
     private ImageView ivRestaurantImage, ivOpenStatus;
     private ExtendedFloatingActionButton fabCart;
+    private MenuItem pendingMenuItem;
+    private int pendingQuantity = 1;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -65,9 +75,8 @@ public class RestaurantDetailActivity extends BaseActivity {
         rvMenuItems = findViewById(R.id.rv_menu_items);
         fabCart = findViewById(R.id.fab_cart);
 
-        fabCart.setOnClickListener(v -> {
-            showToast("View cart clicked");
-        });
+        fabCart.setOnClickListener(v -> openCartScreen());
+        fabCart.setVisibility(View.GONE);
     }
 
     private void setupToolbar() {
@@ -88,11 +97,34 @@ public class RestaurantDetailActivity extends BaseActivity {
 
     private void setupViewModel() {
         viewModel = new ViewModelProvider(this).get(RestaurantDetailViewModel.class);
+        cartViewModel = new ViewModelProvider(this).get(CartViewModel.class);
 
         viewModel.getRestaurant().observe(this, this::displayRestaurant);
         viewModel.getMenuByCategory().observe(this, this::displayMenu);
         viewModel.getLoading().observe(this, this::handleLoading);
         viewModel.getErrorMessage().observe(this, this::handleError);
+        cartViewModel.getMenuItemQuantities().observe(this, quantities -> menuAdapter.setQuantities(quantities));
+        cartViewModel.getCartSummary().observe(this, summary -> {
+            if (summary == null || summary.getItemCount() <= 0) {
+                fabCart.setVisibility(View.GONE);
+                return;
+            }
+            fabCart.setVisibility(View.VISIBLE);
+            fabCart.setText(getString(R.string.cart_item_count, summary.getItemCount()));
+        });
+        cartViewModel.getErrorMessage().observe(this, error -> {
+            if (error == null || error.isEmpty()) {
+                return;
+            }
+            if (CartRepository.getCartConflictRestaurantError().equals(error)) {
+                showReplaceCartDialog();
+                return;
+            }
+            showErrorSnackbar(error);
+        });
+        if (cartViewModel.isLoggedIn(this)) {
+            cartViewModel.loadCart(this);
+        }
     }
 
     private void loadData() {
@@ -109,6 +141,7 @@ public class RestaurantDetailActivity extends BaseActivity {
 
     private void displayRestaurant(Restaurant restaurant) {
         if (restaurant == null) return;
+        currentRestaurant = restaurant;
 
         tvRestaurantName.setText(restaurant.getName());
         tvRestaurantAddress.setText(restaurant.getAddress());
@@ -165,16 +198,21 @@ public class RestaurantDetailActivity extends BaseActivity {
     }
 
     private void handleMenuItemClick(MenuItem menuItem) {
-        showToast("Added: " + menuItem.getName());
+        showToast(menuItem.getName());
     }
 
     private void handleQuantityChange(MenuItem menuItem, int newQuantity) {
-        if (newQuantity > 0) {
-            fabCart.setVisibility(View.VISIBLE);
-            fabCart.setText("View Cart (" + newQuantity + ")");
-        } else {
-            fabCart.setVisibility(View.GONE);
+        pendingMenuItem = menuItem;
+        pendingQuantity = Math.max(newQuantity, 0);
+        if (!cartViewModel.isLoggedIn(this)) {
+            startActivity(new Intent(this, LoginActivity.class));
+            return;
         }
+        if (currentRestaurant == null) {
+            showErrorSnackbar("Restaurant information is missing.");
+            return;
+        }
+        cartViewModel.setMenuItemQuantity(this, menuItem, currentRestaurant, pendingQuantity, "");
     }
 
     private void handleLoading(Boolean isLoading) {
@@ -189,5 +227,25 @@ public class RestaurantDetailActivity extends BaseActivity {
         if (error != null && !error.isEmpty()) {
             showErrorSnackbar(error);
         }
+    }
+
+    private void openCartScreen() {
+        Intent intent = new Intent(this, MainActivity.class);
+        intent.putExtra(MainActivity.EXTRA_OPEN_CART, true);
+        intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+        startActivity(intent);
+    }
+
+    private void showReplaceCartDialog() {
+        if (pendingMenuItem == null || currentRestaurant == null) {
+            return;
+        }
+        new AlertDialog.Builder(this)
+                .setTitle("Thay gio hang?")
+                .setMessage("Gio hang hien tai dang thuoc nha hang khac. Ban co muon xoa gio cu va them mon moi khong?")
+                .setPositiveButton("Dong y", (dialog, which) ->
+                        cartViewModel.replaceCartAndAddMenuItem(this, pendingMenuItem, currentRestaurant, Math.max(pendingQuantity, 1), ""))
+                .setNegativeButton("Huy", null)
+                .show();
     }
 }

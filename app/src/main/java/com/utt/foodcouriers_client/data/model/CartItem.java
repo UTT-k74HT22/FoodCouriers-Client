@@ -3,15 +3,27 @@ package com.utt.foodcouriers_client.data.model;
 import java.io.Serializable;
 
 public class CartItem implements Serializable {
-    private final String id;
-    private final String menuItemId;
-    private final String restaurantId;
-    private final String restaurantName;
-    private final String name;
-    private final int price;
+    private String id;
+    private String menuItemId;
+    private String restaurantId;
+    private String restaurantName;
+    private String name;
+    private int price;
     private int quantity;
-    private final String note;
-    private final String imageUrl;
+    private String note;
+    private String imageUrl;
+
+    public CartItem() {
+        this.id = null;
+        this.menuItemId = null;
+        this.restaurantId = null;
+        this.restaurantName = null;
+        this.name = null;
+        this.price = 0;
+        this.quantity = 0;
+        this.note = null;
+        this.imageUrl = null;
+    }
 
     public CartItem(
             String id,
@@ -73,5 +85,29 @@ public class CartItem implements Serializable {
 
     public String getImageUrl() {
         return imageUrl;
+    }
+
+    public void setId(String id) {
+        this.id = id;
+    }
+
+    public void setNote(String note) {
+        this.note = note;
+    }
+
+    public void setMenuItem(MenuItem menuItem) {
+        if (menuItem == null) {
+            return;
+        }
+
+        this.menuItemId = menuItem.getId();
+        this.restaurantId = menuItem.getRestaurantId();
+        this.name = menuItem.getName();
+        this.price = menuItem.getPrice();
+        this.imageUrl = menuItem.getImageUrl();
+    }
+
+    public void setRestaurantName(String restaurantName) {
+        this.restaurantName = restaurantName;
     }
 }

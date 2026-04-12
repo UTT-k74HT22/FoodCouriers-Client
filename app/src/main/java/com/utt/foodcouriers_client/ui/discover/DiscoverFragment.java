@@ -1,5 +1,6 @@
 package com.utt.foodcouriers_client.ui.discover;
 
+import android.content.Intent;
 import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextWatcher;
@@ -7,6 +8,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 
+import androidx.appcompat.app.AlertDialog;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.lifecycle.ViewModelProvider;
@@ -15,8 +17,11 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import com.utt.foodcouriers_client.data.model.MenuItem;
 import com.utt.foodcouriers_client.data.model.Restaurant;
 import com.utt.foodcouriers_client.databinding.FragmentDiscoverBinding;
+import com.utt.foodcouriers_client.ui.auth.LoginActivity;
 import com.utt.foodcouriers_client.ui.common.BaseFragment;
 import com.utt.foodcouriers_client.ui.discover.adapter.RestaurantWithMenuAdapter;
+import com.utt.foodcouriers_client.data.repository.CartRepository;
+import com.utt.foodcouriers_client.viewmodel.CartViewModel;
 import com.utt.foodcouriers_client.viewmodel.DiscoverViewModel;
 
 import java.util.List;
@@ -25,6 +30,7 @@ public class DiscoverFragment extends BaseFragment {
 
     private FragmentDiscoverBinding binding;
     private DiscoverViewModel viewModel;
+    private CartViewModel cartViewModel;
     private RestaurantWithMenuAdapter adapter;
 
     @Nullable
@@ -39,6 +45,7 @@ public class DiscoverFragment extends BaseFragment {
         super.onViewCreated(view, savedInstanceState);
         
         viewModel = new ViewModelProvider(this).get(DiscoverViewModel.class);
+        cartViewModel = new ViewModelProvider(requireActivity()).get(CartViewModel.class);
         
         setupRecyclerView();
         setupSearch();
@@ -84,6 +91,17 @@ public class DiscoverFragment extends BaseFragment {
                 showErrorSnackbar(error);
             }
         });
+
+        cartViewModel.getErrorMessage().observe(getViewLifecycleOwner(), error -> {
+            if (error == null || error.isEmpty()) {
+                return;
+            }
+            if (CartRepository.getCartConflictRestaurantError().equals(error)) {
+                showReplaceCartDialog();
+                return;
+            }
+            showErrorSnackbar(error);
+        });
     }
 
     private void displayRestaurants(List<RestaurantWithMenuAdapter.RestaurantWithMenu> restaurants) {
@@ -97,7 +115,29 @@ public class DiscoverFragment extends BaseFragment {
     }
 
     private void handleFoodAddClick(MenuItem menuItem, Restaurant restaurant) {
-        showToast("Added " + menuItem.getName() + " from " + restaurant.getName());
+        pendingMenuItem = menuItem;
+        pendingRestaurant = restaurant;
+        if (!cartViewModel.isLoggedIn(requireContext())) {
+            startActivity(new Intent(requireContext(), LoginActivity.class));
+            return;
+        }
+        cartViewModel.addMenuItem(requireContext(), menuItem, restaurant, 1, "");
+    }
+
+    private MenuItem pendingMenuItem;
+    private Restaurant pendingRestaurant;
+
+    private void showReplaceCartDialog() {
+        if (pendingMenuItem == null || pendingRestaurant == null || !isAdded()) {
+            return;
+        }
+        new AlertDialog.Builder(requireContext())
+                .setTitle("Thay gio hang?")
+                .setMessage("Gio hang hien tai dang thuoc nha hang khac. Ban co muon xoa gio cu va them mon moi khong?")
+                .setPositiveButton("Dong y", (dialog, which) ->
+                        cartViewModel.replaceCartAndAddMenuItem(requireContext(), pendingMenuItem, pendingRestaurant, 1, ""))
+                .setNegativeButton("Huy", null)
+                .show();
     }
 
     @Override

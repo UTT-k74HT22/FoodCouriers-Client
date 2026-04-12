@@ -54,6 +54,15 @@ public class CartItemAdapter extends RecyclerView.Adapter<CartItemAdapter.CartIt
         notifyDataSetChanged();
     }
 
+    public int getQuantityForItem(String cartItemId) {
+        for (CartItem item : items) {
+            if (item.getId() != null && item.getId().equals(cartItemId)) {
+                return item.getQuantity();
+            }
+        }
+        return 0;
+    }
+
     @NonNull
     @Override
     public CartItemViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {

@@ -13,6 +13,7 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 
 import com.utt.foodcouriers_client.R;
 import com.utt.foodcouriers_client.databinding.FragmentCartBinding;
+import com.utt.foodcouriers_client.ui.auth.LoginActivity;
 import com.utt.foodcouriers_client.ui.cart.adapter.CartItemAdapter;
 import com.utt.foodcouriers_client.ui.checkout.CheckoutActivity;
 import com.utt.foodcouriers_client.ui.common.BaseFragment;
@@ -40,22 +41,29 @@ public class CartFragment extends BaseFragment {
         super.onViewCreated(view, savedInstanceState);
 
         viewModel = new ViewModelProvider(this).get(CartViewModel.class);
+        if (!viewModel.isLoggedIn(requireContext())) {
+            startActivity(new Intent(requireContext(), LoginActivity.class));
+            requireActivity().getSupportFragmentManager().popBackStack();
+            return;
+        }
         setupRecyclerView();
         setupActions();
         observeViewModel();
-        viewModel.loadCart();
+        viewModel.loadCart(requireContext());
     }
 
     private void setupRecyclerView() {
         adapter = new CartItemAdapter(requireContext(), new CartItemAdapter.CartItemListener() {
             @Override
             public void onIncrease(String cartItemId) {
-                viewModel.increaseQuantity(cartItemId);
+                int currentQuantity = adapter.getQuantityForItem(cartItemId);
+                viewModel.updateCartItemQuantity(requireContext(), cartItemId, currentQuantity + 1);
             }
 
             @Override
             public void onDecrease(String cartItemId) {
-                viewModel.decreaseQuantity(cartItemId);
+                int currentQuantity = adapter.getQuantityForItem(cartItemId);
+                viewModel.updateCartItemQuantity(requireContext(), cartItemId, currentQuantity - 1);
             }
         });
 

@@ -1,18 +1,45 @@
 package com.utt.foodcouriers_client.data.repository;
 
-import com.utt.foodcouriers_client.data.model.CartItem;
+import android.content.Context;
+import android.os.Handler;
+import android.os.Looper;
 
+import androidx.annotation.NonNull;
+
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+import com.utt.foodcouriers_client.data.common.RepositoryCallback;
+import com.utt.foodcouriers_client.data.model.CartItem;
+import com.utt.foodcouriers_client.data.model.MenuItem;
+import com.utt.foodcouriers_client.data.model.Restaurant;
+import com.utt.foodcouriers_client.data.remote.SupabaseConfig;
+import com.utt.foodcouriers_client.utils.SessionManager;
+
+import java.io.IOException;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+
+import okhttp3.Call;
+import okhttp3.Callback;
+import okhttp3.MediaType;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.RequestBody;
+import okhttp3.Response;
 
 public class CartRepository {
 
-    private static CartRepository instance;
-    private final List<CartItem> cartItems = new ArrayList<>();
+    private static final MediaType JSON = MediaType.parse(SupabaseConfig.CONTENT_TYPE_JSON);
+    private static final String CART_CONFLICT_RESTAURANT = "CART_CONFLICT_RESTAURANT";
 
-    private CartRepository() {
-        seedCart();
-    }
+    private static CartRepository instance;
+
+    private final OkHttpClient client = new OkHttpClient();
+    private final Handler mainHandler = new Handler(Looper.getMainLooper());
 
     public static synchronized CartRepository getInstance() {
         if (instance == null) {
@@ -21,124 +48,622 @@ public class CartRepository {
         return instance;
     }
 
-    public synchronized List<CartItem> getCartItems() {
-        List<CartItem> items = new ArrayList<>();
-        for (CartItem item : cartItems) {
-            items.add(copyOf(item));
-        }
-        return items;
+    public boolean isLoggedIn(Context context) {
+        return SessionManager.getInstance(context).isLoggedIn();
     }
 
-    public synchronized void increaseQuantity(String cartItemId) {
-        CartItem item = findById(cartItemId);
-        if (item == null) {
-            return;
-        }
-        item.setQuantity(item.getQuantity() + 1);
-    }
-
-    public synchronized void decreaseQuantity(String cartItemId) {
-        CartItem item = findById(cartItemId);
-        if (item == null) {
+    public void getCart(Context context, RepositoryCallback<CartState> callback) {
+        SessionManager sessionManager = SessionManager.getInstance(context);
+        if (!sessionManager.isLoggedIn()) {
+            postError(callback, "AUTH_REQUIRED");
             return;
         }
 
-        int nextQuantity = item.getQuantity() - 1;
-        if (nextQuantity <= 0) {
-            cartItems.remove(item);
+        fetchCartState(context, callback);
+    }
+
+    public void addToCart(
+            Context context,
+            MenuItem menuItem,
+            Restaurant restaurant,
+            int quantity,
+            String note,
+            RepositoryCallback<CartState> callback
+    ) {
+        SessionManager sessionManager = SessionManager.getInstance(context);
+        if (!sessionManager.isLoggedIn()) {
+            postError(callback, "AUTH_REQUIRED");
             return;
         }
-        item.setQuantity(nextQuantity);
-    }
-
-    public synchronized CartSummary getSummary() {
-        int itemCount = 0;
-        int subtotal = 0;
-        for (CartItem item : cartItems) {
-            itemCount += item.getQuantity();
-            subtotal += item.getPrice() * item.getQuantity();
+        if (menuItem == null || restaurant == null || quantity <= 0) {
+            postError(callback, "Invalid cart payload.");
+            return;
         }
 
-        int deliveryFee = cartItems.isEmpty() ? 0 : (subtotal >= 200_000 ? 0 : 18_000);
-        int serviceFee = cartItems.isEmpty() ? 0 : 7_000;
-        int savings = cartItems.isEmpty() ? 0 : calculateSavings(itemCount, subtotal, deliveryFee);
-        int total = Math.max(0, subtotal + deliveryFee + serviceFee - savings);
-        String restaurantName = cartItems.isEmpty() ? "" : cartItems.get(0).getRestaurantName();
-        return new CartSummary(itemCount, subtotal, deliveryFee, serviceFee, savings, total, restaurantName);
+        getOrCreateCart(context, restaurant.getId(), new RepositoryCallback<CartMeta>() {
+            @Override
+            public void onSuccess(CartMeta cartMeta) {
+                upsertCartItem(context, cartMeta.getCartId(), menuItem.getId(), quantity, note, new RepositoryCallback<Boolean>() {
+                    @Override
+                    public void onSuccess(Boolean result) {
+                        fetchCartState(context, callback);
+                    }
+
+                    @Override
+                    public void onError(String error) {
+                        postError(callback, error);
+                    }
+                });
+            }
+
+            @Override
+            public void onError(String error) {
+                postError(callback, error);
+            }
+        });
     }
 
-    private int calculateSavings(int itemCount, int subtotal, int deliveryFee) {
-        int savings = 0;
-        if (itemCount >= 3) {
-            savings += 12_000;
+    public void setMenuItemQuantity(
+            Context context,
+            MenuItem menuItem,
+            Restaurant restaurant,
+            int quantity,
+            String note,
+            RepositoryCallback<CartState> callback
+    ) {
+        SessionManager sessionManager = SessionManager.getInstance(context);
+        if (!sessionManager.isLoggedIn()) {
+            postError(callback, "AUTH_REQUIRED");
+            return;
         }
-        if (subtotal >= 200_000) {
-            savings += deliveryFee;
+        if (menuItem == null || restaurant == null) {
+            postError(callback, "Invalid cart payload.");
+            return;
         }
-        return savings;
+
+        getOrCreateCart(context, restaurant.getId(), new RepositoryCallback<CartMeta>() {
+            @Override
+            public void onSuccess(CartMeta cartMeta) {
+                fetchCartState(context, new RepositoryCallback<CartState>() {
+                    @Override
+                    public void onSuccess(CartState state) {
+                        CartItem existingItem = findCartItemByMenuItemId(state.getItems(), menuItem.getId());
+                        if (existingItem == null) {
+                            if (quantity <= 0) {
+                                postSuccess(callback, state);
+                                return;
+                            }
+                            upsertCartItem(context, cartMeta.getCartId(), menuItem.getId(), quantity, note, new RepositoryCallback<Boolean>() {
+                                @Override
+                                public void onSuccess(Boolean result) {
+                                    fetchCartState(context, callback);
+                                }
+
+                                @Override
+                                public void onError(String error) {
+                                    postError(callback, error);
+                                }
+                            });
+                            return;
+                        }
+
+                        updateCartItemQuantity(context, existingItem.getId(), quantity, callback);
+                    }
+
+                    @Override
+                    public void onError(String error) {
+                        postError(callback, error);
+                    }
+                });
+            }
+
+            @Override
+            public void onError(String error) {
+                postError(callback, error);
+            }
+        });
     }
 
-    private CartItem findById(String cartItemId) {
-        for (CartItem item : cartItems) {
-            if (item.getId().equals(cartItemId)) {
+    public void updateCartItemQuantity(
+            Context context,
+            String cartItemId,
+            int quantity,
+            RepositoryCallback<CartState> callback
+    ) {
+        SessionManager sessionManager = SessionManager.getInstance(context);
+        if (!sessionManager.isLoggedIn()) {
+            postError(callback, "AUTH_REQUIRED");
+            return;
+        }
+        if (cartItemId == null || cartItemId.trim().isEmpty()) {
+            postError(callback, "Invalid cart item.");
+            return;
+        }
+
+        if (quantity <= 0) {
+            removeItem(context, cartItemId, callback);
+            return;
+        }
+
+        String url = SupabaseConfig.REST_URL + "/cart_items?id=eq." + cartItemId;
+        JsonObject body = new JsonObject();
+        body.addProperty("quantity", quantity);
+
+        Request request = authorizedBuilder(sessionManager, url)
+                .patch(RequestBody.create(body.toString(), JSON))
+                .build();
+
+        client.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(@NonNull Call call, @NonNull IOException e) {
+                postError(callback, "Failed to update cart item: " + e.getMessage());
+            }
+
+            @Override
+            public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
+                String responseBody = readBody(response);
+                if (!response.isSuccessful()) {
+                    postError(callback, "Failed to update cart item (" + response.code() + ")");
+                    return;
+                }
+                fetchCartState(context, callback);
+            }
+        });
+    }
+
+    public void removeItem(Context context, String cartItemId, RepositoryCallback<CartState> callback) {
+        SessionManager sessionManager = SessionManager.getInstance(context);
+        if (!sessionManager.isLoggedIn()) {
+            postError(callback, "AUTH_REQUIRED");
+            return;
+        }
+        if (cartItemId == null || cartItemId.trim().isEmpty()) {
+            postError(callback, "Invalid cart item.");
+            return;
+        }
+
+        String url = SupabaseConfig.REST_URL + "/cart_items?id=eq." + cartItemId;
+        Request request = authorizedBuilder(sessionManager, url)
+                .delete()
+                .build();
+
+        client.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(@NonNull Call call, @NonNull IOException e) {
+                postError(callback, "Failed to remove cart item: " + e.getMessage());
+            }
+
+            @Override
+            public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
+                String responseBody = readBody(response);
+                if (!response.isSuccessful()) {
+                    postError(callback, "Failed to remove cart item (" + response.code() + ")");
+                    return;
+                }
+                fetchCartState(context, callback);
+            }
+        });
+    }
+
+    public void clearCart(Context context, RepositoryCallback<Boolean> callback) {
+        SessionManager sessionManager = SessionManager.getInstance(context);
+        if (!sessionManager.isLoggedIn()) {
+            postError(callback, "AUTH_REQUIRED");
+            return;
+        }
+
+        getCurrentCart(context, new RepositoryCallback<CartMeta>() {
+            @Override
+            public void onSuccess(CartMeta cartMeta) {
+                if (cartMeta == null) {
+                    postSuccess(callback, true);
+                    return;
+                }
+
+                String url = SupabaseConfig.REST_URL + "/cart_items?cart_id=eq." + cartMeta.getCartId();
+                Request request = authorizedBuilder(sessionManager, url)
+                        .delete()
+                        .build();
+
+                client.newCall(request).enqueue(new Callback() {
+                    @Override
+                    public void onFailure(@NonNull Call call, @NonNull IOException e) {
+                        postError(callback, "Failed to clear cart: " + e.getMessage());
+                    }
+
+                    @Override
+                    public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
+                        String responseBody = readBody(response);
+                        if (!response.isSuccessful()) {
+                            postError(callback, "Failed to clear cart (" + response.code() + ")");
+                            return;
+                        }
+                        postSuccess(callback, true);
+                    }
+                });
+            }
+
+            @Override
+            public void onError(String error) {
+                postError(callback, error);
+            }
+        });
+    }
+
+    public void replaceCartRestaurant(
+            Context context,
+            String restaurantId,
+            RepositoryCallback<CartMeta> callback
+    ) {
+        SessionManager sessionManager = SessionManager.getInstance(context);
+        if (!sessionManager.isLoggedIn()) {
+            postError(callback, "AUTH_REQUIRED");
+            return;
+        }
+
+        getCurrentCart(context, new RepositoryCallback<CartMeta>() {
+            @Override
+            public void onSuccess(CartMeta cartMeta) {
+                if (cartMeta == null) {
+                    createCart(context, restaurantId, callback);
+                    return;
+                }
+
+                clearCart(context, new RepositoryCallback<Boolean>() {
+                    @Override
+                    public void onSuccess(Boolean result) {
+                        updateCartRestaurant(context, cartMeta.getCartId(), restaurantId, callback);
+                    }
+
+                    @Override
+                    public void onError(String error) {
+                        postError(callback, error);
+                    }
+                });
+            }
+
+            @Override
+            public void onError(String error) {
+                postError(callback, error);
+            }
+        });
+    }
+
+    private void fetchCartState(Context context, RepositoryCallback<CartState> callback) {
+        getCurrentCart(context, new RepositoryCallback<CartMeta>() {
+            @Override
+            public void onSuccess(CartMeta cartMeta) {
+                if (cartMeta == null) {
+                    postSuccess(callback, CartState.empty());
+                    return;
+                }
+
+                fetchCartItems(context, cartMeta, callback);
+            }
+
+            @Override
+            public void onError(String error) {
+                postError(callback, error);
+            }
+        });
+    }
+
+    private void fetchCartItems(Context context, CartMeta cartMeta, RepositoryCallback<CartState> callback) {
+        SessionManager sessionManager = SessionManager.getInstance(context);
+        String url = SupabaseConfig.REST_URL
+                + "/cart_items?cart_id=eq."
+                + cartMeta.getCartId()
+                + "&select=id,quantity,note,menu_items(id,restaurant_id,name,price,image_url)";
+
+        Request request = authorizedBuilder(sessionManager, url)
+                .get()
+                .build();
+
+        client.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(@NonNull Call call, @NonNull IOException e) {
+                postError(callback, "Failed to load cart items: " + e.getMessage());
+            }
+
+            @Override
+            public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
+                String body = readBody(response);
+                if (!response.isSuccessful()) {
+                    postError(callback, "Failed to load cart items (" + response.code() + ")");
+                    return;
+                }
+
+                JsonArray itemsArray = JsonParser.parseString(body).getAsJsonArray();
+                List<CartItem> items = new ArrayList<>();
+                int itemCount = 0;
+                int subtotal = 0;
+                Map<String, Integer> menuQuantities = new LinkedHashMap<>();
+
+                for (JsonElement element : itemsArray) {
+                    JsonObject obj = element.getAsJsonObject();
+                    JsonObject menu = obj.getAsJsonObject("menu_items");
+                    if (menu == null) {
+                        continue;
+                    }
+
+                    CartItem item = new CartItem();
+                    item.setId(getAsString(obj, "id"));
+                    item.setQuantity(getAsInt(obj, "quantity"));
+                    item.setNote(getAsString(obj, "note"));
+
+                    MenuItem menuItem = new MenuItem();
+                    menuItem.setId(getAsString(menu, "id"));
+                    menuItem.setRestaurantId(getAsString(menu, "restaurant_id"));
+                    menuItem.setName(getAsString(menu, "name"));
+                    menuItem.setPrice(getAsInt(menu, "price"));
+                    menuItem.setImageUrl(getAsString(menu, "image_url"));
+                    item.setMenuItem(menuItem);
+                    item.setRestaurantName(cartMeta.getRestaurantName());
+
+                    items.add(item);
+                    itemCount += item.getQuantity();
+                    subtotal += item.getQuantity() * item.getPrice();
+                    menuQuantities.put(item.getMenuItemId(), item.getQuantity());
+                }
+
+                int deliveryFee = items.isEmpty() ? 0 : cartMeta.getDeliveryFee();
+                int total = subtotal + deliveryFee;
+                CartSummary summary = new CartSummary(
+                        itemCount,
+                        subtotal,
+                        deliveryFee,
+                        0,
+                        0,
+                        total,
+                        cartMeta.getRestaurantName()
+                );
+                postSuccess(callback, new CartState(cartMeta.getCartId(), cartMeta.getRestaurantId(), items, summary, menuQuantities));
+            }
+        });
+    }
+
+    private void getOrCreateCart(Context context, String restaurantId, RepositoryCallback<CartMeta> callback) {
+        getCurrentCart(context, new RepositoryCallback<CartMeta>() {
+            @Override
+            public void onSuccess(CartMeta cartMeta) {
+                if (cartMeta == null) {
+                    createCart(context, restaurantId, callback);
+                    return;
+                }
+                if (!restaurantId.equals(cartMeta.getRestaurantId())) {
+                    postError(callback, CART_CONFLICT_RESTAURANT);
+                    return;
+                }
+                postSuccess(callback, cartMeta);
+            }
+
+            @Override
+            public void onError(String error) {
+                postError(callback, error);
+            }
+        });
+    }
+
+    private void getCurrentCart(Context context, RepositoryCallback<CartMeta> callback) {
+        SessionManager sessionManager = SessionManager.getInstance(context);
+        String userId = sessionManager.getUserId();
+        if (userId == null || userId.trim().isEmpty()) {
+            postError(callback, "AUTH_REQUIRED");
+            return;
+        }
+
+        String url = SupabaseConfig.REST_URL
+                + "/carts?user_id=eq."
+                + userId
+                + "&select=id,restaurant_id,restaurants(name,delivery_fee)&limit=1";
+
+        Request request = authorizedBuilder(sessionManager, url)
+                .get()
+                .build();
+
+        client.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(@NonNull Call call, @NonNull IOException e) {
+                postError(callback, "Failed to load cart: " + e.getMessage());
+            }
+
+            @Override
+            public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
+                String body = readBody(response);
+                if (!response.isSuccessful()) {
+                    postError(callback, "Failed to load cart (" + response.code() + ")");
+                    return;
+                }
+
+                JsonArray array = JsonParser.parseString(body).getAsJsonArray();
+                if (array.size() == 0) {
+                    postSuccess(callback, null);
+                    return;
+                }
+
+                JsonObject cart = array.get(0).getAsJsonObject();
+                JsonObject restaurant = cart.has("restaurants") && cart.get("restaurants").isJsonObject()
+                        ? cart.getAsJsonObject("restaurants")
+                        : null;
+
+                postSuccess(callback, new CartMeta(
+                        getAsString(cart, "id"),
+                        getAsString(cart, "restaurant_id"),
+                        restaurant != null ? getAsString(restaurant, "name") : "",
+                        restaurant != null ? getAsInt(restaurant, "delivery_fee") : 0
+                ));
+            }
+        });
+    }
+
+    private void createCart(Context context, String restaurantId, RepositoryCallback<CartMeta> callback) {
+        SessionManager sessionManager = SessionManager.getInstance(context);
+        String userId = sessionManager.getUserId();
+        if (userId == null || userId.trim().isEmpty()) {
+            postError(callback, "AUTH_REQUIRED");
+            return;
+        }
+
+        String url = SupabaseConfig.REST_URL + "/carts";
+        JsonObject body = new JsonObject();
+        body.addProperty("user_id", userId);
+        body.addProperty("restaurant_id", restaurantId);
+
+        Request request = authorizedBuilder(sessionManager, url)
+                .addHeader(SupabaseConfig.HEADER_PREFER, SupabaseConfig.PREF_RETURN_REPRESENTATION)
+                .post(RequestBody.create(body.toString(), JSON))
+                .build();
+
+        client.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(@NonNull Call call, @NonNull IOException e) {
+                postError(callback, "Failed to create cart: " + e.getMessage());
+            }
+
+            @Override
+            public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
+                String responseBody = readBody(response);
+                if (!response.isSuccessful()) {
+                    postError(callback, "Failed to create cart (" + response.code() + ")");
+                    return;
+                }
+
+                JsonArray array = JsonParser.parseString(responseBody).getAsJsonArray();
+                if (array.size() == 0) {
+                    postError(callback, "Cart was created without a payload.");
+                    return;
+                }
+
+                JsonObject cart = array.get(0).getAsJsonObject();
+                postSuccess(callback, new CartMeta(
+                        getAsString(cart, "id"),
+                        getAsString(cart, "restaurant_id"),
+                        "",
+                        0
+                ));
+            }
+        });
+    }
+
+    private void updateCartRestaurant(Context context, String cartId, String restaurantId, RepositoryCallback<CartMeta> callback) {
+        SessionManager sessionManager = SessionManager.getInstance(context);
+        String url = SupabaseConfig.REST_URL + "/carts?id=eq." + cartId;
+        JsonObject body = new JsonObject();
+        body.addProperty("restaurant_id", restaurantId);
+
+        Request request = authorizedBuilder(sessionManager, url)
+                .patch(RequestBody.create(body.toString(), JSON))
+                .build();
+
+        client.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(@NonNull Call call, @NonNull IOException e) {
+                postError(callback, "Failed to switch cart restaurant: " + e.getMessage());
+            }
+
+            @Override
+            public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
+                String responseBody = readBody(response);
+                if (!response.isSuccessful()) {
+                    postError(callback, "Failed to switch cart restaurant (" + response.code() + ")");
+                    return;
+                }
+
+                getCurrentCart(context, callback);
+            }
+        });
+    }
+
+    private void upsertCartItem(
+            Context context,
+            String cartId,
+            String menuItemId,
+            int quantity,
+            String note,
+            RepositoryCallback<Boolean> callback
+    ) {
+        SessionManager sessionManager = SessionManager.getInstance(context);
+        String url = SupabaseConfig.REST_URL + "/cart_items?on_conflict=cart_id,menu_item_id";
+
+        JsonObject body = new JsonObject();
+        body.addProperty("cart_id", cartId);
+        body.addProperty("menu_item_id", menuItemId);
+        body.addProperty("quantity", quantity);
+        if (note != null && !note.trim().isEmpty()) {
+            body.addProperty("note", note.trim());
+        }
+
+        Request request = authorizedBuilder(sessionManager, url)
+                .addHeader(SupabaseConfig.HEADER_PREFER, "resolution=merge-duplicates," + SupabaseConfig.PREF_RETURN_REPRESENTATION)
+                .post(RequestBody.create(body.toString(), JSON))
+                .build();
+
+        client.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(@NonNull Call call, @NonNull IOException e) {
+                postError(callback, "Failed to add item to cart: " + e.getMessage());
+            }
+
+            @Override
+            public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
+                String responseBody = readBody(response);
+                if (!response.isSuccessful()) {
+                    postError(callback, "Failed to add item to cart (" + response.code() + ")");
+                    return;
+                }
+                postSuccess(callback, true);
+            }
+        });
+    }
+
+    private CartItem findCartItemByMenuItemId(List<CartItem> items, String menuItemId) {
+        if (items == null || menuItemId == null) {
+            return null;
+        }
+        for (CartItem item : items) {
+            if (menuItemId.equals(item.getMenuItemId())) {
                 return item;
             }
         }
         return null;
     }
 
-    private void seedCart() {
-        if (!cartItems.isEmpty()) {
-            return;
-        }
-
-        cartItems.add(new CartItem(
-                "cart_1",
-                "menu_1",
-                "restaurant_1",
-                "Urban Bites Kitchen",
-                "Smoky Beef Burger",
-                89_000,
-                2,
-                "Extra cheese, less onion",
-                ""
-        ));
-        cartItems.add(new CartItem(
-                "cart_2",
-                "menu_2",
-                "restaurant_1",
-                "Urban Bites Kitchen",
-                "Citrus Chicken Bowl",
-                74_000,
-                1,
-                "Sauce packed separately",
-                ""
-        ));
-        cartItems.add(new CartItem(
-                "cart_3",
-                "menu_3",
-                "restaurant_1",
-                "Urban Bites Kitchen",
-                "Honey Toast Box",
-                56_000,
-                1,
-                "",
-                ""
-        ));
+    private Request.Builder authorizedBuilder(SessionManager sessionManager, String url) {
+        return new Request.Builder()
+                .url(url)
+                .addHeader("apikey", SupabaseConfig.SUPABASE_ANON_KEY)
+                .addHeader("Authorization", "Bearer " + sessionManager.getAccessToken())
+                .addHeader(SupabaseConfig.HEADER_CONTENT_TYPE, SupabaseConfig.CONTENT_TYPE_JSON);
     }
 
-    private CartItem copyOf(CartItem item) {
-        return new CartItem(
-                item.getId(),
-                item.getMenuItemId(),
-                item.getRestaurantId(),
-                item.getRestaurantName(),
-                item.getName(),
-                item.getPrice(),
-                item.getQuantity(),
-                item.getNote(),
-                item.getImageUrl()
-        );
+    private void postSuccess(RepositoryCallback<?> callback, Object result) {
+        mainHandler.post(() -> {
+            @SuppressWarnings("unchecked")
+            RepositoryCallback<Object> casted = (RepositoryCallback<Object>) callback;
+            casted.onSuccess(result);
+        });
+    }
+
+    private void postError(RepositoryCallback<?> callback, String error) {
+        mainHandler.post(() -> callback.onError(error));
+    }
+
+    private String readBody(Response response) throws IOException {
+        return response.body() == null ? "" : response.body().string();
+    }
+
+    private String getAsString(JsonObject object, String key) {
+        if (object == null || !object.has(key) || object.get(key).isJsonNull()) {
+            return "";
+        }
+        return object.get(key).getAsString();
+    }
+
+    private int getAsInt(JsonObject object, String key) {
+        if (object == null || !object.has(key) || object.get(key).isJsonNull()) {
+            return 0;
+        }
+        return object.get(key).getAsInt();
     }
 
     public static class CartSummary {
@@ -187,5 +712,79 @@ public class CartRepository {
         public String getRestaurantName() {
             return restaurantName;
         }
+    }
+
+    public static class CartState {
+        private final String cartId;
+        private final String restaurantId;
+        private final List<CartItem> items;
+        private final CartSummary summary;
+        private final Map<String, Integer> menuItemQuantities;
+
+        public CartState(String cartId, String restaurantId, List<CartItem> items, CartSummary summary, Map<String, Integer> menuItemQuantities) {
+            this.cartId = cartId;
+            this.restaurantId = restaurantId;
+            this.items = items;
+            this.summary = summary;
+            this.menuItemQuantities = menuItemQuantities;
+        }
+
+        public static CartState empty() {
+            return new CartState("", "", new ArrayList<>(), new CartSummary(0, 0, 0, 0, 0, 0, ""), new LinkedHashMap<>());
+        }
+
+        public String getCartId() {
+            return cartId;
+        }
+
+        public String getRestaurantId() {
+            return restaurantId;
+        }
+
+        public List<CartItem> getItems() {
+            return items;
+        }
+
+        public CartSummary getSummary() {
+            return summary;
+        }
+
+        public Map<String, Integer> getMenuItemQuantities() {
+            return menuItemQuantities;
+        }
+    }
+
+    public static class CartMeta {
+        private final String cartId;
+        private final String restaurantId;
+        private final String restaurantName;
+        private final int deliveryFee;
+
+        public CartMeta(String cartId, String restaurantId, String restaurantName, int deliveryFee) {
+            this.cartId = cartId;
+            this.restaurantId = restaurantId;
+            this.restaurantName = restaurantName;
+            this.deliveryFee = deliveryFee;
+        }
+
+        public String getCartId() {
+            return cartId;
+        }
+
+        public String getRestaurantId() {
+            return restaurantId;
+        }
+
+        public String getRestaurantName() {
+            return restaurantName;
+        }
+
+        public int getDeliveryFee() {
+            return deliveryFee;
+        }
+    }
+
+    public static String getCartConflictRestaurantError() {
+        return CART_CONFLICT_RESTAURANT;
     }
 }
