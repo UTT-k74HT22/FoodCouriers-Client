@@ -7,6 +7,7 @@ import androidx.lifecycle.MutableLiveData;
 
 import com.utt.foodcouriers_client.data.common.RepositoryCallback;
 import com.utt.foodcouriers_client.data.model.CartItem;
+import com.utt.foodcouriers_client.data.model.CartRestaurantGroup;
 import com.utt.foodcouriers_client.data.model.MenuItem;
 import com.utt.foodcouriers_client.data.model.Restaurant;
 import com.utt.foodcouriers_client.data.repository.CartRepository;
@@ -18,6 +19,7 @@ public class CartViewModel extends BaseViewModel {
 
     private final CartRepository repository = CartRepository.getInstance();
     private final MutableLiveData<List<CartItem>> cartItems = new MutableLiveData<>();
+    private final MutableLiveData<List<CartRestaurantGroup>> restaurantGroups = new MutableLiveData<>();
     private final MutableLiveData<CartRepository.CartSummary> cartSummary = new MutableLiveData<>();
     private final MutableLiveData<Map<String, Integer>> menuItemQuantities = new MutableLiveData<>();
     private final MutableLiveData<Boolean> emptyState = new MutableLiveData<>(true);
@@ -28,6 +30,10 @@ public class CartViewModel extends BaseViewModel {
 
     public LiveData<CartRepository.CartSummary> getCartSummary() {
         return cartSummary;
+    }
+
+    public LiveData<List<CartRestaurantGroup>> getRestaurantGroups() {
+        return restaurantGroups;
     }
 
     public LiveData<Map<String, Integer>> getMenuItemQuantities() {
@@ -65,34 +71,6 @@ public class CartViewModel extends BaseViewModel {
             public void onSuccess(CartRepository.CartState result) {
                 publishState(result);
                 setLoading(false);
-            }
-
-            @Override
-            public void onError(String error) {
-                postError(error);
-                setLoading(false);
-            }
-        });
-    }
-
-    public void replaceCartAndAddMenuItem(Context context, MenuItem menuItem, Restaurant restaurant, int quantity, String note) {
-        setLoading(true);
-        repository.replaceCartRestaurant(context.getApplicationContext(), restaurant.getId(), new RepositoryCallback<CartRepository.CartMeta>() {
-            @Override
-            public void onSuccess(CartRepository.CartMeta result) {
-                repository.addToCart(context.getApplicationContext(), menuItem, restaurant, quantity, note, new RepositoryCallback<CartRepository.CartState>() {
-                    @Override
-                    public void onSuccess(CartRepository.CartState result) {
-                        publishState(result);
-                        setLoading(false);
-                    }
-
-                    @Override
-                    public void onError(String error) {
-                        postError(error);
-                        setLoading(false);
-                    }
-                });
             }
 
             @Override
@@ -144,6 +122,7 @@ public class CartViewModel extends BaseViewModel {
     private void publishState(CartRepository.CartState state) {
         CartRepository.CartState safeState = state == null ? CartRepository.CartState.empty() : state;
         cartItems.setValue(safeState.getItems());
+        restaurantGroups.setValue(safeState.getRestaurantGroups());
         cartSummary.setValue(safeState.getSummary());
         menuItemQuantities.setValue(safeState.getMenuItemQuantities());
         emptyState.setValue(safeState.getItems() == null || safeState.getItems().isEmpty());

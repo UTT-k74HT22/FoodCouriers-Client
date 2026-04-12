@@ -8,7 +8,6 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 
-import androidx.appcompat.app.AlertDialog;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.lifecycle.ViewModelProvider;
@@ -20,7 +19,6 @@ import com.utt.foodcouriers_client.databinding.FragmentDiscoverBinding;
 import com.utt.foodcouriers_client.ui.auth.LoginActivity;
 import com.utt.foodcouriers_client.ui.common.BaseFragment;
 import com.utt.foodcouriers_client.ui.discover.adapter.RestaurantWithMenuAdapter;
-import com.utt.foodcouriers_client.data.repository.CartRepository;
 import com.utt.foodcouriers_client.viewmodel.CartViewModel;
 import com.utt.foodcouriers_client.viewmodel.DiscoverViewModel;
 
@@ -32,7 +30,6 @@ public class DiscoverFragment extends BaseFragment {
     private DiscoverViewModel viewModel;
     private CartViewModel cartViewModel;
     private RestaurantWithMenuAdapter adapter;
-
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
@@ -96,10 +93,6 @@ public class DiscoverFragment extends BaseFragment {
             if (error == null || error.isEmpty()) {
                 return;
             }
-            if (CartRepository.getCartConflictRestaurantError().equals(error)) {
-                showReplaceCartDialog();
-                return;
-            }
             showErrorSnackbar(error);
         });
     }
@@ -115,29 +108,11 @@ public class DiscoverFragment extends BaseFragment {
     }
 
     private void handleFoodAddClick(MenuItem menuItem, Restaurant restaurant) {
-        pendingMenuItem = menuItem;
-        pendingRestaurant = restaurant;
         if (!cartViewModel.isLoggedIn(requireContext())) {
             startActivity(new Intent(requireContext(), LoginActivity.class));
             return;
         }
         cartViewModel.addMenuItem(requireContext(), menuItem, restaurant, 1, "");
-    }
-
-    private MenuItem pendingMenuItem;
-    private Restaurant pendingRestaurant;
-
-    private void showReplaceCartDialog() {
-        if (pendingMenuItem == null || pendingRestaurant == null || !isAdded()) {
-            return;
-        }
-        new AlertDialog.Builder(requireContext())
-                .setTitle("Thay gio hang?")
-                .setMessage("Gio hang hien tai dang thuoc nha hang khac. Ban co muon xoa gio cu va them mon moi khong?")
-                .setPositiveButton("Dong y", (dialog, which) ->
-                        cartViewModel.replaceCartAndAddMenuItem(requireContext(), pendingMenuItem, pendingRestaurant, 1, ""))
-                .setNegativeButton("Huy", null)
-                .show();
     }
 
     @Override

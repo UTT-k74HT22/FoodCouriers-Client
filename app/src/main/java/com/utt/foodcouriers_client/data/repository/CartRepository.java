@@ -12,6 +12,7 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.utt.foodcouriers_client.data.common.RepositoryCallback;
 import com.utt.foodcouriers_client.data.model.CartItem;
+import com.utt.foodcouriers_client.data.model.CartRestaurantGroup;
 import com.utt.foodcouriers_client.data.model.MenuItem;
 import com.utt.foodcouriers_client.data.model.Restaurant;
 import com.utt.foodcouriers_client.data.remote.SupabaseConfig;
@@ -34,8 +35,6 @@ import okhttp3.Response;
 public class CartRepository {
 
     private static final MediaType JSON = MediaType.parse(SupabaseConfig.CONTENT_TYPE_JSON);
-    private static final String CART_CONFLICT_RESTAURANT = "CART_CONFLICT_RESTAURANT";
-
     private static CartRepository instance;
 
     private final OkHttpClient client = new OkHttpClient();
@@ -75,18 +74,33 @@ public class CartRepository {
             postError(callback, "AUTH_REQUIRED");
             return;
         }
-        if (menuItem == null || restaurant == null || quantity <= 0) {
+        if (menuItem == null || quantity <= 0) {
             postError(callback, "Invalid cart payload.");
             return;
         }
 
-        getOrCreateCart(context, restaurant.getId(), new RepositoryCallback<CartMeta>() {
+        getOrCreateCart(context, new RepositoryCallback<CartMeta>() {
             @Override
             public void onSuccess(CartMeta cartMeta) {
-                upsertCartItem(context, cartMeta.getCartId(), menuItem.getId(), quantity, note, new RepositoryCallback<Boolean>() {
+                fetchCartState(context, new RepositoryCallback<CartState>() {
                     @Override
-                    public void onSuccess(Boolean result) {
-                        fetchCartState(context, callback);
+                    public void onSuccess(CartState state) {
+                        CartItem existingItem = findCartItemByMenuItemId(state.getItems(), menuItem.getId());
+                        if (existingItem != null) {
+                            updateCartItemQuantity(context, existingItem.getId(), existingItem.getQuantity() + quantity, callback);
+                            return;
+                        }
+                        upsertCartItem(context, cartMeta.getCartId(), menuItem.getId(), quantity, note, new RepositoryCallback<Boolean>() {
+                            @Override
+                            public void onSuccess(Boolean result) {
+                                fetchCartState(context, callback);
+                            }
+
+                            @Override
+                            public void onError(String error) {
+                                postError(callback, error);
+                            }
+                        });
                     }
 
                     @Override
@@ -116,12 +130,12 @@ public class CartRepository {
             postError(callback, "AUTH_REQUIRED");
             return;
         }
-        if (menuItem == null || restaurant == null) {
+        if (menuItem == null) {
             postError(callback, "Invalid cart payload.");
             return;
         }
 
-        getOrCreateCart(context, restaurant.getId(), new RepositoryCallback<CartMeta>() {
+        getOrCreateCart(context, new RepositoryCallback<CartMeta>() {
             @Override
             public void onSuccess(CartMeta cartMeta) {
                 fetchCartState(context, new RepositoryCallback<CartState>() {
@@ -290,45 +304,6 @@ public class CartRepository {
         });
     }
 
-    public void replaceCartRestaurant(
-            Context context,
-            String restaurantId,
-            RepositoryCallback<CartMeta> callback
-    ) {
-        SessionManager sessionManager = SessionManager.getInstance(context);
-        if (!sessionManager.isLoggedIn()) {
-            postError(callback, "AUTH_REQUIRED");
-            return;
-        }
-
-        getCurrentCart(context, new RepositoryCallback<CartMeta>() {
-            @Override
-            public void onSuccess(CartMeta cartMeta) {
-                if (cartMeta == null) {
-                    createCart(context, restaurantId, callback);
-                    return;
-                }
-
-                clearCart(context, new RepositoryCallback<Boolean>() {
-                    @Override
-                    public void onSuccess(Boolean result) {
-                        updateCartRestaurant(context, cartMeta.getCartId(), restaurantId, callback);
-                    }
-
-                    @Override
-                    public void onError(String error) {
-                        postError(callback, error);
-                    }
-                });
-            }
-
-            @Override
-            public void onError(String error) {
-                postError(callback, error);
-            }
-        });
-    }
-
     private void fetchCartState(Context context, RepositoryCallback<CartState> callback) {
         getCurrentCart(context, new RepositoryCallback<CartMeta>() {
             @Override
@@ -353,7 +328,7 @@ public class CartRepository {
         String url = SupabaseConfig.REST_URL
                 + "/cart_items?cart_id=eq."
                 + cartMeta.getCartId()
-                + "&select=id,quantity,note,menu_items(id,restaurant_id,name,price,image_url)";
+                + "&select=id,quantity,note,menu_items(id,restaurant_id,name,price,image_url,restaurants(id,name,delivery_fee))";
 
         Request request = authorizedBuilder(sessionManager, url)
                 .get()
@@ -375,6 +350,7 @@ public class CartRepository {
 
                 JsonArray itemsArray = JsonParser.parseString(body).getAsJsonArray();
                 List<CartItem> items = new ArrayList<>();
+                LinkedHashMap<String, MutableRestaurantGroup> groups = new LinkedHashMap<>();
                 int itemCount = 0;
                 int subtotal = 0;
                 Map<String, Integer> menuQuantities = new LinkedHashMap<>();
@@ -398,15 +374,32 @@ public class CartRepository {
                     menuItem.setPrice(getAsInt(menu, "price"));
                     menuItem.setImageUrl(getAsString(menu, "image_url"));
                     item.setMenuItem(menuItem);
-                    item.setRestaurantName(cartMeta.getRestaurantName());
+                    JsonObject restaurant = menu.has("restaurants") && menu.get("restaurants").isJsonObject()
+                            ? menu.getAsJsonObject("restaurants")
+                            : null;
+                    String restaurantId = menuItem.getRestaurantId();
+                    String restaurantName = restaurant != null ? getAsString(restaurant, "name") : "";
+                    int deliveryFee = restaurant != null ? getAsInt(restaurant, "delivery_fee") : 0;
+                    item.setRestaurantName(restaurantName);
 
                     items.add(item);
+                    MutableRestaurantGroup group = groups.get(restaurantId);
+                    if (group == null) {
+                        group = new MutableRestaurantGroup(restaurantId, restaurantName, deliveryFee);
+                        groups.put(restaurantId, group);
+                    }
+                    group.items.add(item);
                     itemCount += item.getQuantity();
                     subtotal += item.getQuantity() * item.getPrice();
                     menuQuantities.put(item.getMenuItemId(), item.getQuantity());
                 }
 
-                int deliveryFee = items.isEmpty() ? 0 : cartMeta.getDeliveryFee();
+                int deliveryFee = 0;
+                List<CartRestaurantGroup> restaurantGroups = new ArrayList<>();
+                for (MutableRestaurantGroup group : groups.values()) {
+                    restaurantGroups.add(new CartRestaurantGroup(group.restaurantId, group.restaurantName, group.deliveryFee, group.items));
+                    deliveryFee += group.items.isEmpty() ? 0 : group.deliveryFee;
+                }
                 int total = subtotal + deliveryFee;
                 CartSummary summary = new CartSummary(
                         itemCount,
@@ -415,23 +408,19 @@ public class CartRepository {
                         0,
                         0,
                         total,
-                        cartMeta.getRestaurantName()
+                        ""
                 );
-                postSuccess(callback, new CartState(cartMeta.getCartId(), cartMeta.getRestaurantId(), items, summary, menuQuantities));
+                postSuccess(callback, new CartState(cartMeta.getCartId(), items, restaurantGroups, summary, menuQuantities));
             }
         });
     }
 
-    private void getOrCreateCart(Context context, String restaurantId, RepositoryCallback<CartMeta> callback) {
+    private void getOrCreateCart(Context context, RepositoryCallback<CartMeta> callback) {
         getCurrentCart(context, new RepositoryCallback<CartMeta>() {
             @Override
             public void onSuccess(CartMeta cartMeta) {
                 if (cartMeta == null) {
-                    createCart(context, restaurantId, callback);
-                    return;
-                }
-                if (!restaurantId.equals(cartMeta.getRestaurantId())) {
-                    postError(callback, CART_CONFLICT_RESTAURANT);
+                    createCart(context, callback);
                     return;
                 }
                 postSuccess(callback, cartMeta);
@@ -455,7 +444,7 @@ public class CartRepository {
         String url = SupabaseConfig.REST_URL
                 + "/carts?user_id=eq."
                 + userId
-                + "&select=id,restaurant_id,restaurants(name,delivery_fee)&limit=1";
+                + "&select=id&limit=1";
 
         Request request = authorizedBuilder(sessionManager, url)
                 .get()
@@ -482,21 +471,12 @@ public class CartRepository {
                 }
 
                 JsonObject cart = array.get(0).getAsJsonObject();
-                JsonObject restaurant = cart.has("restaurants") && cart.get("restaurants").isJsonObject()
-                        ? cart.getAsJsonObject("restaurants")
-                        : null;
-
-                postSuccess(callback, new CartMeta(
-                        getAsString(cart, "id"),
-                        getAsString(cart, "restaurant_id"),
-                        restaurant != null ? getAsString(restaurant, "name") : "",
-                        restaurant != null ? getAsInt(restaurant, "delivery_fee") : 0
-                ));
+                postSuccess(callback, new CartMeta(getAsString(cart, "id")));
             }
         });
     }
 
-    private void createCart(Context context, String restaurantId, RepositoryCallback<CartMeta> callback) {
+    private void createCart(Context context, RepositoryCallback<CartMeta> callback) {
         SessionManager sessionManager = SessionManager.getInstance(context);
         String userId = sessionManager.getUserId();
         if (userId == null || userId.trim().isEmpty()) {
@@ -507,7 +487,6 @@ public class CartRepository {
         String url = SupabaseConfig.REST_URL + "/carts";
         JsonObject body = new JsonObject();
         body.addProperty("user_id", userId);
-        body.addProperty("restaurant_id", restaurantId);
 
         Request request = authorizedBuilder(sessionManager, url)
                 .addHeader(SupabaseConfig.HEADER_PREFER, SupabaseConfig.PREF_RETURN_REPRESENTATION)
@@ -535,41 +514,7 @@ public class CartRepository {
                 }
 
                 JsonObject cart = array.get(0).getAsJsonObject();
-                postSuccess(callback, new CartMeta(
-                        getAsString(cart, "id"),
-                        getAsString(cart, "restaurant_id"),
-                        "",
-                        0
-                ));
-            }
-        });
-    }
-
-    private void updateCartRestaurant(Context context, String cartId, String restaurantId, RepositoryCallback<CartMeta> callback) {
-        SessionManager sessionManager = SessionManager.getInstance(context);
-        String url = SupabaseConfig.REST_URL + "/carts?id=eq." + cartId;
-        JsonObject body = new JsonObject();
-        body.addProperty("restaurant_id", restaurantId);
-
-        Request request = authorizedBuilder(sessionManager, url)
-                .patch(RequestBody.create(body.toString(), JSON))
-                .build();
-
-        client.newCall(request).enqueue(new Callback() {
-            @Override
-            public void onFailure(@NonNull Call call, @NonNull IOException e) {
-                postError(callback, "Failed to switch cart restaurant: " + e.getMessage());
-            }
-
-            @Override
-            public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
-                String responseBody = readBody(response);
-                if (!response.isSuccessful()) {
-                    postError(callback, "Failed to switch cart restaurant (" + response.code() + ")");
-                    return;
-                }
-
-                getCurrentCart(context, callback);
+                postSuccess(callback, new CartMeta(getAsString(cart, "id")));
             }
         });
     }
@@ -716,33 +661,33 @@ public class CartRepository {
 
     public static class CartState {
         private final String cartId;
-        private final String restaurantId;
         private final List<CartItem> items;
+        private final List<CartRestaurantGroup> restaurantGroups;
         private final CartSummary summary;
         private final Map<String, Integer> menuItemQuantities;
 
-        public CartState(String cartId, String restaurantId, List<CartItem> items, CartSummary summary, Map<String, Integer> menuItemQuantities) {
+        public CartState(String cartId, List<CartItem> items, List<CartRestaurantGroup> restaurantGroups, CartSummary summary, Map<String, Integer> menuItemQuantities) {
             this.cartId = cartId;
-            this.restaurantId = restaurantId;
             this.items = items;
+            this.restaurantGroups = restaurantGroups;
             this.summary = summary;
             this.menuItemQuantities = menuItemQuantities;
         }
 
         public static CartState empty() {
-            return new CartState("", "", new ArrayList<>(), new CartSummary(0, 0, 0, 0, 0, 0, ""), new LinkedHashMap<>());
+            return new CartState("", new ArrayList<>(), new ArrayList<>(), new CartSummary(0, 0, 0, 0, 0, 0, ""), new LinkedHashMap<>());
         }
 
         public String getCartId() {
             return cartId;
         }
 
-        public String getRestaurantId() {
-            return restaurantId;
-        }
-
         public List<CartItem> getItems() {
             return items;
+        }
+
+        public List<CartRestaurantGroup> getRestaurantGroups() {
+            return restaurantGroups;
         }
 
         public CartSummary getSummary() {
@@ -756,35 +701,26 @@ public class CartRepository {
 
     public static class CartMeta {
         private final String cartId;
-        private final String restaurantId;
-        private final String restaurantName;
-        private final int deliveryFee;
 
-        public CartMeta(String cartId, String restaurantId, String restaurantName, int deliveryFee) {
+        public CartMeta(String cartId) {
             this.cartId = cartId;
-            this.restaurantId = restaurantId;
-            this.restaurantName = restaurantName;
-            this.deliveryFee = deliveryFee;
         }
 
         public String getCartId() {
             return cartId;
         }
-
-        public String getRestaurantId() {
-            return restaurantId;
-        }
-
-        public String getRestaurantName() {
-            return restaurantName;
-        }
-
-        public int getDeliveryFee() {
-            return deliveryFee;
-        }
     }
 
-    public static String getCartConflictRestaurantError() {
-        return CART_CONFLICT_RESTAURANT;
+    private static class MutableRestaurantGroup {
+        private final String restaurantId;
+        private final String restaurantName;
+        private final int deliveryFee;
+        private final List<CartItem> items = new ArrayList<>();
+
+        private MutableRestaurantGroup(String restaurantId, String restaurantName, int deliveryFee) {
+            this.restaurantId = restaurantId;
+            this.restaurantName = restaurantName;
+            this.deliveryFee = deliveryFee;
+        }
     }
 }

@@ -7,7 +7,6 @@ import android.widget.ImageView;
 import android.widget.TextView;
 
 import androidx.annotation.Nullable;
-import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.widget.Toolbar;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
@@ -18,7 +17,6 @@ import com.google.android.material.floatingactionbutton.ExtendedFloatingActionBu
 import com.utt.foodcouriers_client.R;
 import com.utt.foodcouriers_client.data.model.MenuItem;
 import com.utt.foodcouriers_client.data.model.Restaurant;
-import com.utt.foodcouriers_client.data.repository.CartRepository;
 import com.utt.foodcouriers_client.ui.auth.LoginActivity;
 import com.utt.foodcouriers_client.ui.common.BaseActivity;
 import com.utt.foodcouriers_client.ui.main.MainActivity;
@@ -44,8 +42,6 @@ public class RestaurantDetailActivity extends BaseActivity {
     private TextView tvDescription;
     private ImageView ivRestaurantImage, ivOpenStatus;
     private ExtendedFloatingActionButton fabCart;
-    private MenuItem pendingMenuItem;
-    private int pendingQuantity = 1;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -114,10 +110,6 @@ public class RestaurantDetailActivity extends BaseActivity {
         });
         cartViewModel.getErrorMessage().observe(this, error -> {
             if (error == null || error.isEmpty()) {
-                return;
-            }
-            if (CartRepository.getCartConflictRestaurantError().equals(error)) {
-                showReplaceCartDialog();
                 return;
             }
             showErrorSnackbar(error);
@@ -202,8 +194,6 @@ public class RestaurantDetailActivity extends BaseActivity {
     }
 
     private void handleQuantityChange(MenuItem menuItem, int newQuantity) {
-        pendingMenuItem = menuItem;
-        pendingQuantity = Math.max(newQuantity, 0);
         if (!cartViewModel.isLoggedIn(this)) {
             startActivity(new Intent(this, LoginActivity.class));
             return;
@@ -212,7 +202,7 @@ public class RestaurantDetailActivity extends BaseActivity {
             showErrorSnackbar("Restaurant information is missing.");
             return;
         }
-        cartViewModel.setMenuItemQuantity(this, menuItem, currentRestaurant, pendingQuantity, "");
+        cartViewModel.setMenuItemQuantity(this, menuItem, currentRestaurant, Math.max(newQuantity, 0), "");
     }
 
     private void handleLoading(Boolean isLoading) {
@@ -234,18 +224,5 @@ public class RestaurantDetailActivity extends BaseActivity {
         intent.putExtra(MainActivity.EXTRA_OPEN_CART, true);
         intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
         startActivity(intent);
-    }
-
-    private void showReplaceCartDialog() {
-        if (pendingMenuItem == null || currentRestaurant == null) {
-            return;
-        }
-        new AlertDialog.Builder(this)
-                .setTitle("Thay gio hang?")
-                .setMessage("Gio hang hien tai dang thuoc nha hang khac. Ban co muon xoa gio cu va them mon moi khong?")
-                .setPositiveButton("Dong y", (dialog, which) ->
-                        cartViewModel.replaceCartAndAddMenuItem(this, pendingMenuItem, currentRestaurant, Math.max(pendingQuantity, 1), ""))
-                .setNegativeButton("Huy", null)
-                .show();
     }
 }

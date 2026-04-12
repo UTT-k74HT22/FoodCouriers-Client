@@ -14,12 +14,22 @@
         android:layout_height="wrap_content"
         android:padding="@dimen/screen_padding">
 
+        <CheckBox
+            android:id="@+id/cb_select_item"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:buttonTint="@color/primary"
+            app:layout_constraintBottom_toBottomOf="@id/layout_visual"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="@id/layout_visual" />
+
         <FrameLayout
             android:id="@+id/layout_visual"
             android:layout_width="88dp"
             android:layout_height="88dp"
             android:background="@drawable/bg_cart_item_visual"
-            app:layout_constraintStart_toStartOf="parent"
+            android:layout_marginStart="@dimen/spacing_md"
+            app:layout_constraintStart_toEndOf="@id/cb_select_item"
             app:layout_constraintTop_toTopOf="parent">
 
             <ImageView
@@ -34,33 +44,16 @@
         </FrameLayout>
 
         <TextView
-            android:id="@+id/tv_restaurant_name"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:background="@drawable/bg_cart_restaurant_chip"
-            android:paddingStart="10dp"
-            android:paddingTop="5dp"
-            android:paddingEnd="10dp"
-            android:paddingBottom="5dp"
-            android:textColor="@color/primary_dark"
-            android:textSize="@dimen/text_caption"
-            android:textStyle="bold"
-            app:layout_constraintStart_toEndOf="@id/layout_visual"
-            app:layout_constraintTop_toTopOf="@id/layout_visual"
-            tools:text="Urban Bites Kitchen" />
-
-        <TextView
             android:id="@+id/tv_food_name"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_marginTop="@dimen/spacing_sm"
             android:maxLines="2"
             android:textColor="@color/text_primary"
             android:textSize="@dimen/text_subtitle"
             android:textStyle="bold"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toEndOf="@id/layout_visual"
-            app:layout_constraintTop_toBottomOf="@id/tv_restaurant_name"
+            app:layout_constraintTop_toTopOf="@id/layout_visual"
             tools:text="Smoky Beef Burger" />
 
         <TextView

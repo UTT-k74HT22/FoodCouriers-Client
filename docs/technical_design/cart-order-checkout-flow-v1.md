@@ -24,10 +24,14 @@ Tai lieu nay mo ta luong nghiep vu chinh cua app dat do an:
 
 Tai lieu nay bo sung cho [order-client-admin-sync.md](/abs/path/C:/UTT/AppFood/FoodCouriers-Client/docs/technical_design/order-client-admin-sync.md:1) bang cach mo ta ro phan truoc checkout, ownership cua du lieu theo user, va cach noi client Android vao schema Supabase hien co.
 
-Phien ban nay chot rule don gian cho MVP:
+Phien ban nay chot rule cho MVP va huong mo rong:
 
 - User chua login: khong duoc add vao cart
 - User da login: moi duoc add vao cart va checkout
+- Moi user co 1 `cart` chung
+- `cart_items` co the thuoc nhieu restaurant khac nhau
+- Man cart se group item theo restaurant
+- Khi checkout, he thong tach item da chon thanh nhieu `orders`, moi `order` thuoc 1 restaurant
 
 ## 2. Source Of Truth
 
@@ -64,31 +68,30 @@ Xem schema tai:
 
 - Cart phai thuoc ve tung user.
 - User phai login truoc khi add cart.
+- Cart khong can phu thuoc truc tiep vao restaurant.
 - Order luon la source of truth sau khi user dat hang thanh cong.
 
 ## 3. Business Rule Cot Loi
 
 ### 3.1 Cart phai gan theo user
 
-Trong schema hien tai:
+Cart van phai gan theo user, nhung khong can khoa theo restaurant.
 
-- `carts.user_id` la `UNIQUE`
-- `carts.restaurant_id` la bat buoc
+Rule de xuat:
 
-Dieu nay co nghia:
-
-- Moi user chi co 1 cart active tai 1 thoi diem
-- Cart do thuoc 1 restaurant cu the
+- `carts` chi dai dien cho gio hang active cua user
+- `cart_items` luu cac mon duoc them vao gio
+- restaurant cua moi item duoc xac dinh thong qua `menu_items.restaurant_id`
 
 He qua nghiep vu:
 
-1. User dang co cart cua nha hang A
-2. User add mon tu nha hang B
-3. App phai hoi user:
-   - xoa cart cu de chuyen sang nha hang moi
-   - hoac huy hanh dong
+1. User co the add mon tu nha hang A
+2. Sau do add them mon tu nha hang B
+3. Cart khong bi clear
+4. UI cart se group item theo restaurant
+5. Khi checkout, he thong tao nhieu order rieng theo restaurant
 
-Khong nen am tham tron mon tu nhieu nha hang vao cung 1 cart trong food delivery app.
+Day la huong phu hop hon neu muon UX mem va khong ep user xoa gio cu.
 
 ### 3.2 Login la dieu kien de dung cart
 
@@ -124,10 +127,11 @@ Khi checkout:
 
 Thay vao do:
 
-1. Tao `orders`
-2. Copy snapshot sang `order_items`
-3. Ghi `order_status_logs`
-4. Neu thanh cong thi clear cart
+1. Gom cac `cart_items` da chon theo restaurant
+2. Tao nhieu `orders`
+3. Copy snapshot sang `order_items`
+4. Ghi `order_status_logs`
+5. Neu thanh cong thi xoa cac `cart_items` da checkout
 
 Ly do:
 
@@ -150,26 +154,27 @@ flowchart LR
     A[User chon mon] --> B[Add to cart]
     B --> C{Da login?}
     C -->|Chua| D[Open LoginActivity]
-    C -->|Roi| E[Supabase carts + cart_items]
+    C -->|Roi| E[Supabase cart + cart_items]
     D --> A
-    E --> F[Cart screen]
-    F --> G[Update quantity, note, remove]
-    G --> H[Checkout]
-    H --> I[Validate address, restaurant, item availability, promotion]
-    I --> J[rpc_create_order]
-    J --> K[orders]
-    J --> L[order_items]
-    J --> M[order_status_logs]
-    J --> N[notifications]
-    J --> O[promotion_usages]
-    K --> P{payment_method}
-    P -->|cod| Q[orders.payment_status = pending]
-    P -->|online| R[payment_transactions]
-    R --> S[update orders.payment_status]
-    K --> T[Admin/staff update status]
-    T --> U[rpc_update_order_status]
-    U --> V[append order_status_logs]
-    U --> W[push notifications/realtime]
+    E --> F[Cart screen group theo restaurant]
+    F --> G[Tick item hoac tick restaurant]
+    G --> H[Checkout selected items]
+    H --> I[Group selected items theo restaurant]
+    I --> J[Validate address, item availability, promotion theo restaurant]
+    J --> K[Tao nhieu orders]
+    K --> L[orders]
+    K --> M[order_items]
+    K --> N[order_status_logs]
+    K --> O[notifications]
+    K --> P[promotion_usages]
+    L --> Q{payment_method}
+    Q -->|cod| R[orders.payment_status = pending]
+    Q -->|online| S[payment_transactions]
+    S --> T[update orders.payment_status]
+    L --> U[Admin/staff update status]
+    U --> V[rpc_update_order_status]
+    V --> W[append order_status_logs]
+    V --> X[push notifications/realtime]
 ```
 
 ## 5. Data Model Mapping
@@ -179,19 +184,17 @@ flowchart LR
 Muc dich:
 
 - dai dien cho gio hang active cua 1 user
-- khoa nghiep vu theo `restaurant_id`
 
 Cot chinh:
 
 - `id`
 - `user_id`
-- `restaurant_id`
 - `updated_at`
 
 Rule:
 
 - 1 user = 1 cart active
-- 1 cart = 1 restaurant
+- cart co the chua item tu nhieu restaurant
 
 ### 5.2 Bang `cart_items`
 
@@ -209,6 +212,7 @@ Cot chinh:
 Rule hien tai:
 
 - `UNIQUE(cart_id, menu_item_id)`
+- restaurant cua item duoc suy ra tu `menu_items.restaurant_id`
 
 Tac dong:
 
@@ -239,6 +243,11 @@ Cot chinh:
 - `payment_method`
 - `payment_status`
 - `status`
+
+Rule:
+
+- 1 order chi thuoc 1 restaurant
+- neu user checkout item tu 2 restaurant, he thong tao 2 order
 
 ### 5.4 Bang `order_items`
 
@@ -328,8 +337,13 @@ Luu y:
 
 Dieu nay co nghia la app co 2 cach checkout hop le:
 
-1. Client doc cart roi gui snapshot `items` vao RPC
-2. Viet them RPC moi `rpc_checkout_cart(p_user_id, ...)` de server tu doc cart
+1. Client group selected `cart_items` theo restaurant roi goi `rpc_create_order(...)` nhieu lan
+2. Viet them RPC moi `rpc_checkout_selected_cart_items(p_user_id, p_cart_item_ids, ...)` de server tu nhom theo restaurant va tao nhieu order
+
+De xuat:
+
+- MVP: client group va goi RPC nhieu lan
+- phase sau: dua grouping logic vao 1 RPC de tranh race condition
 
 ### 6.2 `rpc_update_order_status`
 
@@ -364,23 +378,26 @@ Mapping ownership:
 | Entity | Owner | Editable By | Notes |
 |---|---|---|---|
 | `carts` | customer | customer | 1 cart active / user |
-| `cart_items` | customer | customer | editable truoc checkout |
-| `orders` | customer | admin/staff update status | customer chi create/read |
+| `cart_items` | customer | customer | co the thuoc nhieu restaurant |
+| `orders` | customer | admin/staff update status | 1 order / 1 restaurant |
 | `order_items` | order owner | khong sua sau checkout | snapshot |
 | `order_status_logs` | order owner | system/admin append | audit trail |
 | `payment_transactions` | order owner | system/payment service | read-only voi customer |
 
 ## 8. Recommended Client Architecture
 
-### 8.1 Single cart mode cho user da login
+### 8.1 Single user cart, grouped by restaurant
 
-De don gian hoa implementation, MVP chi support 1 mode:
+De don gian hoa implementation, MVP support 1 mode:
 
 1. Chua login:
    - khong duoc add cart
    - khong mo duoc cart/checkout
 2. Da login:
-   - toan bo cart doc/ghi tren Supabase
+   - user co 1 cart tren Supabase
+   - trong cart co the co item tu nhieu restaurant
+   - UI group item theo restaurant
+   - user tick item hoac tick ca restaurant de checkout
 
 ### 8.2 Repository de xuat
 
@@ -399,6 +416,7 @@ Chi can:
 - `updateCartItemQuantity`
 - `removeCartItem`
 - `clearCart`
+- `checkoutSelectedItems`
 
 ## 9. Use Cases Can Implement
 
@@ -413,7 +431,6 @@ Flow:
 3. Neu da login:
    - map `auth.uid()` sang `public.users.id`
    - get or create `carts`
-   - validate `restaurant_id`
    - upsert `cart_items`
 
 Pseudo-flow:
@@ -424,9 +441,7 @@ addToCart(menuItem, restaurant, qty, note)
    -> openLogin()
    -> return
 -> cart = findCartByUser(userId)
--> if no cart: createCart(userId, restaurantId)
--> if cart.restaurant_id != restaurantId:
-   -> ask user replace existing cart?
+-> if no cart: createCart(userId)
 -> upsert cart_items
 -> fetch cart summary
 ```
@@ -437,33 +452,47 @@ Flow:
 
 1. Tim cart cua user
 2. Join sang `cart_items`
-3. Join sang `menu_items` de lay ten, gia, image
-4. Tinh summary
+3. Join sang `menu_items`
+4. Join sang `restaurants`
+5. Group item theo `restaurant_id`
+6. Tinh summary cho tung group
+7. Tinh summary tong cho cac item dang duoc chọn o UI
 
 Nen tra ve DTO:
 
-- restaurant info
-- line items
-- subtotal
-- delivery fee
-- discount
-- total
+- list `restaurantGroups`
+- trong moi group:
+  - `restaurantId`
+  - `restaurantName`
+  - `items`
+  - `subtotal`
+  - `deliveryFee`
+  - `discount`
+  - `total`
 
-### 9.3 Checkout From Cart
+### 9.3 Checkout Selected Items
 
 Flow de xuat:
 
-1. Client lay snapshot cart hien tai
-2. Client goi `rpc_create_order(...)`
-3. Neu success:
-   - xoa `cart_items`
-   - xoa hoac reset `carts`
-4. Dieu huong sang `OrderSuccessActivity`
+1. User tick item hoac tick restaurant trong man cart
+2. Client lay danh sach `selected_cart_item_ids`
+3. Client group selected item theo `restaurant_id`
+4. Voi moi restaurant group:
+   - tinh payload `items`
+   - goi `rpc_create_order(...)`
+5. Neu tat ca success:
+   - xoa cac `cart_items` da duoc checkout
+6. Dieu huong sang man thanh cong / danh sach order
 
 Phien ban tot hon:
 
-- viet them `rpc_checkout_cart(...)`
-- server tu doc cart, tao order, clear cart trong cung transaction
+- viet them `rpc_checkout_selected_cart_items(...)`
+- server tu:
+  - doc selected item
+  - group theo restaurant
+  - tao nhieu order
+  - clear selected cart items
+  - tra ve danh sach `order_ids`
 
 Khi do tranh duoc race condition:
 
@@ -479,6 +508,7 @@ Client dang chua goi `carts/cart_items`, nen:
 - chua gan chat voi user
 - chua sync da thiet bi
 - chua enforce rule phai login truoc khi add cart
+- chua group cart theo restaurant
 
 ### 10.2 Gap 2: Checkout chua dung RPC that
 
@@ -507,9 +537,10 @@ Neu business muon 1 mon co nhieu note khac nhau, can doi schema truoc khi implem
 
 1. Chot rule:
    - 1 user chi co 1 cart?
-   - 1 cart chi thuoc 1 restaurant?
+   - cart co cho phep item tu nhieu restaurant khong?
    - user chua login co bi chan add cart khong?
    - note khac nhau co tach dong khong?
+   - checkout theo item hay theo restaurant group?
 
 ### Phase 2: Noi remote cart
 
@@ -521,15 +552,19 @@ Neu business muon 1 mon co nhieu note khac nhau, can doi schema truoc khi implem
    - `updateCartItemQuantity`
    - `removeCartItem`
    - `clearCart`
+   - `getSelectedCheckoutPreview`
 3. Chan `Add to cart` neu user chua login
 4. Dieu huong sang login roi quay lai man truoc
+5. Group item theo restaurant trong `CartFragment`
+6. Them checkbox cho item va restaurant group
 
 ### Phase 3: Noi checkout that
 
-1. Client lay cart snapshot
-2. Call `rpc_create_order`
-3. Clear cart neu success
-4. Open `OrderSuccessActivity`
+1. Client lay `selected_cart_item_ids`
+2. Group theo restaurant
+3. Call `rpc_create_order` cho moi restaurant group
+4. Clear cac cart item da checkout neu success
+5. Open `OrderSuccessActivity` hoac man tong hop ket qua
 
 ### Phase 4: Realtime tracking
 
@@ -551,10 +586,12 @@ De repo de hieu va de code tiep, nen di theo thu tu nay:
 1. Bo guest cart khoi pham vi MVP
 2. Chan `Add to cart` khi user chua login
 3. Khi da login, tao remote cart theo `public.users.id`
-4. Doi `CartFragment` sang remote data tu Supabase
-5. Noi `CheckoutActivity` vao `rpc_create_order`
-6. Sau checkout success thi clear cart
-7. Noi `OrdersFragment` va `OrderTrackingActivity` vao data that tu Supabase
+4. Bo `restaurant_id` khoi `carts` trong schema moi
+5. Doi `CartFragment` sang remote data va group theo restaurant
+6. Them checkbox item / restaurant group
+7. Noi `CheckoutActivity` vao flow `selected_cart_item_ids -> multiple orders`
+8. Sau checkout success thi clear cac item da checkout
+9. Noi `OrdersFragment` va `OrderTrackingActivity` vao data that tu Supabase
 
 ## 13. Appendix: Simplified Entity Graph
 
@@ -570,8 +607,8 @@ flowchart TD
     O --> PT[payment_transactions]
     O --> PU[promotion_usages]
     O --> RV[reviews]
-    R[restaurants] --> C
-    R --> O
+    R[restaurants] --> O
     M[menu_items] --> CI
+    M --> R
     M --> OI
 ```

@@ -6,238 +6,164 @@
     android:layout_height="match_parent"
     android:background="@color/background">
 
-    <ScrollView
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:fillViewport="true"
-        app:layout_constraintBottom_toTopOf="@id/card_checkout"
+    <LinearLayout
+        android:id="@+id/layout_cart_content"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="@dimen/screen_padding"
+        android:layout_marginTop="@dimen/screen_padding"
+        android:layout_marginEnd="@dimen/screen_padding"
+        android:orientation="vertical"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent">
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:padding="@dimen/screen_padding">
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/tv_title"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/cart_header_title"
+                android:textColor="@color/text_primary"
+                android:textSize="@dimen/text_title_large"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/tv_cart_count"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:background="@drawable/bg_cart_count_chip"
+                android:paddingStart="12dp"
+                android:paddingTop="6dp"
+                android:paddingEnd="12dp"
+                android:paddingBottom="6dp"
+                android:textColor="@color/secondary"
+                android:textSize="@dimen/text_caption"
+                android:textStyle="bold"
+                tools:text="4 items" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/tv_subtitle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/spacing_sm"
+            android:text="@string/cart_grouped_subtitle"
+            android:textColor="@color/text_secondary"
+            android:textSize="@dimen/text_body" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/spacing_md"
+            android:background="@drawable/bg_cart_info_panel"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:padding="14dp">
 
             <LinearLayout
-                android:id="@+id/layout_cart_content"
-                android:layout_width="match_parent"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
+                android:layout_weight="1"
                 android:orientation="vertical">
 
-                <androidx.cardview.widget.CardView
-                    android:layout_width="match_parent"
+                <TextView
+                    android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    app:cardBackgroundColor="@color/surface"
-                    app:cardCornerRadius="24dp"
-                    app:cardElevation="1dp">
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="vertical"
-                        android:padding="20dp">
-
-                        <LinearLayout
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:gravity="center_vertical"
-                            android:orientation="horizontal">
-
-                            <TextView
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:background="@drawable/bg_cart_restaurant_chip"
-                                android:paddingStart="12dp"
-                                android:paddingTop="6dp"
-                                android:paddingEnd="12dp"
-                                android:paddingBottom="6dp"
-                                android:text="@string/cart_header_badge"
-                                android:textColor="@color/primary_dark"
-                                android:textSize="@dimen/text_caption"
-                                android:textStyle="bold" />
-
-                            <TextView
-                                android:id="@+id/tv_cart_count"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:layout_marginStart="@dimen/spacing_sm"
-                                android:background="@drawable/bg_cart_count_chip"
-                                android:paddingStart="12dp"
-                                android:paddingTop="6dp"
-                                android:paddingEnd="12dp"
-                                android:paddingBottom="6dp"
-                                android:textColor="@color/secondary"
-                                android:textSize="@dimen/text_caption"
-                                android:textStyle="bold"
-                                tools:text="4 items" />
-                        </LinearLayout>
-
-                        <TextView
-                            android:id="@+id/tv_title"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="@dimen/spacing_md"
-                            android:text="@string/cart_header_title"
-                            android:textColor="@color/text_primary"
-                            android:textSize="@dimen/text_title_large"
-                            android:textStyle="bold" />
-
-                        <TextView
-                            android:id="@+id/tv_subtitle"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="@dimen/spacing_sm"
-                            android:text="@string/cart_header_subtitle"
-                            android:textColor="@color/text_secondary"
-                            android:textSize="@dimen/text_body" />
-
-                        <LinearLayout
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="@dimen/spacing_lg"
-                            android:orientation="horizontal">
-
-                            <LinearLayout
-                                android:layout_width="0dp"
-                                android:layout_height="wrap_content"
-                                android:layout_weight="1"
-                                android:background="@drawable/bg_cart_info_panel"
-                                android:orientation="vertical"
-                                android:padding="12dp">
-
-                                <TextView
-                                    android:layout_width="wrap_content"
-                                    android:layout_height="wrap_content"
-                                    android:text="@string/cart_eta_label"
-                                    android:textColor="@color/text_hint"
-                                    android:textSize="@dimen/text_caption" />
-
-                                <TextView
-                                    android:id="@+id/tv_eta_value"
-                                    android:layout_width="wrap_content"
-                                    android:layout_height="wrap_content"
-                                    android:layout_marginTop="4dp"
-                                    android:textColor="@color/text_primary"
-                                    android:textSize="@dimen/text_body"
-                                    android:textStyle="bold"
-                                    tools:text="18-25 min" />
-                            </LinearLayout>
-
-                            <LinearLayout
-                                android:layout_width="0dp"
-                                android:layout_height="wrap_content"
-                                android:layout_marginStart="@dimen/spacing_sm"
-                                android:layout_weight="1"
-                                android:background="@drawable/bg_cart_info_panel"
-                                android:orientation="vertical"
-                                android:padding="12dp">
-
-                                <TextView
-                                    android:layout_width="wrap_content"
-                                    android:layout_height="wrap_content"
-                                    android:text="@string/cart_address_label"
-                                    android:textColor="@color/text_hint"
-                                    android:textSize="@dimen/text_caption" />
-
-                                <TextView
-                                    android:layout_width="wrap_content"
-                                    android:layout_height="wrap_content"
-                                    android:layout_marginTop="4dp"
-                                    android:text="@string/cart_address_value"
-                                    android:textColor="@color/text_primary"
-                                    android:textSize="@dimen/text_body"
-                                    android:textStyle="bold" />
-                            </LinearLayout>
-                        </LinearLayout>
-                    </LinearLayout>
-                </androidx.cardview.widget.CardView>
-
-                <androidx.cardview.widget.CardView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="@dimen/spacing_lg"
-                    app:cardBackgroundColor="@color/surface"
-                    app:cardCornerRadius="20dp"
-                    app:cardElevation="1dp">
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="vertical"
-                        android:padding="@dimen/screen_padding">
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="@string/cart_restaurant_label"
-                            android:textColor="@color/text_hint"
-                            android:textSize="@dimen/text_caption" />
-
-                        <TextView
-                            android:id="@+id/tv_restaurant_value"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="4dp"
-                            android:textColor="@color/text_primary"
-                            android:textSize="@dimen/text_subtitle"
-                            android:textStyle="bold"
-                            tools:text="Urban Bites Kitchen" />
-
-                        <TextView
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="@dimen/spacing_md"
-                            android:text="@string/cart_support_note_label"
-                            android:textColor="@color/text_hint"
-                            android:textSize="@dimen/text_caption" />
-
-                        <TextView
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="4dp"
-                            android:text="@string/cart_support_note_value"
-                            android:textColor="@color/text_secondary"
-                            android:textSize="@dimen/text_body" />
-                    </LinearLayout>
-                </androidx.cardview.widget.CardView>
+                    android:text="@string/cart_eta_label"
+                    android:textColor="@color/text_hint"
+                    android:textSize="@dimen/text_caption" />
 
                 <TextView
-                    android:layout_width="match_parent"
+                    android:id="@+id/tv_eta_value"
+                    android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="@dimen/spacing_xl"
-                    android:text="@string/cart_review_title"
+                    android:layout_marginTop="4dp"
                     android:textColor="@color/text_primary"
-                    android:textSize="@dimen/text_subtitle"
-                    android:textStyle="bold" />
-
-                <androidx.recyclerview.widget.RecyclerView
-                    android:id="@+id/rv_cart_items"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="@dimen/spacing_md"
-                    android:clipToPadding="false"
-                    android:nestedScrollingEnabled="false"
-                    tools:listitem="@layout/component_cart_item" />
+                    android:textSize="@dimen/text_body"
+                    android:textStyle="bold"
+                    tools:text="18-25 min" />
             </LinearLayout>
 
-            <include
-                android:id="@+id/empty_state"
-                layout="@layout/component_empty_state"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:visibility="gone" />
+            <View
+                android:layout_width="1dp"
+                android:layout_height="32dp"
+                android:background="@color/divider" />
 
-            <Button
-                android:id="@+id/btn_explore_menus"
-                style="@style/ButtonStyle.Outline"
-                android:layout_width="match_parent"
-                android:layout_height="52dp"
-                android:layout_marginTop="@dimen/spacing_md"
-                android:text="@string/cart_empty_action"
-                android:visibility="gone" />
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical"
+                android:paddingStart="14dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/cart_restaurant_label"
+                    android:textColor="@color/text_hint"
+                    android:textSize="@dimen/text_caption" />
+
+                <TextView
+                    android:id="@+id/tv_restaurant_value"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:textColor="@color/text_primary"
+                    android:textSize="@dimen/text_body"
+                    android:textStyle="bold"
+                    tools:text="2 nha hang da chon" />
+            </LinearLayout>
         </LinearLayout>
-    </ScrollView>
+    </LinearLayout>
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/rv_cart_items"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:layout_marginStart="@dimen/screen_padding"
+        android:layout_marginTop="@dimen/spacing_md"
+        android:layout_marginEnd="@dimen/screen_padding"
+        android:clipToPadding="false"
+        android:paddingBottom="@dimen/spacing_md"
+        app:layout_constraintBottom_toTopOf="@id/card_checkout"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/layout_cart_content"
+        tools:listitem="@layout/component_cart_item" />
+
+    <include
+        android:id="@+id/empty_state"
+        layout="@layout/component_empty_state"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="@dimen/screen_padding"
+        android:layout_marginEnd="@dimen/screen_padding"
+        android:visibility="gone"
+        app:layout_constraintBottom_toTopOf="@id/btn_explore_menus"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/layout_cart_content" />
+
+    <Button
+        android:id="@+id/btn_explore_menus"
+        style="@style/ButtonStyle.Outline"
+        android:layout_width="0dp"
+        android:layout_height="52dp"
+        android:layout_marginStart="@dimen/screen_padding"
+        android:layout_marginEnd="@dimen/screen_padding"
+        android:layout_marginBottom="@dimen/spacing_md"
+        android:text="@string/cart_empty_action"
+        android:visibility="gone"
+        app:layout_constraintBottom_toTopOf="@id/card_checkout"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent" />
 
     <androidx.cardview.widget.CardView
         android:id="@+id/card_checkout"
@@ -262,7 +188,7 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="@string/cart_payment_title"
+                android:text="@string/cart_order_summary_title"
                 android:textColor="@color/text_primary"
                 android:textSize="@dimen/text_subtitle"
                 android:textStyle="bold" />
@@ -311,52 +237,6 @@
                     android:textColor="@color/text_primary"
                     android:textSize="@dimen/text_body"
                     tools:text="0 ₫" />
-            </LinearLayout>
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="6dp"
-                android:orientation="horizontal">
-
-                <TextView
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:text="@string/cart_service_fee"
-                    android:textColor="@color/text_secondary"
-                    android:textSize="@dimen/text_body" />
-
-                <TextView
-                    android:id="@+id/tv_service_value"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:textColor="@color/text_primary"
-                    android:textSize="@dimen/text_body"
-                    tools:text="7.000 ₫" />
-            </LinearLayout>
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="6dp"
-                android:orientation="horizontal">
-
-                <TextView
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:text="@string/cart_savings"
-                    android:textColor="@color/success"
-                    android:textSize="@dimen/text_body" />
-
-                <TextView
-                    android:id="@+id/tv_savings_value"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:textColor="@color/success"
-                    android:textSize="@dimen/text_body"
-                    tools:text="12.000 ₫" />
             </LinearLayout>
 
             <View
