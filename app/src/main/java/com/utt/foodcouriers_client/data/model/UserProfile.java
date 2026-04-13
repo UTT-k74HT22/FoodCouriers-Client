@@ -21,6 +21,9 @@ public class UserProfile implements Serializable {
     @SerializedName("phone")
     private String phone;
 
+    @SerializedName("avatar_url")
+    private String avatarUrl;
+
     @SerializedName("role")
     private String role;
 
@@ -62,6 +65,22 @@ public class UserProfile implements Serializable {
 
     public String getPhone() {
         return phone;
+    }
+
+    public String getAvatarUrl() {
+        return avatarUrl;
+    }
+
+    public void setAvatarUrl(String avatarUrl) {
+        this.avatarUrl = avatarUrl;
+    }
+
+    public void setFullName(String fullName) {
+        this.fullName = fullName;
+    }
+
+    public void setPhone(String phone) {
+        this.phone = phone;
     }
 
     public String getRole() {

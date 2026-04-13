@@ -11,6 +11,8 @@ import com.google.gson.annotations.SerializedName;
 import java.util.concurrent.TimeUnit;
 
 import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.RequestBody;
 
 public abstract class BaseSupabaseClient {
 
