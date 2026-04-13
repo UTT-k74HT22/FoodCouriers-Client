@@ -28,7 +28,6 @@ public class SocialAuthCallbackActivity extends BaseActivity {
     private CircularProgressIndicator progressCallback;
     private Button btnPrimaryAction;
     private Button btnSecondaryAction;
-
     private SocialAuthRepository socialAuthRepository;
     private SocialAuthResult lastResult;
 
@@ -83,12 +82,14 @@ public class SocialAuthCallbackActivity extends BaseActivity {
     }
 
     private void processCallback(Uri data) {
-        socialAuthRepository.handleCallback(data, new com.utt.foodcouriers_client.data.common.RepositoryCallback<SocialAuthResult>() {
+        socialAuthRepository.handleCallback(this, data, new com.utt.foodcouriers_client.data.common.RepositoryCallback<SocialAuthResult>() {
             @Override
             public void onSuccess(SocialAuthResult result) {
                 lastResult = result;
+
                 if (result.isSuccessful()) {
-                    renderSuccess(result);
+                    showSuccessBanner(getString(R.string.login_success));
+                    openMain();
                 } else {
                     renderError(result);
                 }
@@ -99,6 +100,13 @@ public class SocialAuthCallbackActivity extends BaseActivity {
                 renderFallbackError(error);
             }
         });
+    }
+
+    private void openMain() {
+        Intent intent = new Intent(this, com.utt.foodcouriers_client.ui.main.MainActivity.class);
+        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+        startActivity(intent);
+        finish();
     }
 
     private void renderProcessing() {
@@ -168,7 +176,8 @@ public class SocialAuthCallbackActivity extends BaseActivity {
         socialAuthRepository.retryProfileBootstrap(this, new com.utt.foodcouriers_client.data.common.RepositoryCallback<Boolean>() {
             @Override
             public void onSuccess(Boolean result) {
-                showSuccessBanner(getString(R.string.social_auth_stub_bootstrap));
+                showSuccessBanner(getString(R.string.login_success));
+                openMain();
             }
 
             @Override

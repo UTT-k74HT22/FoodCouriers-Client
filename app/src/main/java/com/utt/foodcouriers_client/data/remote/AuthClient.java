@@ -224,12 +224,26 @@ public class AuthClient extends BaseSupabaseClient {
         });
     }
 
+    public void bootstrapSocialSession(String accessToken, String refreshToken, ApiCallback<UserProfile> callback) {
+        if (isNullOrBlank(accessToken) || isNullOrBlank(refreshToken)) {
+            postError(callback, "Missing social auth session tokens");
+            return;
+        }
+
+        setSession(accessToken, refreshToken);
+        fetchCurrentUserProfile(true, callback);
+    }
+
     public void getCurrentUser(ApiCallback<UserProfile> callback) {
         if (!isAuthenticated()) {
             postError(callback, "Not authenticated");
             return;
         }
 
+        fetchCurrentUserProfile(false, callback);
+    }
+
+    private void fetchCurrentUserProfile(boolean createMissingProfile, ApiCallback<UserProfile> callback) {
         Request request = new Request.Builder()
                 .url(SupabaseConfig.AUTH_URL + "/user")
                 .get()
@@ -258,7 +272,28 @@ public class AuthClient extends BaseSupabaseClient {
                         return;
                     }
 
-                    fetchUserProfile(authUser.getId(), callback);
+                    fetchUserProfile(authUser.getId(), new ApiCallback<UserProfile>() {
+                        @Override
+                        public void onSuccess(UserProfile result) {
+                            postSuccess(callback, result);
+                        }
+
+                        @Override
+                        public void onError(String error) {
+                            if (!createMissingProfile || !isProfileMissingError(error)) {
+                                postError(callback, error);
+                                return;
+                            }
+
+                            createUserProfile(
+                                    authUser.getId(),
+                                    authUser.resolveDisplayName(),
+                                    authUser.resolvePhone(),
+                                    authUser.resolveEmail(),
+                                    callback
+                            );
+                        }
+                    });
                 }
             }
         });
@@ -343,6 +378,14 @@ public class AuthClient extends BaseSupabaseClient {
         });
     }
 
+    private boolean isProfileMissingError(String error) {
+        return error != null && error.toLowerCase().contains("profile not found");
+    }
+
+    private static boolean isNullOrBlank(String value) {
+        return value == null || value.trim().isEmpty();
+    }
+
     private static class AuthResponse {
         @SerializedName("access_token")
         private String accessToken;
@@ -368,6 +411,10 @@ public class AuthClient extends BaseSupabaseClient {
     private static class AuthUser {
         private String id;
         private String email;
+        @SerializedName("phone")
+        private String phone;
+        @SerializedName("user_metadata")
+        private UserMetadata userMetadata;
 
         public String getId() {
             return id;
@@ -376,5 +423,48 @@ public class AuthClient extends BaseSupabaseClient {
         public String getEmail() {
             return email;
         }
+
+        public String resolveEmail() {
+            if (!isNullOrBlank(email)) {
+                return email;
+            }
+            return userMetadata != null ? userMetadata.email : null;
+        }
+
+        public String resolvePhone() {
+            if (!isNullOrBlank(phone)) {
+                return phone;
+            }
+            return userMetadata != null ? userMetadata.phone : null;
+        }
+
+        public String resolveDisplayName() {
+            if (userMetadata != null) {
+                if (!isNullOrBlank(userMetadata.fullName)) {
+                    return userMetadata.fullName;
+                }
+                if (!isNullOrBlank(userMetadata.name)) {
+                    return userMetadata.name;
+                }
+            }
+
+            String resolvedEmail = resolveEmail();
+            if (!isNullOrBlank(resolvedEmail) && resolvedEmail.contains("@")) {
+                return resolvedEmail.substring(0, resolvedEmail.indexOf('@'));
+            }
+
+            return "Customer";
+        }
+    }
+
+    private static class UserMetadata {
+        @SerializedName("full_name")
+        private String fullName;
+        @SerializedName("name")
+        private String name;
+        @SerializedName("phone")
+        private String phone;
+        @SerializedName("email")
+        private String email;
     }
 }

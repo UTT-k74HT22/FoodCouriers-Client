@@ -16,6 +16,7 @@ import com.utt.foodcouriers_client.databinding.FragmentProfileBinding;
 import com.utt.foodcouriers_client.ui.auth.LoginActivity;
 import com.utt.foodcouriers_client.ui.common.BaseFragment;
 import com.utt.foodcouriers_client.utils.SessionManager;
+import com.utt.foodcouriers_client.utils.SessionStore;
 
 public class ProfileFragment extends BaseFragment {
 
@@ -51,6 +52,7 @@ public class ProfileFragment extends BaseFragment {
                 @Override
                 public void onSuccess(Void result) {
                     sessionManager.clearSession();
+                    SessionStore.clearSession(requireContext());
                     requireActivity().runOnUiThread(() -> {
                         Toast.makeText(requireContext(), R.string.auth_login_success, Toast.LENGTH_SHORT).show();
                         startActivity(new Intent(requireContext(), LoginActivity.class));
@@ -61,6 +63,7 @@ public class ProfileFragment extends BaseFragment {
                 @Override
                 public void onError(String error) {
                     sessionManager.clearSession();
+                    SessionStore.clearSession(requireContext());
                     requireActivity().runOnUiThread(() -> {
                         startActivity(new Intent(requireContext(), LoginActivity.class));
                         requireActivity().finish();

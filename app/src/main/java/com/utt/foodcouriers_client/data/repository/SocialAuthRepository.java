@@ -35,10 +35,11 @@ public class SocialAuthRepository {
     }
 
     public void handleCallback(
+            @NonNull Context context,
             @Nullable Uri uri,
             @NonNull RepositoryCallback<SocialAuthResult> callback
     ) {
-        socialAuthManager.handleCallback(uri, callback);
+        socialAuthManager.handleCallback(context, uri, callback);
     }
 
     public void retryProfileBootstrap(

@@ -5,15 +5,14 @@ import android.os.Bundle;
 import android.text.TextUtils;
 import android.util.Log;
 import android.util.Patterns;
-import android.view.View;
 import android.widget.Button;
 import android.widget.ImageButton;
 import android.widget.TextView;
-
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textfield.TextInputLayout;
 import com.utt.foodcouriers_client.R;
 import com.utt.foodcouriers_client.data.auth.SocialAuthProvider;
+import com.utt.foodcouriers_client.data.common.RepositoryCallback;
 import com.utt.foodcouriers_client.data.model.UserProfile;
 import com.utt.foodcouriers_client.data.repository.AuthRepository;
 import com.utt.foodcouriers_client.data.repository.SocialAuthRepository;
@@ -144,7 +143,7 @@ public class LoginActivity extends BaseActivity {
         Log.d(TAG, "performLogin: email=" + email);
         showLoading(true);
 
-        authRepository.login(email, password, new com.utt.foodcouriers_client.data.common.RepositoryCallback<UserProfile>() {
+        authRepository.login(email, password, new RepositoryCallback<UserProfile>() {
             @Override
             public void onSuccess(UserProfile user) {
                 Log.d(TAG, "performLogin onSuccess: user=" + (user != null ? user.getEmail() : "null"));
@@ -152,7 +151,7 @@ public class LoginActivity extends BaseActivity {
 
                 if (!user.isActive()) {
                     Log.w(TAG, "performLogin: user account is disabled");
-                    authRepository.logout(new com.utt.foodcouriers_client.data.common.RepositoryCallback<Boolean>() {
+                    authRepository.logout(new RepositoryCallback<Boolean>() {
                         @Override
                         public void onSuccess(Boolean result) {
                         }
@@ -185,7 +184,7 @@ public class LoginActivity extends BaseActivity {
     }
 
     private void startSocialAuth(SocialAuthProvider provider) {
-        socialAuthRepository.startAuth(this, provider, new com.utt.foodcouriers_client.data.common.RepositoryCallback<Boolean>() {
+        socialAuthRepository.startAuth(this, provider, new RepositoryCallback<Boolean>() {
             @Override
             public void onSuccess(Boolean result) {
             }
