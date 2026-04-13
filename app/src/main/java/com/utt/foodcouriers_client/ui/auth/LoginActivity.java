@@ -10,12 +10,13 @@ import android.widget.Button;
 import android.widget.ImageButton;
 import android.widget.TextView;
 
-import com.google.android.material.progressindicator.CircularProgressIndicator;
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textfield.TextInputLayout;
 import com.utt.foodcouriers_client.R;
+import com.utt.foodcouriers_client.data.auth.SocialAuthProvider;
 import com.utt.foodcouriers_client.data.model.UserProfile;
 import com.utt.foodcouriers_client.data.repository.AuthRepository;
+import com.utt.foodcouriers_client.data.repository.SocialAuthRepository;
 import com.utt.foodcouriers_client.ui.common.BaseActivity;
 import com.utt.foodcouriers_client.ui.main.MainActivity;
 import com.utt.foodcouriers_client.utils.SessionManager;
@@ -32,8 +33,11 @@ public class LoginActivity extends BaseActivity {
     private Button btnLogin;
     private TextView tvSwitchToRegister;
     private TextView tvForgotPassword;
+    private android.view.View cardGoogleAuth;
+    private android.view.View cardFacebookAuth;
 
     private AuthRepository authRepository;
+    private SocialAuthRepository socialAuthRepository;
     private SessionManager sessionManager;
 
     @Override
@@ -48,6 +52,7 @@ public class LoginActivity extends BaseActivity {
         }
 
         authRepository = AuthRepository.getInstance();
+        socialAuthRepository = SocialAuthRepository.getInstance();
 
         initViews();
         setupListeners();
@@ -61,6 +66,8 @@ public class LoginActivity extends BaseActivity {
         btnLogin = findViewById(R.id.btnLogin);
         tvSwitchToRegister = findViewById(R.id.tvSwitchToRegister);
         tvForgotPassword = findViewById(R.id.tvForgotPassword);
+        cardGoogleAuth = findViewById(R.id.cardGoogleAuth);
+        cardFacebookAuth = findViewById(R.id.cardFacebookAuth);
     }
 
     private void setupListeners() {
@@ -69,7 +76,13 @@ public class LoginActivity extends BaseActivity {
 
         registerAction();
         forgotPasswordAction();
+        socialAuthActions();
         loginAction();
+    }
+
+    private void socialAuthActions() {
+        cardGoogleAuth.setOnClickListener(v -> startSocialAuth(SocialAuthProvider.GOOGLE));
+        cardFacebookAuth.setOnClickListener(v -> startSocialAuth(SocialAuthProvider.FACEBOOK));
     }
 
     private void registerAction() {
@@ -167,6 +180,19 @@ public class LoginActivity extends BaseActivity {
                 Log.e(TAG, "performLogin onError: " + error);
                 showLoading(false);
                 ToastBanner.showError(error);
+            }
+        });
+    }
+
+    private void startSocialAuth(SocialAuthProvider provider) {
+        socialAuthRepository.startAuth(this, provider, new com.utt.foodcouriers_client.data.common.RepositoryCallback<Boolean>() {
+            @Override
+            public void onSuccess(Boolean result) {
+            }
+
+            @Override
+            public void onError(String error) {
+                showWarningBanner(error);
             }
         });
     }
