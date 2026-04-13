@@ -18,6 +18,7 @@ public class SessionManager {
     private static final String KEY_USER_AVATAR = "user_avatar";
     private static final String KEY_USER_ROLE = "user_role";
     private static final String KEY_TOKEN_EXPIRES_AT = "token_expires_at";
+    private static final String KEY_CART_ID = "cart_id";
 
     private static SessionManager instance;
     private final SharedPreferences preferences;
@@ -108,6 +109,14 @@ public class SessionManager {
 
     public long getTokenExpiresAt() {
         return preferences.getLong(KEY_TOKEN_EXPIRES_AT, 0L);
+    }
+
+    public String getCartId() {
+        return preferences.getString(KEY_CART_ID, null);
+    }
+
+    public void setCartId(String cartId) {
+        preferences.edit().putString(KEY_CART_ID, cartId).apply();
     }
 
     public boolean isTokenExpired() {

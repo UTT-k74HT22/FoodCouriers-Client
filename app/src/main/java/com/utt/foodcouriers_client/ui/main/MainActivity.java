@@ -25,6 +25,7 @@ public class MainActivity extends BaseActivity {
     public static final String EXTRA_OPEN_CART = "open_cart";
     private ActivityMainBinding binding;
     private SessionManager sessionManager;
+    private int currentPrimaryNavId = R.id.navigation_home;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -37,7 +38,8 @@ public class MainActivity extends BaseActivity {
         applyBottomWindowInset(binding.bottomNavigation);
         setSupportActionBar(binding.topToolbar);
         binding.topToolbar.setNavigationOnClickListener(v -> getOnBackPressedDispatcher().onBackPressed());
-        getSupportFragmentManager().addOnBackStackChangedListener(this::syncChrome);
+        getSupportFragmentManager().addOnBackStackChangedListener(() ->
+                binding.getRoot().post(this::syncChrome));
 
         binding.btnCart.setOnClickListener(v -> openCartScreen());
 
@@ -46,18 +48,22 @@ public class MainActivity extends BaseActivity {
 
         binding.bottomNavigation.setOnItemSelectedListener(item -> {
             if (item.getItemId() == R.id.navigation_home) {
+                currentPrimaryNavId = R.id.navigation_home;
                 showPrimaryFragment(new HomeFragment(), getString(R.string.nav_home));
                 return true;
             }
             if (item.getItemId() == R.id.navigation_discover) {
+                currentPrimaryNavId = R.id.navigation_discover;
                 showPrimaryFragment(new DiscoverFragment(), getString(R.string.nav_discover));
                 return true;
             }
             if (item.getItemId() == R.id.navigation_orders) {
+                currentPrimaryNavId = R.id.navigation_orders;
                 showPrimaryFragment(new OrdersFragment(), getString(R.string.nav_orders));
                 return true;
             }
             if (item.getItemId() == R.id.navigation_profile) {
+                currentPrimaryNavId = R.id.navigation_profile;
                 showPrimaryFragment(new ProfileFragment(), getString(R.string.nav_profile));
                 return true;
             }
@@ -79,6 +85,14 @@ public class MainActivity extends BaseActivity {
     protected void onResume() {
         super.onResume();
         loadCartBadge();
+        syncToolbarTitle();
+    }
+
+    private void syncToolbarTitle() {
+        boolean isSecondaryScreen = getSupportFragmentManager().getBackStackEntryCount() > 0;
+        if (!isSecondaryScreen) {
+            binding.topToolbar.setTitle(resolvePrimaryTitle());
+        }
     }
 
     private void loadCartBadge() {
@@ -108,6 +122,13 @@ public class MainActivity extends BaseActivity {
         }
     }
 
+    public void setToolbarTitle(String title) {
+        runOnUiThread(() -> {
+            binding.topToolbar.setTitle(title);
+            binding.topToolbar.invalidate();
+        });
+    }
+
     public void openCartScreen() {
         if (!sessionManager.isLoggedIn()) {
             startActivity(new Intent(this, LoginActivity.class));
@@ -117,7 +138,6 @@ public class MainActivity extends BaseActivity {
     }
 
     public void openSecondaryFragment(Fragment fragment, String title) {
-        binding.topToolbar.setTitle(title);
         getSupportFragmentManager()
                 .beginTransaction()
                 .replace(R.id.fragment_container, fragment)
@@ -141,20 +161,23 @@ public class MainActivity extends BaseActivity {
         binding.bottomNavigation.setVisibility(isSecondaryScreen ? View.GONE : View.VISIBLE);
         if (isSecondaryScreen) {
             binding.topToolbar.setNavigationIcon(R.drawable.ic_back);
+            binding.topToolbar.setNavigationOnClickListener(v -> getOnBackPressedDispatcher().onBackPressed());
         } else {
             binding.topToolbar.setNavigationIcon(null);
+            String title = resolvePrimaryTitle();
+            binding.topToolbar.setTitle(title);
+            binding.topToolbar.invalidate();
         }
     }
 
     private String resolvePrimaryTitle() {
-        int selectedItemId = binding.bottomNavigation.getSelectedItemId();
-        if (selectedItemId == R.id.navigation_discover) {
+        if (currentPrimaryNavId == R.id.navigation_discover) {
             return getString(R.string.nav_discover);
         }
-        if (selectedItemId == R.id.navigation_orders) {
+        if (currentPrimaryNavId == R.id.navigation_orders) {
             return getString(R.string.nav_orders);
         }
-        if (selectedItemId == R.id.navigation_profile) {
+        if (currentPrimaryNavId == R.id.navigation_profile) {
             return getString(R.string.nav_profile);
         }
         return getString(R.string.nav_home);

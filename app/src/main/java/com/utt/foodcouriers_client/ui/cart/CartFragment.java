@@ -42,6 +42,7 @@ public class CartFragment extends BaseFragment {
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
+        setToolbarTitle(getString(R.string.cart_title));
 
         viewModel = new ViewModelProvider(this).get(CartViewModel.class);
         if (!viewModel.isLoggedIn(requireContext())) {
@@ -105,7 +106,6 @@ public class CartFragment extends BaseFragment {
             }
 
             binding.tvCartCount.setText(getString(R.string.cart_item_count, summary.getItemCount()));
-            binding.tvEtaValue.setText(getString(R.string.cart_grouped_eta_hint));
             binding.tvSubtotalValue.setText(currencyFormatter.format(summary.getSubtotal()));
             binding.tvDeliveryValue.setText(currencyFormatter.format(summary.getDeliveryFee()));
             binding.tvTotalPrice.setText(currencyFormatter.format(summary.getTotal()));
@@ -121,11 +121,7 @@ public class CartFragment extends BaseFragment {
             if (empty) {
                 binding.emptyState.tvEmptyTitle.setText(R.string.cart_empty_title);
                 binding.emptyState.tvEmptyMessage.setText(R.string.cart_empty_message);
-                binding.tvTitle.setText(R.string.cart_title);
-                binding.tvSubtitle.setText(R.string.cart_empty_header_subtitle);
-            } else {
-                binding.tvTitle.setText(R.string.cart_header_title);
-                binding.tvSubtitle.setText(R.string.cart_grouped_subtitle);
+                binding.tvCartCount.setText("");
             }
         });
 
@@ -138,10 +134,6 @@ public class CartFragment extends BaseFragment {
     }
 
     private void renderSelectionSummary(CartItemAdapter.SelectionState selectionState) {
-        binding.tvRestaurantValue.setText(getString(
-                R.string.cart_restaurant_selected_count,
-                selectionState.getSelectedRestaurantCount()
-        ));
         binding.tvSubtotalValue.setText(currencyFormatter.format(selectionState.getSubtotal()));
         binding.tvDeliveryValue.setText(currencyFormatter.format(selectionState.getDeliveryFee()));
         binding.tvTotalPrice.setText(currencyFormatter.format(selectionState.getTotal()));
