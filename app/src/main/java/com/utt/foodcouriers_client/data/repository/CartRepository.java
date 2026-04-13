@@ -135,45 +135,111 @@ public class CartRepository {
             return;
         }
 
-        getOrCreateCart(context, new RepositoryCallback<CartMeta>() {
+        String cachedCartId = sessionManager.getCartId();
+
+        if (cachedCartId != null && !cachedCartId.isEmpty()) {
+            performUpsertAndFetchState(context, cachedCartId, menuItem.getId(), quantity, note, callback);
+        } else {
+            getOrCreateCart(context, new RepositoryCallback<CartMeta>() {
+                @Override
+                public void onSuccess(CartMeta cartMeta) {
+                    if (cartMeta != null && cartMeta.getCartId() != null) {
+                        sessionManager.setCartId(cartMeta.getCartId());
+                    }
+                    performUpsertAndFetchState(context, cartMeta.getCartId(), menuItem.getId(), quantity, note, callback);
+                }
+
+                @Override
+                public void onError(String error) {
+                    postError(callback, error);
+                }
+            });
+        }
+    }
+
+    private void performUpsertAndFetchState(
+            Context context,
+            String cartId,
+            String menuItemId,
+            int quantity,
+            String note,
+            RepositoryCallback<CartState> callback
+    ) {
+        if (quantity <= 0) {
+            fetchCartStateForDelete(context, menuItemId, callback);
+            return;
+        }
+
+        upsertCartItemOptimized(context, cartId, menuItemId, quantity, note, new RepositoryCallback<Boolean>() {
             @Override
-            public void onSuccess(CartMeta cartMeta) {
-                fetchCartState(context, new RepositoryCallback<CartState>() {
-                    @Override
-                    public void onSuccess(CartState state) {
-                        CartItem existingItem = findCartItemByMenuItemId(state.getItems(), menuItem.getId());
-                        if (existingItem == null) {
-                            if (quantity <= 0) {
-                                postSuccess(callback, state);
-                                return;
-                            }
-                            upsertCartItem(context, cartMeta.getCartId(), menuItem.getId(), quantity, note, new RepositoryCallback<Boolean>() {
-                                @Override
-                                public void onSuccess(Boolean result) {
-                                    fetchCartState(context, callback);
-                                }
-
-                                @Override
-                                public void onError(String error) {
-                                    postError(callback, error);
-                                }
-                            });
-                            return;
-                        }
-
-                        updateCartItemQuantity(context, existingItem.getId(), quantity, callback);
-                    }
-
-                    @Override
-                    public void onError(String error) {
-                        postError(callback, error);
-                    }
-                });
+            public void onSuccess(Boolean result) {
+                fetchCartState(context, callback);
             }
 
             @Override
             public void onError(String error) {
                 postError(callback, error);
+            }
+        });
+    }
+
+    private void fetchCartStateForDelete(Context context, String menuItemId, RepositoryCallback<CartState> callback) {
+        fetchCartState(context, new RepositoryCallback<CartState>() {
+            @Override
+            public void onSuccess(CartState state) {
+                CartItem existingItem = findCartItemByMenuItemId(state.getItems(), menuItemId);
+                if (existingItem == null) {
+                    postSuccess(callback, state);
+                    return;
+                }
+                removeItem(context, existingItem.getId(), callback);
+            }
+
+            @Override
+            public void onError(String error) {
+                postError(callback, error);
+            }
+        });
+    }
+
+    private void upsertCartItemOptimized(
+            Context context,
+            String cartId,
+            String menuItemId,
+            int quantity,
+            String note,
+            RepositoryCallback<Boolean> callback
+    ) {
+        SessionManager sessionManager = SessionManager.getInstance(context);
+        String url = SupabaseConfig.REST_URL + "/cart_items?on_conflict=cart_id,menu_item_id";
+
+        JsonObject body = new JsonObject();
+        body.addProperty("cart_id", cartId);
+        body.addProperty("menu_item_id", menuItemId);
+        body.addProperty("quantity", quantity);
+        if (note != null && !note.trim().isEmpty()) {
+            body.addProperty("note", note.trim());
+        }
+
+        Request request = authorizedBuilder(sessionManager, url)
+                .addHeader(SupabaseConfig.HEADER_PREFER, "resolution=merge-duplicates," + SupabaseConfig.PREF_RETURN_REPRESENTATION)
+                .post(RequestBody.create(body.toString(), JSON))
+                .build();
+
+        client.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(@NonNull Call call, @NonNull IOException e) {
+                postError(callback, "Failed to add item to cart: " + e.getMessage());
+            }
+
+            @Override
+            public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
+                String responseBody = readBody(response);
+                if (!response.isSuccessful()) {
+                    postError(callback, "Failed to add item to cart (" + response.code() + ")");
+                    return;
+                }
+                postSuccess(callback, true);
             }
         });
     }
@@ -328,7 +394,8 @@ public class CartRepository {
         String url = SupabaseConfig.REST_URL
                 + "/cart_items?cart_id=eq."
                 + cartMeta.getCartId()
-                + "&select=id,quantity,note,menu_items(id,restaurant_id,name,price,image_url,restaurants(id,name,delivery_fee))";
+                + "&select=id,quantity,note,menu_items(id,restaurant_id,name,price,image_url,restaurants(id,name,delivery_fee))"
+                + "&order=id";
 
         Request request = authorizedBuilder(sessionManager, url)
                 .get()
@@ -441,6 +508,12 @@ public class CartRepository {
             return;
         }
 
+        String cachedCartId = sessionManager.getCartId();
+        if (cachedCartId != null && !cachedCartId.isEmpty()) {
+            postSuccess(callback, new CartMeta(cachedCartId));
+            return;
+        }
+
         String url = SupabaseConfig.REST_URL
                 + "/carts?user_id=eq."
                 + userId
@@ -471,7 +544,11 @@ public class CartRepository {
                 }
 
                 JsonObject cart = array.get(0).getAsJsonObject();
-                postSuccess(callback, new CartMeta(getAsString(cart, "id")));
+                String cartId = getAsString(cart, "id");
+                if (cartId != null) {
+                    SessionManager.getInstance(context).setCartId(cartId);
+                }
+                postSuccess(callback, new CartMeta(cartId));
             }
         });
     }
@@ -514,7 +591,11 @@ public class CartRepository {
                 }
 
                 JsonObject cart = array.get(0).getAsJsonObject();
-                postSuccess(callback, new CartMeta(getAsString(cart, "id")));
+                String cartId = getAsString(cart, "id");
+                if (cartId != null) {
+                    SessionManager.getInstance(context).setCartId(cartId);
+                }
+                postSuccess(callback, new CartMeta(cartId));
             }
         });
     }

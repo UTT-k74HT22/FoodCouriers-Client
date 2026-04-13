@@ -82,30 +82,30 @@ public class DiscoverViewModel extends BaseViewModel {
                 for (Restaurant restaurant : restaurants) {
                     catalogRepository.getMenuItemsByRestaurant(restaurant.getId(), new RepositoryCallback<List<MenuItem>>() {
 @Override
-            public void onSuccess(List<MenuItem> menuItems) {
-                synchronized (result) {
-                    result.add(new RestaurantWithMenuAdapter.RestaurantWithMenu(restaurant, menuItems));
-                    pending[0]--;
-                    if (pending[0] == 0) {
-                        setLoading(false);
-                        allRestaurantsWithMenus = new ArrayList<>(result);
-                        filterRestaurants();
-                    }
-                }
-            }
+public void onSuccess(List<MenuItem> menuItems) {
+    synchronized (result) {
+        result.add(new RestaurantWithMenuAdapter.RestaurantWithMenu(restaurant, menuItems));
+        pending[0]--;
+        if (pending[0] == 0) {
+            setLoading(false);
+            allRestaurantsWithMenus = new ArrayList<>(result);
+            filterRestaurants();
+        }
+    }
+}
 
-            @Override
-            public void onError(String error) {
-                synchronized (result) {
-                    result.add(new RestaurantWithMenuAdapter.RestaurantWithMenu(restaurant, new ArrayList<>()));
-                    pending[0]--;
-                    if (pending[0] == 0) {
-                        setLoading(false);
-                        allRestaurantsWithMenus = new ArrayList<>(result);
-                        filterRestaurants();
-                    }
-                }
-            }
+@Override
+public void onError(String error) {
+    synchronized (result) {
+        result.add(new RestaurantWithMenuAdapter.RestaurantWithMenu(restaurant, new ArrayList<>()));
+        pending[0]--;
+        if (pending[0] == 0) {
+            setLoading(false);
+            allRestaurantsWithMenus = new ArrayList<>(result);
+            filterRestaurants();
+        }
+    }
+}
                     });
                 }
             }

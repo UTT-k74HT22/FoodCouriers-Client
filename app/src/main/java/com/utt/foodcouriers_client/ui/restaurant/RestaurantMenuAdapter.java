@@ -4,7 +4,6 @@ import android.content.Context;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
@@ -13,7 +12,7 @@ import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.bumptech.glide.Glide;
-import com.google.android.material.button.MaterialButton;
+import com.google.android.material.card.MaterialCardView;
 import com.utt.foodcouriers_client.R;
 import com.utt.foodcouriers_client.data.model.MenuItem;
 
@@ -160,9 +159,8 @@ public class RestaurantMenuAdapter extends RecyclerView.Adapter<RestaurantMenuAd
         private final TextView tvFoodName;
         private final TextView tvFoodDescription;
         private final TextView tvFoodPrice;
-        private final FrameLayout flQuantity;
         private final LinearLayout llQuantity;
-        private final MaterialButton btnAdd;
+        private final MaterialCardView btnAdd;
         private final TextView btnDecrease;
         private final TextView btnIncrease;
         private final TextView tvQuantity;
@@ -173,7 +171,6 @@ public class RestaurantMenuAdapter extends RecyclerView.Adapter<RestaurantMenuAd
             tvFoodName = itemView.findViewById(R.id.tv_food_name);
             tvFoodDescription = itemView.findViewById(R.id.tv_food_description);
             tvFoodPrice = itemView.findViewById(R.id.tv_food_price);
-            flQuantity = itemView.findViewById(R.id.fl_quantity);
             llQuantity = itemView.findViewById(R.id.ll_quantity);
             btnAdd = itemView.findViewById(R.id.btn_add);
             btnDecrease = itemView.findViewById(R.id.btn_decrease);

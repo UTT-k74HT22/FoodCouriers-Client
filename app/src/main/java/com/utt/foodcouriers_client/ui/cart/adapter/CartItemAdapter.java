@@ -10,7 +10,7 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
-import androidx.core.content.ContextCompat;
+import androidx.recyclerview.widget.DiffUtil;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.bumptech.glide.Glide;
@@ -43,9 +43,7 @@ public class CartItemAdapter extends RecyclerView.Adapter<CartItemAdapter.GroupV
 
     public interface CartItemListener {
         void onIncrease(String cartItemId);
-
         void onDecrease(String cartItemId);
-
         void onSelectionChanged(SelectionState selectionState);
     }
 
@@ -55,16 +53,25 @@ public class CartItemAdapter extends RecyclerView.Adapter<CartItemAdapter.GroupV
     }
 
     public void submitGroups(List<CartRestaurantGroup> newGroups) {
-        groups.clear();
-        Set<String> availableIds = new LinkedHashSet<>();
+        if (newGroups == null || newGroups.isEmpty()) {
+            boolean wasEmpty = groups.isEmpty();
+            groups.clear();
+            if (!wasEmpty) {
+                notifyDataSetChanged();
+            }
+            selectedCartItemIds.clear();
+            notifySelectionChanged();
+            return;
+        }
 
-        if (newGroups != null) {
-            groups.addAll(newGroups);
-            for (CartRestaurantGroup group : newGroups) {
-                for (CartItem item : group.getItems()) {
-                    if (item.getId() != null) {
-                        availableIds.add(item.getId());
-                    }
+        groups.clear();
+        groups.addAll(newGroups);
+
+        Set<String> availableIds = new LinkedHashSet<>();
+        for (CartRestaurantGroup group : groups) {
+            for (CartItem item : group.getItems()) {
+                if (item.getId() != null) {
+                    availableIds.add(item.getId());
                 }
             }
         }
@@ -130,6 +137,15 @@ public class CartItemAdapter extends RecyclerView.Adapter<CartItemAdapter.GroupV
         return groups.size();
     }
 
+    @Override
+    public long getItemId(int position) {
+        if (position < 0 || position >= groups.size()) {
+            return -1;
+        }
+        CartRestaurantGroup group = groups.get(position);
+        return group.getRestaurantId() != null ? group.getRestaurantId().hashCode() : position;
+    }
+
     private void toggleRestaurant(CartRestaurantGroup group, boolean checked) {
         if (group == null) {
             return;
@@ -148,11 +164,12 @@ public class CartItemAdapter extends RecyclerView.Adapter<CartItemAdapter.GroupV
         notifySelectionChanged();
     }
 
-    private void toggleItem(CartItem item, boolean checked) {
+    private void handleItemCheckboxClick(CartItem item, boolean isChecked) {
         if (item == null || item.getId() == null) {
             return;
         }
-        if (checked) {
+
+        if (isChecked) {
             selectedCartItemIds.add(item.getId());
         } else {
             selectedCartItemIds.remove(item.getId());
@@ -161,22 +178,47 @@ public class CartItemAdapter extends RecyclerView.Adapter<CartItemAdapter.GroupV
         notifySelectionChanged();
     }
 
+    private CartRestaurantGroup findParentGroup(CartItem item) {
+        if (item == null || item.getId() == null) {
+            return null;
+        }
+        for (CartRestaurantGroup group : groups) {
+            for (CartItem groupItem : group.getItems()) {
+                if (item.getId().equals(groupItem.getId())) {
+                    return group;
+                }
+            }
+        }
+        return null;
+    }
+
     private void notifySelectionChanged() {
         if (listener != null) {
             listener.onSelectionChanged(getSelectionState());
         }
     }
 
-    private boolean isRestaurantFullySelected(CartRestaurantGroup group) {
+    private int getRestaurantSelectionState(CartRestaurantGroup group) {
         if (group == null || group.getItems().isEmpty()) {
-            return false;
+            return 0;
         }
+        int selectedCount = 0;
+        int totalCount = 0;
         for (CartItem item : group.getItems()) {
-            if (item.getId() == null || !selectedCartItemIds.contains(item.getId())) {
-                return false;
+            if (item.getId() != null) {
+                totalCount++;
+                if (selectedCartItemIds.contains(item.getId())) {
+                    selectedCount++;
+                }
             }
         }
-        return true;
+        if (selectedCount == 0) {
+            return 0;
+        } else if (selectedCount == totalCount) {
+            return 2;
+        } else {
+            return 1;
+        }
     }
 
     @NonNull
@@ -193,7 +235,6 @@ public class CartItemAdapter extends RecyclerView.Adapter<CartItemAdapter.GroupV
     }
 
     class GroupViewHolder extends RecyclerView.ViewHolder {
-        private final View rootView;
         private final CheckBox cbSelectRestaurant;
         private final TextView tvRestaurantName;
         private final TextView tvRestaurantMeta;
@@ -201,7 +242,6 @@ public class CartItemAdapter extends RecyclerView.Adapter<CartItemAdapter.GroupV
 
         GroupViewHolder(@NonNull View itemView) {
             super(itemView);
-            rootView = itemView;
             cbSelectRestaurant = itemView.findViewById(R.id.cb_select_restaurant);
             tvRestaurantName = itemView.findViewById(R.id.tv_restaurant_name);
             tvRestaurantMeta = itemView.findViewById(R.id.tv_restaurant_meta);
@@ -218,9 +258,17 @@ public class CartItemAdapter extends RecyclerView.Adapter<CartItemAdapter.GroupV
                     group.getItems().size() + " mon • Phi giao " + currencyFormatter.format(group.getDeliveryFee())
             );
 
+            int selectionState = getRestaurantSelectionState(group);
+
             cbSelectRestaurant.setOnCheckedChangeListener(null);
-            cbSelectRestaurant.setChecked(isRestaurantFullySelected(group));
-            cbSelectRestaurant.setOnCheckedChangeListener((buttonView, isChecked) -> toggleRestaurant(group, isChecked));
+            cbSelectRestaurant.setChecked(selectionState != 0);
+            cbSelectRestaurant.setOnCheckedChangeListener((buttonView, isChecked) -> {
+                if (isChecked) {
+                    toggleRestaurant(group, true);
+                } else {
+                    toggleRestaurant(group, false);
+                }
+            });
 
             llItemsContainer.removeAllViews();
             for (CartItem item : group.getItems()) {
@@ -256,14 +304,59 @@ public class CartItemAdapter extends RecyclerView.Adapter<CartItemAdapter.GroupV
                 ivFoodImage.setImageResource(R.drawable.ic_food_bowl);
             }
 
+            boolean isSelected = item.getId() != null && selectedCartItemIds.contains(item.getId());
             cbSelectItem.setOnCheckedChangeListener(null);
-            cbSelectItem.setChecked(item.getId() != null && selectedCartItemIds.contains(item.getId()));
-            cbSelectItem.setOnCheckedChangeListener((buttonView, isChecked) -> toggleItem(item, isChecked));
+            cbSelectItem.setChecked(isSelected);
+            cbSelectItem.setOnCheckedChangeListener((buttonView, isChecked) -> handleItemCheckboxClick(item, isChecked));
 
             btnIncrease.setOnClickListener(v -> listener.onIncrease(item.getId()));
             btnDecrease.setOnClickListener(v -> listener.onDecrease(item.getId()));
 
             return itemView;
+        }
+    }
+
+    static class GroupDiffCallback extends DiffUtil.Callback {
+        private final List<CartRestaurantGroup> oldList;
+        private final List<CartRestaurantGroup> newList;
+
+        GroupDiffCallback(List<CartRestaurantGroup> oldList, List<CartRestaurantGroup> newList) {
+            this.oldList = oldList;
+            this.newList = newList;
+        }
+
+        @Override
+        public int getOldListSize() {
+            return oldList.size();
+        }
+
+        @Override
+        public int getNewListSize() {
+            return newList.size();
+        }
+
+        @Override
+        public boolean areItemsTheSame(int oldItemPosition, int newItemPosition) {
+            if (oldItemPosition >= oldList.size() || newItemPosition >= newList.size()) {
+                return false;
+            }
+            String oldId = oldList.get(oldItemPosition).getRestaurantId();
+            String newId = newList.get(newItemPosition).getRestaurantId();
+            if (oldId == null || newId == null) {
+                return oldItemPosition == newItemPosition;
+            }
+            return oldId.equals(newId);
+        }
+
+        @Override
+        public boolean areContentsTheSame(int oldItemPosition, int newItemPosition) {
+            if (oldItemPosition >= oldList.size() || newItemPosition >= newList.size()) {
+                return false;
+            }
+            CartRestaurantGroup oldGroup = oldList.get(oldItemPosition);
+            CartRestaurantGroup newGroup = newList.get(newItemPosition);
+            return oldGroup.getRestaurantId().equals(newGroup.getRestaurantId())
+                    && oldGroup.getItems().size() == newGroup.getItems().size();
         }
     }
 
