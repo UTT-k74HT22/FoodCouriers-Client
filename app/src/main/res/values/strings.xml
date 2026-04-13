@@ -13,7 +13,7 @@
     <string name="empty_default_message">This module is ready for real data and interactions.</string>
     <string name="home_greeting">Good afternoon</string>
     <string name="home_title">Find food that fits your mood</string>
-    <string name="home_location">District 1, Ho Chi Minh City</string>
+    <string name="home_location">Loading...</string>
     <string name="home_search_hint">Search for dishes, restaurants or combos</string>
     <string name="home_filter">Filter</string>
     <string name="home_offer_badge">FREE DELIVERY</string>
@@ -223,4 +223,12 @@
     <string name="food_image_description">Image of %1$s</string>
     <string name="banner_image_description">Banner image</string>
 <string name="restaurant_image_description">Photo of %1$s</string>
+    <string name="location_unknown">Unknown location</string>
+    <string name="location_error">Unable to get location</string>
+    <string name="location_permission_denied">Location permission denied</string>
+    <string name="location_permission_required">Location permission is required to show nearby restaurants</string>
+    <string name="location_lat">Lat: %.6f</string>
+    <string name="location_lng">Lng: %.6f</string>
+    <string name="location_accuracy">Accuracy: %.1f m</string>
+    <string name="settings">Settings</string>
 </resources>
