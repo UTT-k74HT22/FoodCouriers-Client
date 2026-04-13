@@ -22,35 +22,138 @@
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:gravity="center_horizontal"
                 android:orientation="vertical"
                 android:padding="@dimen/screen_padding">
 
-                <ImageView
-                    android:id="@+id/iv_avatar"
-                    android:layout_width="88dp"
-                    android:layout_height="88dp"
-                    android:background="@drawable/bg_icon_surface_orange"
-                    android:padding="18dp"
-                    android:src="@drawable/ic_profile"
-                    app:tint="@color/primary_dark" />
+                <LinearLayout
+                    android:id="@+id/layout_profile_header"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
 
-                <TextView
-                    android:id="@+id/tv_user_name"
-                    android:layout_width="wrap_content"
+                    <com.google.android.material.imageview.ShapeableImageView
+                        android:id="@+id/iv_avatar"
+                        android:layout_width="72dp"
+                        android:layout_height="72dp"
+                        android:scaleType="centerCrop"
+                        android:src="@drawable/ic_profile"
+                        app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.Corner.Full" />
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="@dimen/spacing_md"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:id="@+id/tv_user_name"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:ellipsize="end"
+                            android:maxLines="1"
+                            android:textColor="@color/text_primary"
+                            android:textSize="@dimen/text_title"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:id="@+id/tv_user_email"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="@dimen/spacing_xs"
+                            android:ellipsize="end"
+                            android:maxLines="1"
+                            android:textColor="@color/text_secondary"
+                            android:textSize="@dimen/text_body" />
+
+                        <TextView
+                            android:id="@+id/tv_user_phone"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="@dimen/spacing_xs"
+                            android:drawableStart="@drawable/ic_phone"
+                            android:drawablePadding="@dimen/spacing_xs"
+                            android:drawableTint="@color/text_secondary"
+                            android:ellipsize="end"
+                            android:maxLines="1"
+                            android:textColor="@color/text_secondary"
+                            android:textSize="@dimen/text_caption" />
+                    </LinearLayout>
+
+                    <ImageView
+                        android:layout_width="24dp"
+                        android:layout_height="24dp"
+                        android:src="@drawable/ic_arrow_left"
+                        android:rotation="180"
+                        app:tint="@color/text_secondary" />
+                </LinearLayout>
+
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:layout_marginTop="@dimen/spacing_md"
+                    android:background="@color/divider" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="@dimen/spacing_md"
-                    android:textColor="@color/text_primary"
-                    android:textSize="@dimen/text_title"
-                    android:textStyle="bold" />
+                    android:orientation="horizontal">
 
-                <TextView
-                    android:id="@+id/tv_user_email"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="@dimen/spacing_xs"
-                    android:textColor="@color/text_secondary"
-                    android:textSize="@dimen/text_body" />
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:gravity="center"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:id="@+id/tv_order_count"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="0"
+                            android:textColor="@color/primary"
+                            android:textSize="@dimen/text_title"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/profile_orders"
+                            android:textColor="@color/text_secondary"
+                            android:textSize="@dimen/text_caption" />
+                    </LinearLayout>
+
+                    <View
+                        android:layout_width="1dp"
+                        android:layout_height="match_parent"
+                        android:background="@color/divider" />
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:gravity="center"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:id="@+id/tv_address_count"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="0"
+                            android:textColor="@color/primary"
+                            android:textSize="@dimen/text_title"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/profile_addresses"
+                            android:textColor="@color/text_secondary"
+                            android:textSize="@dimen/text_caption" />
+                    </LinearLayout>
+                </LinearLayout>
             </LinearLayout>
         </androidx.cardview.widget.CardView>
 
@@ -60,55 +163,133 @@
             android:layout_marginTop="@dimen/spacing_lg"
             android:orientation="vertical">
 
-            <Button
-                android:id="@+id/btn_edit_profile"
-                style="@style/ButtonStyle.Outline"
-                android:layout_width="match_parent"
-                android:layout_height="52dp"
-                android:text="@string/profile_edit_profile" />
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/profile_menu"
+                android:textColor="@color/text_primary"
+                android:textSize="@dimen/text_subtitle"
+                android:textStyle="bold" />
 
-            <Button
+            <com.google.android.material.card.MaterialCardView
                 android:id="@+id/btn_manage_addresses"
-                style="@style/ButtonStyle.Outline"
                 android:layout_width="match_parent"
-                android:layout_height="52dp"
+                android:layout_height="wrap_content"
                 android:layout_marginTop="@dimen/spacing_sm"
-                android:text="@string/profile_manage_addresses" />
+                app:cardBackgroundColor="@color/surface"
+                app:cardCornerRadius="@dimen/radius_medium"
+                app:cardElevation="0dp"
+                app:strokeColor="@color/divider"
+                app:strokeWidth="1dp">
 
-            <Button
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal"
+                    android:padding="@dimen/spacing_md">
+
+                    <ImageView
+                        android:layout_width="24dp"
+                        android:layout_height="24dp"
+                        android:src="@drawable/ic_home"
+                        app:tint="@color/primary" />
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="@dimen/spacing_md"
+                        android:layout_weight="1"
+                        android:text="@string/profile_manage_addresses"
+                        android:textColor="@color/text_primary"
+                        android:textSize="@dimen/text_body" />
+
+                    <ImageView
+                        android:layout_width="20dp"
+                        android:layout_height="20dp"
+                        android:src="@drawable/ic_arrow_left"
+                        android:rotation="180"
+                        app:tint="@color/text_secondary" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <com.google.android.material.card.MaterialCardView
                 android:id="@+id/btn_notifications"
-                style="@style/ButtonStyle.Outline"
                 android:layout_width="match_parent"
-                android:layout_height="52dp"
+                android:layout_height="wrap_content"
                 android:layout_marginTop="@dimen/spacing_sm"
-                android:text="@string/profile_view_notifications" />
+                app:cardBackgroundColor="@color/surface"
+                app:cardCornerRadius="@dimen/radius_medium"
+                app:cardElevation="0dp"
+                app:strokeColor="@color/divider"
+                app:strokeWidth="1dp">
 
-            <Button
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal"
+                    android:padding="@dimen/spacing_md">
+
+                    <ImageView
+                        android:layout_width="24dp"
+                        android:layout_height="24dp"
+                        android:src="@drawable/ic_notification"
+                        app:tint="@color/primary" />
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="@dimen/spacing_md"
+                        android:layout_weight="1"
+                        android:text="@string/profile_view_notifications"
+                        android:textColor="@color/text_primary"
+                        android:textSize="@dimen/text_body" />
+
+                    <ImageView
+                        android:layout_width="20dp"
+                        android:layout_height="20dp"
+                        android:src="@drawable/ic_arrow_left"
+                        android:rotation="180"
+                        app:tint="@color/text_secondary" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <com.google.android.material.card.MaterialCardView
                 android:id="@+id/btn_logout"
                 android:layout_width="match_parent"
-                android:layout_height="52dp"
-                android:layout_marginTop="@dimen/spacing_sm"
-                android:background="@drawable/bg_button_outline"
-                android:text="@string/profile_logout"
-                android:textAllCaps="false"
-                android:textColor="@color/primary_dark"
-                android:textStyle="bold" />
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/spacing_lg"
+                app:cardBackgroundColor="@color/surface"
+                app:cardCornerRadius="@dimen/radius_medium"
+                app:cardElevation="0dp"
+                app:strokeColor="@color/divider"
+                app:strokeWidth="1dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal"
+                    android:padding="@dimen/spacing_md">
+
+                    <ImageView
+                        android:layout_width="24dp"
+                        android:layout_height="24dp"
+                        android:src="@drawable/ic_lock"
+                        app:tint="@color/error" />
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="@dimen/spacing_md"
+                        android:layout_weight="1"
+                        android:text="@string/profile_logout"
+                        android:textColor="@color/error"
+                        android:textSize="@dimen/text_body"
+                        android:textStyle="bold" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
         </LinearLayout>
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="@dimen/spacing_xl"
-            android:text="@string/profile_recent_orders"
-            android:textColor="@color/text_primary"
-            android:textSize="@dimen/text_subtitle"
-            android:textStyle="bold" />
-
-        <androidx.recyclerview.widget.RecyclerView
-            android:id="@+id/rv_recent_orders"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="@dimen/spacing_sm"
-            android:nestedScrollingEnabled="false" />
     </LinearLayout>
 </ScrollView>

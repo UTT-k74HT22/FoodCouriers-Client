@@ -15,6 +15,7 @@ public class SessionManager {
     private static final String KEY_USER_EMAIL = "user_email";
     private static final String KEY_USER_NAME = "user_name";
     private static final String KEY_USER_PHONE = "user_phone";
+    private static final String KEY_USER_AVATAR = "user_avatar";
     private static final String KEY_USER_ROLE = "user_role";
     private static final String KEY_TOKEN_EXPIRES_AT = "token_expires_at";
 
@@ -42,6 +43,7 @@ public class SessionManager {
                 .putString(KEY_USER_EMAIL, userProfile.getEmail())
                 .putString(KEY_USER_NAME, userProfile.getFullName())
                 .putString(KEY_USER_PHONE, userProfile.getPhone())
+                .putString(KEY_USER_AVATAR, userProfile.getAvatarUrl())
                 .putString(KEY_USER_ROLE, userProfile.getRole())
                 .putLong(KEY_TOKEN_EXPIRES_AT, System.currentTimeMillis() + expiresInMillis)
                 .apply();
@@ -56,6 +58,7 @@ public class SessionManager {
                 .putString(KEY_USER_EMAIL, userProfile.getEmail())
                 .putString(KEY_USER_NAME, userProfile.getFullName())
                 .putString(KEY_USER_PHONE, userProfile.getPhone())
+                .putString(KEY_USER_AVATAR, userProfile.getAvatarUrl())
                 .putString(KEY_USER_ROLE, userProfile.getRole())
                 .apply();
     }
@@ -93,6 +96,10 @@ public class SessionManager {
 
     public String getUserPhone() {
         return preferences.getString(KEY_USER_PHONE, null);
+    }
+
+    public String getUserAvatar() {
+        return preferences.getString(KEY_USER_AVATAR, null);
     }
 
     public String getUserRole() {
@@ -140,6 +147,7 @@ public class SessionManager {
                 .remove(KEY_USER_EMAIL)
                 .remove(KEY_USER_NAME)
                 .remove(KEY_USER_PHONE)
+                .remove(KEY_USER_AVATAR)
                 .remove(KEY_USER_ROLE)
                 .remove(KEY_TOKEN_EXPIRES_AT)
                 .putBoolean(KEY_IS_LOGGED_IN, false)
