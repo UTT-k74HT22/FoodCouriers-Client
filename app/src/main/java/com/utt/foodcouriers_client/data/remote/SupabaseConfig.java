@@ -7,7 +7,7 @@ public class SupabaseConfig {
     public static final String SUPABASE_URL = BuildConfig.SUPABASE_URL;
     public static final String SUPABASE_ANON_KEY = BuildConfig.SUPABASE_ANON_KEY;
     public static final String SUPABASE_STORAGE_BUCKET = BuildConfig.SUPABASE_STORAGE_BUCKET;
-    public static final String ADMIN_API_BASE_URL = BuildConfig.ADMIN_API_BASE_URL;
+//    public static final String ADMIN_API_BASE_URL = BuildConfig.ADMIN_API_BASE_URL;
 
     public static final String AUTH_URL = SUPABASE_URL + "/auth/v1";
     public static final String REST_URL = SUPABASE_URL + "/rest/v1";
