@@ -43,6 +43,11 @@ android {
             "SUPABASE_STORAGE_BUCKET",
             "\"${localProperties.getProperty("SUPABASE_STORAGE_BUCKET", "images")}\""
         )
+        buildConfigField(
+            "String",
+            "ADMIN_API_BASE_URL",
+            "\"${localProperties.getProperty("ADMIN_API_BASE_URL", "")}\""
+        )
     }
 
     buildTypes {
