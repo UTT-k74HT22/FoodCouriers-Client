@@ -20,7 +20,6 @@ import com.utt.foodcouriers_client.utils.SessionStore;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.UUID;
 
 public class SocialAuthManager {
     public static final String TAG = "SocialAuthManager";
@@ -30,7 +29,6 @@ public class SocialAuthManager {
     public static final String CALLBACK_PATH = "/callback";
 
     private static final String PREF_SOCIAL_AUTH = "social_auth_pref";
-    private static final String KEY_PENDING_STATE = "pending_state";
     private static final String KEY_PENDING_PROVIDER = "pending_provider";
     private static final long DEFAULT_TOKEN_EXPIRY_MILLIS = 3600000L;
 
@@ -48,7 +46,7 @@ public class SocialAuthManager {
             @NonNull SocialAuthProvider provider,
             @NonNull RepositoryCallback<Boolean> callback
     ) {
-        Log.d(TAG, "launchProvider: provider=" + provider.getValue());
+        logStep(1, "Preparing Supabase OAuth launch", "provider=" + provider.getValue());
 
         if (provider != SocialAuthProvider.GOOGLE) {
             callback.onError(context.getString(R.string.social_auth_stub_facebook));
@@ -57,18 +55,18 @@ public class SocialAuthManager {
 
         try {
             String redirectTo = buildRedirectUri();
-            String state = buildState(provider);
-
-            savePendingState(context, state, provider);
+            savePendingProvider(context, provider);
 
             String authorizeUrl = SupabaseConfig.SUPABASE_URL
                     + "/auth/v1/authorize"
                     + "?provider=" + Uri.encode(provider.getValue())
-                    + "&redirect_to=" + Uri.encode(redirectTo)
-                    + "&state=" + Uri.encode(state);
+                    + "&redirect_to=" + Uri.encode(redirectTo);
 
-            Log.d(TAG, "launchProvider: redirectTo=" + redirectTo);
-            Log.d(TAG, "launchProvider: authorizeUrl=" + authorizeUrl);
+            logStep(
+                    2,
+                    "Opening browser for Supabase OAuth",
+                    "redirectTo=" + redirectTo + ", authorizeUrl=" + authorizeUrl
+            );
 
             Intent browserIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(authorizeUrl));
             browserIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
@@ -76,7 +74,7 @@ public class SocialAuthManager {
 
             callback.onSuccess(true);
         } catch (Exception e) {
-            Log.e(TAG, "launchProvider: failed to start OAuth", e);
+            logStepError(2, "Failed to open Supabase OAuth browser flow", e);
             callback.onError("Could not open the Google sign-in flow: " + e.getMessage());
         }
     }
@@ -87,9 +85,12 @@ public class SocialAuthManager {
             @NonNull RepositoryCallback<SocialAuthResult> callback
     ) {
         try {
-            SocialAuthResult result = parseCallback(uri);
+            logStep(3, "Received OAuth callback", "uri=" + (uri != null ? uri.toString() : "null"));
+
+            SocialAuthResult result = enrichProvider(parseCallback(uri), getPendingProvider(context));
 
             if (!isExpectedCallbackUri(uri)) {
+                clearPendingProvider(context);
                 callback.onSuccess(new SocialAuthResult(
                         null,
                         null,
@@ -101,32 +102,31 @@ public class SocialAuthManager {
                 ));
                 return;
             }
-
-            if (!isStateValid(context, uri)) {
-                clearPendingState(context);
-                callback.onSuccess(new SocialAuthResult(
-                        result.getProvider(),
-                        null,
-                        null,
-                        "state_mismatch",
-                        "The Google sign-in session is invalid or expired. Please try again.",
-                        uri != null ? uri.toString() : null,
-                        0L
-                ));
-                return;
-            }
-
-            clearPendingState(context);
+            clearPendingProvider(context);
 
             if (result.isSuccessful()) {
+                logStep(
+                        4,
+                        "Supabase callback contained session payload",
+                        "provider=" + resolveProviderValue(result)
+                                + ", accessToken=present, refreshToken=present"
+                );
                 SessionStore.saveSession(context, result);
                 bootstrapSession(context, result, callback);
                 return;
             }
 
+            logStep(
+                    4,
+                    "Supabase callback did not complete login",
+                    "provider=" + resolveProviderValue(result)
+                            + ", errorCode=" + safeValue(result.getErrorCode())
+                            + ", errorDescription=" + safeValue(result.getErrorDescription())
+            );
             callback.onSuccess(result);
         } catch (Exception e) {
-            Log.e(TAG, "handleCallback: failed", e);
+            clearPendingProvider(context);
+            logStepError(4, "Failed to process Supabase OAuth callback", e);
             callback.onError("Failed to process the social auth callback: " + e.getMessage());
         }
     }
@@ -226,46 +226,29 @@ public class SocialAuthManager {
                 && path.startsWith(CALLBACK_PATH);
     }
 
-    private boolean isStateValid(@NonNull Context context, @Nullable Uri uri) {
-        if (uri == null) {
-            return false;
-        }
-
-        Map<String, String> parameters = extractParameters(uri);
-        String returnedState = parameters.get("state");
-
-        SharedPreferences prefs = context.getSharedPreferences(PREF_SOCIAL_AUTH, Context.MODE_PRIVATE);
-        String expectedState = prefs.getString(KEY_PENDING_STATE, null);
-
-        Log.d(TAG, "isStateValid: expectedState=" + expectedState + ", returnedState=" + returnedState);
-
-        return notBlank(expectedState) && expectedState.equals(returnedState);
-    }
-
     @NonNull
     private String buildRedirectUri() {
         return CALLBACK_SCHEME + "://" + CALLBACK_HOST + CALLBACK_PATH;
     }
 
-    @NonNull
-    private String buildState(@NonNull SocialAuthProvider provider) {
-        return provider.getValue() + "_" + UUID.randomUUID();
-    }
-
-    private void savePendingState(@NonNull Context context, @NonNull String state, @NonNull SocialAuthProvider provider) {
+    private void savePendingProvider(@NonNull Context context, @NonNull SocialAuthProvider provider) {
         SharedPreferences prefs = context.getSharedPreferences(PREF_SOCIAL_AUTH, Context.MODE_PRIVATE);
         prefs.edit()
-                .putString(KEY_PENDING_STATE, state)
                 .putString(KEY_PENDING_PROVIDER, provider.getValue())
                 .apply();
     }
 
-    private void clearPendingState(@NonNull Context context) {
+    private void clearPendingProvider(@NonNull Context context) {
         SharedPreferences prefs = context.getSharedPreferences(PREF_SOCIAL_AUTH, Context.MODE_PRIVATE);
         prefs.edit()
-                .remove(KEY_PENDING_STATE)
                 .remove(KEY_PENDING_PROVIDER)
                 .apply();
+    }
+
+    @Nullable
+    private SocialAuthProvider getPendingProvider(@NonNull Context context) {
+        SharedPreferences prefs = context.getSharedPreferences(PREF_SOCIAL_AUTH, Context.MODE_PRIVATE);
+        return SocialAuthProvider.fromValue(prefs.getString(KEY_PENDING_PROVIDER, null));
     }
 
     private void bootstrapSession(
@@ -283,6 +266,7 @@ public class SocialAuthManager {
                             SessionStore.clearSession(context);
                             SessionManager.getInstance(context).clearSession();
                             AuthClient.getInstance().clearSession();
+                            logStep(6, "Bootstrap rejected disabled account", "provider=" + resolveProviderValue(result));
                             callback.onError(context.getString(R.string.error_account_disabled));
                             return;
                         }
@@ -293,7 +277,13 @@ public class SocialAuthManager {
                                 userProfile,
                                 resolveExpiryMillis(result)
                         );
-                        Log.d(TAG, "bootstrapSession: session and profile saved");
+                        logStep(
+                                6,
+                                "Bootstrap completed and session saved",
+                                "provider=" + resolveProviderValue(result)
+                                        + ", userId=" + safeValue(userProfile.getId())
+                                        + ", email=" + safeValue(userProfile.getEmail())
+                        );
                         callback.onSuccess(result);
                     }
 
@@ -301,6 +291,7 @@ public class SocialAuthManager {
                     public void onError(String error) {
                         SessionManager.getInstance(context).clearSession();
                         AuthClient.getInstance().clearSession();
+                        logStep(6, "Bootstrap failed while loading profile", "error=" + safeValue(error));
                         callback.onError(error);
                     }
                 }
@@ -361,6 +352,26 @@ public class SocialAuthManager {
         return null;
     }
 
+    @NonNull
+    private SocialAuthResult enrichProvider(
+            @NonNull SocialAuthResult result,
+            @Nullable SocialAuthProvider fallbackProvider
+    ) {
+        if (result.getProvider() != null || fallbackProvider == null) {
+            return result;
+        }
+
+        return new SocialAuthResult(
+                fallbackProvider,
+                result.getAccessToken(),
+                result.getRefreshToken(),
+                result.getErrorCode(),
+                result.getErrorDescription(),
+                result.getRawUri(),
+                result.getExpiresInSeconds()
+        );
+    }
+
     @Nullable
     private String firstNonBlank(@Nullable String... values) {
         if (values == null) {
@@ -388,5 +399,27 @@ public class SocialAuthManager {
 
     private boolean notBlank(@Nullable String value) {
         return value != null && !value.trim().isEmpty();
+    }
+
+    @NonNull
+    private String resolveProviderValue(@NonNull SocialAuthResult result) {
+        return result.getProvider() != null ? result.getProvider().getValue() : "unknown";
+    }
+
+    @NonNull
+    private String safeValue(@Nullable String value) {
+        return notBlank(value) ? value : "n/a";
+    }
+
+    private void logStep(int step, @NonNull String description, @Nullable String details) {
+        String message = "Step " + step + ": " + description;
+        if (notBlank(details)) {
+            message += " | " + details;
+        }
+        Log.d(TAG, message);
+    }
+
+    private void logStepError(int step, @NonNull String description, @NonNull Throwable throwable) {
+        Log.e(TAG, "Step " + step + ": " + description + " | error=" + throwable.getMessage(), throwable);
     }
 }

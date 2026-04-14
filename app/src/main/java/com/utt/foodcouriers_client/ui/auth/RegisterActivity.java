@@ -3,6 +3,7 @@ package com.utt.foodcouriers_client.ui.auth;
 import android.content.Intent;
 import android.os.Bundle;
 import android.text.TextUtils;
+import android.util.Log;
 import android.util.Patterns;
 import android.view.View;
 import android.widget.Button;
@@ -25,6 +26,7 @@ import com.utt.foodcouriers_client.utils.ToastBanner;
 
 public class RegisterActivity extends BaseActivity {
 
+    private static final String TAG = "RegisterActivity";
     private static final long TOKEN_EXPIRY_MILLIS = 3600000L;
 
     private TextInputLayout tilName;
@@ -181,13 +183,16 @@ public class RegisterActivity extends BaseActivity {
     }
 
     private void startSocialAuth(SocialAuthProvider provider) {
+        Log.d(TAG, "Step 1: User requested social auth | provider=" + provider.getValue());
         socialAuthRepository.startAuth(this, provider, new RepositoryCallback<Boolean>() {
             @Override
             public void onSuccess(Boolean result) {
+                Log.d(TAG, "Step 2: Social auth launch delegated to manager | provider=" + provider.getValue());
             }
 
             @Override
             public void onError(String error) {
+                Log.e(TAG, "Step 2: Social auth launch failed | provider=" + provider.getValue() + ", error=" + error);
                 showWarningBanner(error);
             }
         });

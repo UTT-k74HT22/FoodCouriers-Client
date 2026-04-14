@@ -136,13 +136,13 @@ public class AuthClient extends BaseSupabaseClient {
                     String authUserId = authResponse.getUser().getId();
                     fetchUserProfile(authUserId, new ApiCallback<UserProfile>() {
                         @Override
-                        public void onSuccess(UserProfile result) {
+                            public void onSuccess(UserProfile result) {
                             postSuccess(callback, result);
                         }
 
                         @Override
                         public void onError(String error) {
-                            createUserProfile(authUserId, fullName, phone, email, callback);
+                            createUserProfile(authUserId, fullName, phone, email, null, callback);
                         }
                     });
                 }
@@ -272,10 +272,18 @@ public class AuthClient extends BaseSupabaseClient {
                         return;
                     }
 
+                    Log.d(
+                            TAG,
+                            "Step 5: Loaded auth user from Supabase | authId=" + authUser.getId()
+                                    + ", email=" + safeValue(authUser.resolveEmail())
+                                    + ", fullName=" + safeValue(authUser.resolveDisplayName())
+                                    + ", avatarUrl=" + safeValue(authUser.resolveAvatarUrl())
+                    );
+
                     fetchUserProfile(authUser.getId(), new ApiCallback<UserProfile>() {
                         @Override
                         public void onSuccess(UserProfile result) {
-                            postSuccess(callback, result);
+                            maybeBackfillSocialAvatar(authUser, result, callback);
                         }
 
                         @Override
@@ -290,6 +298,7 @@ public class AuthClient extends BaseSupabaseClient {
                                     authUser.resolveDisplayName(),
                                     authUser.resolvePhone(),
                                     authUser.resolveEmail(),
+                                    authUser.resolveAvatarUrl(),
                                     callback
                             );
                         }
@@ -334,14 +343,33 @@ public class AuthClient extends BaseSupabaseClient {
         });
     }
 
-    private void createUserProfile(String authId, String fullName, String phone, String email, ApiCallback<UserProfile> callback) {
+    private void createUserProfile(
+            String authId,
+            String fullName,
+            String phone,
+            String email,
+            String avatarUrl,
+            ApiCallback<UserProfile> callback
+    ) {
         Map<String, Object> profile = new HashMap<>();
         profile.put("auth_id", authId);
         profile.put("full_name", fullName);
         profile.put("phone", phone);
         profile.put("email", email);
+        if (!isNullOrBlank(avatarUrl)) {
+            profile.put("avatar_url", avatarUrl);
+        }
         profile.put("role", CUSTOMER_ROLE);
         profile.put("is_active", true);
+
+        Log.d(
+                TAG,
+                "Step 6: Creating missing public.users profile | authId=" + safeValue(authId)
+                        + ", email=" + safeValue(email)
+                        + ", fullName=" + safeValue(fullName)
+                        + ", phone=" + safeValue(phone)
+                        + ", avatarUrl=" + safeValue(avatarUrl)
+        );
 
         Request request = new Request.Builder()
                 .url(SupabaseConfig.REST_URL + "/users")
@@ -362,6 +390,7 @@ public class AuthClient extends BaseSupabaseClient {
                 try (ResponseBody responseBody = response.body()) {
                     String json = responseBody != null ? responseBody.string() : "";
                     if (!response.isSuccessful()) {
+                        Log.e(TAG, "Step 6: Failed to create public.users profile | code=" + response.code() + ", body=" + json);
                         postError(callback, parseRestError("Failed to create profile", response.code(), json));
                         return;
                     }
@@ -372,10 +401,56 @@ public class AuthClient extends BaseSupabaseClient {
                         return;
                     }
 
+                    Log.d(
+                            TAG,
+                            "Step 6: Created public.users profile successfully | userId=" + safeValue(profiles[0].getId())
+                                    + ", avatarUrl=" + safeValue(profiles[0].getAvatarUrl())
+                    );
                     postSuccess(callback, profiles[0]);
                 }
             }
         });
+    }
+
+    private void maybeBackfillSocialAvatar(
+            AuthUser authUser,
+            UserProfile profile,
+            ApiCallback<UserProfile> callback
+    ) {
+        String authAvatarUrl = authUser.resolveAvatarUrl();
+        if (profile == null) {
+            postError(callback, "User profile is missing");
+            return;
+        }
+
+        if (isNullOrBlank(profile.getAvatarUrl()) && !isNullOrBlank(authAvatarUrl)) {
+            Log.d(
+                    TAG,
+                    "Step 6: Backfilling avatar from auth metadata | userId=" + safeValue(profile.getId())
+                            + ", avatarUrl=" + safeValue(authAvatarUrl)
+            );
+
+            updateProfile(profile.getId(), null, null, authAvatarUrl, new ApiCallback<UserProfile>() {
+                @Override
+                public void onSuccess(UserProfile updatedProfile) {
+                    Log.d(
+                            TAG,
+                            "Step 6: Avatar backfill completed | userId=" + safeValue(updatedProfile.getId())
+                                    + ", avatarUrl=" + safeValue(updatedProfile.getAvatarUrl())
+                    );
+                    postSuccess(callback, updatedProfile);
+                }
+
+                @Override
+                public void onError(String error) {
+                    Log.e(TAG, "Step 6: Avatar backfill failed | error=" + error);
+                    postError(callback, error);
+                }
+            });
+            return;
+        }
+
+        postSuccess(callback, profile);
     }
 
     private boolean isProfileMissingError(String error) {
@@ -548,6 +623,10 @@ public class AuthClient extends BaseSupabaseClient {
 
             return "Customer";
         }
+
+        public String resolveAvatarUrl() {
+            return userMetadata != null ? userMetadata.avatarUrl : null;
+        }
     }
 
     private static class UserMetadata {
@@ -559,5 +638,11 @@ public class AuthClient extends BaseSupabaseClient {
         private String phone;
         @SerializedName("email")
         private String email;
+        @SerializedName("avatar_url")
+        private String avatarUrl;
+    }
+
+    private String safeValue(String value) {
+        return !isNullOrBlank(value) ? value : "n/a";
     }
 }

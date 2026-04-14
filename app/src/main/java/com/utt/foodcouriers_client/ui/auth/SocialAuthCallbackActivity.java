@@ -3,6 +3,7 @@ package com.utt.foodcouriers_client.ui.auth;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
+import android.util.Log;
 import android.widget.Button;
 import android.widget.ImageButton;
 import android.widget.ImageView;
@@ -17,6 +18,7 @@ import com.utt.foodcouriers_client.data.repository.SocialAuthRepository;
 import com.utt.foodcouriers_client.ui.common.BaseActivity;
 
 public class SocialAuthCallbackActivity extends BaseActivity {
+    private static final String TAG = "SocialAuthCallback";
 
     private ImageView ivStatusIcon;
     private TextView tvStatusEyebrow;
@@ -41,6 +43,7 @@ public class SocialAuthCallbackActivity extends BaseActivity {
         bindViews();
         bindActions();
         renderProcessing();
+        Log.d(TAG, "Step 1: Callback activity created | uri=" + describeUri(getIntent() != null ? getIntent().getData() : null));
         processCallback(getIntent() != null ? getIntent().getData() : null);
     }
 
@@ -49,6 +52,7 @@ public class SocialAuthCallbackActivity extends BaseActivity {
         super.onNewIntent(intent);
         setIntent(intent);
         renderProcessing();
+        Log.d(TAG, "Step 1: Callback activity received new intent | uri=" + describeUri(intent != null ? intent.getData() : null));
         processCallback(intent != null ? intent.getData() : null);
     }
 
@@ -82,10 +86,18 @@ public class SocialAuthCallbackActivity extends BaseActivity {
     }
 
     private void processCallback(Uri data) {
+        Log.d(TAG, "Step 2: Forwarding callback to repository | uri=" + describeUri(data));
         socialAuthRepository.handleCallback(this, data, new com.utt.foodcouriers_client.data.common.RepositoryCallback<SocialAuthResult>() {
             @Override
             public void onSuccess(SocialAuthResult result) {
                 lastResult = result;
+                Log.d(
+                        TAG,
+                        "Step 3: Repository completed callback handling | provider="
+                                + (result.getProvider() != null ? result.getProvider().getValue() : "unknown")
+                                + ", success=" + result.isSuccessful()
+                                + ", errorCode=" + (result.getErrorCode() != null ? result.getErrorCode() : "n/a")
+                );
 
                 if (result.isSuccessful()) {
                     showSuccessBanner(getString(R.string.login_success));
@@ -97,9 +109,14 @@ public class SocialAuthCallbackActivity extends BaseActivity {
 
             @Override
             public void onError(String error) {
+                Log.e(TAG, "Step 3: Repository failed callback handling | error=" + error);
                 renderFallbackError(error);
             }
         });
+    }
+
+    private String describeUri(Uri uri) {
+        return uri != null ? uri.toString() : "null";
     }
 
     private void openMain() {

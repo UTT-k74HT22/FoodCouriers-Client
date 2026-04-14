@@ -184,13 +184,16 @@ public class LoginActivity extends BaseActivity {
     }
 
     private void startSocialAuth(SocialAuthProvider provider) {
+        Log.d(TAG, "Step 1: User requested social auth | provider=" + provider.getValue());
         socialAuthRepository.startAuth(this, provider, new RepositoryCallback<Boolean>() {
             @Override
             public void onSuccess(Boolean result) {
+                Log.d(TAG, "Step 2: Social auth launch delegated to manager | provider=" + provider.getValue());
             }
 
             @Override
             public void onError(String error) {
+                Log.e(TAG, "Step 2: Social auth launch failed | provider=" + provider.getValue() + ", error=" + error);
                 showWarningBanner(error);
             }
         });
