@@ -60,6 +60,7 @@
     <string name="onboarding_skip">Skip</string>
     <string name="onboarding_continue">Continue</string>
     <string name="onboarding_start">Start ordering</string>
+    <string name="onboarding_explore">Explore now</string>
     <string name="onboarding_sign_in">I already have an account</string>
     <string name="onboarding_create_account">Create a new account</string>
     <string name="onboarding_page_one_eyebrow">MAFUY FAVORITES</string>

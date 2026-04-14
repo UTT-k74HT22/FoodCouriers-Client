@@ -43,7 +43,7 @@ public class OnboardingActivity extends BaseActivity {
         }
 
         if (hasSeenOnboarding()) {
-            openLogin();
+            openMain();
             return;
         }
 
@@ -107,13 +107,13 @@ public class OnboardingActivity extends BaseActivity {
     }
 
     private void bindActions() {
-        skipAction.setOnClickListener(v -> openLogin());
+        skipAction.setOnClickListener(v -> openMain());
         primaryButton.setOnClickListener(v -> {
             int current = viewPager.getCurrentItem();
             if (current < pages.size() - 1) {
                 viewPager.setCurrentItem(current + 1, true);
             } else {
-                openLogin();
+                openMain();
             }
         });
         secondaryButton.setOnClickListener(v -> {
@@ -130,11 +130,11 @@ public class OnboardingActivity extends BaseActivity {
         setIndicatorState(indicatorTwo, position == 1);
         if (position == 0) {
             primaryButton.setText(R.string.onboarding_continue);
-            secondaryButton.setText(R.string.onboarding_sign_in);
+            secondaryButton.setText(R.string.onboarding_explore);
             skipAction.setVisibility(View.VISIBLE);
         } else {
-            primaryButton.setText(R.string.onboarding_start);
-            secondaryButton.setText(R.string.onboarding_create_account);
+            primaryButton.setText(R.string.onboarding_explore);
+            secondaryButton.setText(R.string.onboarding_sign_in);
             skipAction.setVisibility(View.GONE);
         }
     }
@@ -150,6 +150,12 @@ public class OnboardingActivity extends BaseActivity {
     private void markOnboardingSeen() {
         SharedPreferences preferences = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
         preferences.edit().putBoolean(KEY_ONBOARDING_SEEN, true).apply();
+    }
+
+    private void openMain() {
+        markOnboardingSeen();
+        startActivity(new Intent(this, MainActivity.class));
+        finish();
     }
 
     private void openLogin() {
