@@ -117,8 +117,19 @@ sessionManager = SessionManager.getInstance(this);
         
         addMarker(startPoint);
         
-        binding.mapView.setOnTouchListener((v, event) -> {
-            return false;
+        binding.mapView.setOnClickListener(v -> {
+            android.graphics.PointF tapPoint = new android.graphics.PointF(
+                binding.mapView.getWidth() / 2f,
+                binding.mapView.getHeight() / 2f
+            );
+            GeoPoint tapGeoPoint = (GeoPoint) binding.mapView.getProjection().fromPixels(
+                (int) tapPoint.x, (int) tapPoint.y
+            );
+            currentLatitude = tapGeoPoint.getLatitude();
+            currentLongitude = tapGeoPoint.getLongitude();
+            addMarker(tapGeoPoint);
+            updateCoordinatesText();
+            reverseGeocode(currentLatitude, currentLongitude);
         });
     }
 
@@ -194,8 +205,14 @@ sessionManager = SessionManager.getInstance(this);
                 public void afterTextChanged(Editable s) {
                     if (suggestionAdapter == null) return;
                     String text = s.toString().trim();
+                    
+                    if (searchRunnable != null) {
+                        searchHandler.removeCallbacks(searchRunnable);
+                    }
+                    
                     if (text.length() >= 3) {
-                        searchSuggestions(text);
+                        searchRunnable = () -> searchSuggestions(text);
+                        searchHandler.postDelayed(searchRunnable, 500);
                     } else {
                         suggestionAdapter.clearItems();
                     }
@@ -614,7 +631,7 @@ sessionManager = SessionManager.getInstance(this);
             });
         };
         
-        searchHandler.postDelayed(searchRunnable, 1000);
+        searchHandler.postDelayed(searchRunnable, 500);
     }
 
     private void selectAddress(double lat, double lon) {
