@@ -40,6 +40,22 @@
         </activity>
 
         <activity
+            android:name=".ui.payment.PaymentCallbackActivity"
+            android:exported="true"
+            android:launchMode="singleTask"
+            tools:ignore="Instantiatable">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data
+                    android:scheme="com.utt.foodcouriers.client"
+                    android:host="payment"
+                    android:pathPrefix="/vnpay/callback" />
+            </intent-filter>
+        </activity>
+
+        <activity
             android:name=".ui.auth.LoginActivity"
             android:exported="false" />
 
