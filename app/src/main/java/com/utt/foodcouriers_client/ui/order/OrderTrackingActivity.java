@@ -8,6 +8,7 @@ import androidx.annotation.Nullable;
 import androidx.lifecycle.ViewModelProvider;
 
 import com.utt.foodcouriers_client.R;
+import com.utt.foodcouriers_client.data.model.DeliveryStatus;
 import com.utt.foodcouriers_client.data.model.OrderStatus;
 import com.utt.foodcouriers_client.data.model.OrderSummary;
 import com.utt.foodcouriers_client.ui.common.BaseActivity;
@@ -41,7 +42,7 @@ public class OrderTrackingActivity extends BaseActivity {
             finish();
             return;
         }
-        viewModel.loadOrderDetail(orderId);
+        viewModel.loadOrderDetail(this, orderId);
     }
 
     private void bindViews() {
@@ -67,12 +68,21 @@ public class OrderTrackingActivity extends BaseActivity {
 
     private void renderOrder(OrderSummary order) {
         OrderStatus status = OrderStatus.fromValue(order.getStatus());
-        tvOrderStatus.setText(order.getOrderCode() + " · " + status.getLabel());
-        renderStep(stepConfirmed, status == OrderStatus.CONFIRMED || status == OrderStatus.PREPARING
-                || status == OrderStatus.DELIVERING || status == OrderStatus.DELIVERED);
-        renderStep(stepPreparing, status == OrderStatus.PREPARING || status == OrderStatus.DELIVERING || status == OrderStatus.DELIVERED);
-        renderStep(stepDelivering, status == OrderStatus.DELIVERING || status == OrderStatus.DELIVERED);
-        renderStep(stepDelivered, status == OrderStatus.DELIVERED);
+        String statusLabel = status.getLabel();
+        if (order.getDeliveryStatus() != null && !order.getDeliveryStatus().isEmpty()) {
+            statusLabel += " · " + DeliveryStatus.fromValue(order.getDeliveryStatus()).getLabel();
+        }
+        tvOrderStatus.setText(order.getOrderCode() + " · " + statusLabel);
+        
+        renderStep(stepConfirmed, isReached(status, OrderStatus.CONFIRMED));
+        renderStep(stepPreparing, isReached(status, OrderStatus.PREPARING));
+        renderStep(stepDelivering, isReached(status, OrderStatus.DELIVERING));
+        renderStep(stepDelivered, isReached(status, OrderStatus.DELIVERED));
+    }
+    
+    private boolean isReached(OrderStatus current, OrderStatus target) {
+        if (current == OrderStatus.CANCELLED) return target == OrderStatus.PENDING;
+        return current.ordinal() >= target.ordinal();
     }
 
     private void setupStep(View root, String title, String description) {

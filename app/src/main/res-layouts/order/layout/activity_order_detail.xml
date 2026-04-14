@@ -358,7 +358,7 @@
                     android:layout_height="@dimen/button_height"
                     android:layout_weight="1"
                     android:text="Đánh giá"
-                    android:textColor="@color/primary"
+                    android:textColor="@color/auth_hero_peach"
                     android:background="@drawable/button_outline" />
 
                 <Button

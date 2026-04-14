@@ -4,6 +4,7 @@ public enum OrderStatus {
     PENDING("pending", "Cho xac nhan"),
     CONFIRMED("confirmed", "Da xac nhan"),
     PREPARING("preparing", "Dang chuan bi"),
+    READY_FOR_PICKUP("ready_for_pickup", "San sang lay"),
     DELIVERING("delivering", "Dang giao"),
     DELIVERED("delivered", "Hoan thanh"),
     CANCELLED("cancelled", "Da huy");
@@ -25,7 +26,7 @@ public enum OrderStatus {
     }
 
     public boolean isActive() {
-        return this == PENDING || this == CONFIRMED || this == PREPARING || this == DELIVERING;
+        return this == PENDING || this == CONFIRMED || this == PREPARING || this == READY_FOR_PICKUP || this == DELIVERING;
     }
 
     public static OrderStatus fromValue(String value) {

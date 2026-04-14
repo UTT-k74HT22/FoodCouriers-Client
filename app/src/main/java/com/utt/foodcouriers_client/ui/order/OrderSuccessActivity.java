@@ -8,6 +8,7 @@ import android.widget.TextView;
 import androidx.annotation.Nullable;
 
 import com.utt.foodcouriers_client.R;
+import com.utt.foodcouriers_client.data.common.RepositoryCallback;
 import com.utt.foodcouriers_client.data.model.OrderSummary;
 import com.utt.foodcouriers_client.data.repository.OrderRepository;
 import com.utt.foodcouriers_client.ui.common.BaseActivity;
@@ -17,23 +18,37 @@ public class OrderSuccessActivity extends BaseActivity {
 
     public static final String EXTRA_ORDER_ID = "extra_order_id";
 
+    private TextView tvOrderCode;
+    private TextView tvTotal;
+    private String orderId;
+
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_order_success);
 
-        String orderId = getIntent().getStringExtra(EXTRA_ORDER_ID);
-        OrderSummary order = OrderRepository.getInstance().getOrderById(orderId);
-
-        TextView tvOrderCode = findViewById(R.id.tv_order_code);
-        TextView tvTotal = findViewById(R.id.tv_total);
+        tvOrderCode = findViewById(R.id.tv_order_code);
+        tvTotal = findViewById(R.id.tv_total);
         Button backHomeButton = findViewById(R.id.btn_back_home);
         Button trackOrderButton = findViewById(R.id.btn_track_order);
 
-        if (order != null) {
-            tvOrderCode.setText(order.getOrderCode());
-            tvTotal.setText(String.format("%,d đ", order.getTotal()));
-        }
+        orderId = getIntent().getStringExtra(EXTRA_ORDER_ID);
+        
+        OrderRepository.getInstance().getOrderById(this, orderId, new RepositoryCallback<OrderSummary>() {
+            @Override
+            public void onSuccess(OrderSummary order) {
+                if (order != null) {
+                    tvOrderCode.setText(order.getOrderCode());
+                    tvTotal.setText(String.format("%,d đ", order.getTotal()));
+                }
+            }
+
+            @Override
+            public void onError(String error) {
+                tvOrderCode.setText("N/A");
+                tvTotal.setText("N/A");
+            }
+        });
 
         backHomeButton.setOnClickListener(v -> {
             Intent intent = new Intent(this, MainActivity.class);

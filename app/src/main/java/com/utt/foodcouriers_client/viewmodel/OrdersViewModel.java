@@ -1,8 +1,11 @@
 package com.utt.foodcouriers_client.viewmodel;
 
+import android.content.Context;
+
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 
+import com.utt.foodcouriers_client.data.common.RepositoryCallback;
 import com.utt.foodcouriers_client.data.model.OrderSummary;
 import com.utt.foodcouriers_client.data.repository.OrderRepository;
 
@@ -11,8 +14,10 @@ import java.util.List;
 public class OrdersViewModel extends BaseViewModel {
 
     private final OrderRepository repository = OrderRepository.getInstance();
+
     private final MutableLiveData<List<OrderSummary>> orders = new MutableLiveData<>();
     private final MutableLiveData<OrderSummary> selectedOrder = new MutableLiveData<>();
+
     private OrderRepository.OrderFilter currentFilter = OrderRepository.OrderFilter.ALL;
 
     public LiveData<List<OrderSummary>> getOrders() {
@@ -23,25 +28,56 @@ public class OrdersViewModel extends BaseViewModel {
         return selectedOrder;
     }
 
-    public void loadOrders(OrderRepository.OrderFilter filter) {
+    // Load list orders
+    public void loadOrders(Context context, OrderRepository.OrderFilter filter) {
         currentFilter = filter != null ? filter : OrderRepository.OrderFilter.ALL;
         setLoading(true);
-        orders.setValue(repository.getOrders(currentFilter));
-        setLoading(false);
+
+        repository.getOrders(context, currentFilter, new RepositoryCallback<List<OrderSummary>>() {
+            @Override
+            public void onSuccess(List<OrderSummary> result) {
+                orders.setValue(result);
+                setLoading(false);
+            }
+
+            @Override
+            public void onError(String error) {
+                postError(error);
+                setLoading(false);
+            }
+        });
     }
 
-    public void refresh() {
-        loadOrders(currentFilter);
+    // Refresh list
+    public void refresh(Context context) {
+        loadOrders(context, currentFilter);
     }
 
-    public void loadOrderDetail(String orderId) {
+    // Load order detail
+    public void loadOrderDetail(Context context, String orderId) {
         setLoading(true);
-        OrderSummary order = repository.getOrderById(orderId);
-        if (order == null) {
-            postError("Khong tim thay don hang.");
-        } else {
-            selectedOrder.setValue(order);
+
+        repository.getOrderById(context, orderId, new RepositoryCallback<OrderSummary>() {
+            @Override
+            public void onSuccess(OrderSummary order) {
+                selectedOrder.setValue(order);
+                setLoading(false);
+            }
+
+            @Override
+            public void onError(String error) {
+                postError(error);
+                setLoading(false);
+            }
+        });
+    }
+
+    // Refresh cả list + detail
+    public void refreshAll(Context context) {
+        loadOrders(context, currentFilter);
+
+        if (selectedOrder.getValue() != null) {
+            loadOrderDetail(context, selectedOrder.getValue().getId());
         }
-        setLoading(false);
     }
 }

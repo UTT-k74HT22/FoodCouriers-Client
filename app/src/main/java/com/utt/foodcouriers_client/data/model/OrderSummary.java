@@ -9,6 +9,7 @@ public class OrderSummary implements Serializable {
     private final String restaurantName;
     private final String restaurantAddress;
     private final String status;
+    private final String deliveryStatus;
     private final String createdAtLabel;
     private final int subtotal;
     private final int deliveryFee;
@@ -17,6 +18,8 @@ public class OrderSummary implements Serializable {
     private final String deliveryAddress;
     private final String note;
     private final List<OrderLineItem> items;
+    private final String paymentMethod;
+    private final String paymentStatus;
 
     public OrderSummary(
             String id,
@@ -24,6 +27,7 @@ public class OrderSummary implements Serializable {
             String restaurantName,
             String restaurantAddress,
             String status,
+            String deliveryStatus,
             String createdAtLabel,
             int subtotal,
             int deliveryFee,
@@ -31,13 +35,16 @@ public class OrderSummary implements Serializable {
             int total,
             String deliveryAddress,
             String note,
-            List<OrderLineItem> items
+            List<OrderLineItem> items,
+            String paymentMethod,
+            String paymentStatus
     ) {
         this.id = id;
         this.orderCode = orderCode;
         this.restaurantName = restaurantName;
         this.restaurantAddress = restaurantAddress;
         this.status = status;
+        this.deliveryStatus = deliveryStatus;
         this.createdAtLabel = createdAtLabel;
         this.subtotal = subtotal;
         this.deliveryFee = deliveryFee;
@@ -46,6 +53,8 @@ public class OrderSummary implements Serializable {
         this.deliveryAddress = deliveryAddress;
         this.note = note;
         this.items = items;
+        this.paymentMethod = paymentMethod;
+        this.paymentStatus = paymentStatus;
     }
 
     public String getId() {
@@ -66,6 +75,10 @@ public class OrderSummary implements Serializable {
 
     public String getStatus() {
         return status;
+    }
+
+    public String getDeliveryStatus() {
+        return deliveryStatus;
     }
 
     public String getCreatedAtLabel() {
@@ -98,5 +111,13 @@ public class OrderSummary implements Serializable {
 
     public List<OrderLineItem> getItems() {
         return items;
+    }
+
+    public String getPaymentMethod() {
+        return paymentMethod;
+    }
+
+    public String getPaymentStatus() {
+        return paymentStatus;
     }
 }
