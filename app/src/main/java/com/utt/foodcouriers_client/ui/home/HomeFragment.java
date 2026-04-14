@@ -1,19 +1,26 @@
 package com.utt.foodcouriers_client.ui.home;
 
+import android.Manifest;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Bundle;
+import android.provider.Settings;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.LinearLayout;
 
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.core.content.ContextCompat;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.viewpager2.widget.ViewPager2;
 
+import com.google.android.material.snackbar.Snackbar;
 import com.utt.foodcouriers_client.R;
 import com.utt.foodcouriers_client.data.model.BannerItem;
 import com.utt.foodcouriers_client.data.model.Category;
@@ -26,6 +33,7 @@ import com.utt.foodcouriers_client.ui.home.adapter.CategoryAdapter;
 import com.utt.foodcouriers_client.ui.home.adapter.MenuItemAdapter;
 import com.utt.foodcouriers_client.ui.home.adapter.NearbyRestaurantAdapter;
 import com.utt.foodcouriers_client.ui.restaurant.RestaurantDetailActivity;
+import com.utt.foodcouriers_client.utils.LocationHelper;
 import com.utt.foodcouriers_client.viewmodel.HomeViewModel;
 
 import java.util.List;
@@ -39,7 +47,21 @@ public class HomeFragment extends BaseFragment {
     private CategoryAdapter categoryAdapter;
     private MenuItemAdapter menuItemAdapter;
     private NearbyRestaurantAdapter nearbyRestaurantAdapter;
+    private LocationHelper locationHelper;
     private String currentCategoryId = null;
+
+    private final ActivityResultLauncher<String[]> locationPermissionLauncher = registerForActivityResult(
+            new ActivityResultContracts.RequestMultiplePermissions(),
+            result -> {
+                Boolean fineLocation = result.get(Manifest.permission.ACCESS_FINE_LOCATION);
+                Boolean coarseLocation = result.get(Manifest.permission.ACCESS_COARSE_LOCATION);
+                if ((fineLocation != null && fineLocation) || (coarseLocation != null && coarseLocation)) {
+                    fetchLocation();
+                } else {
+                    showLocationPermissionDenied();
+                }
+            }
+    );
 
     @Nullable
     @Override
@@ -58,12 +80,77 @@ public class HomeFragment extends BaseFragment {
         setupCategoryRecyclerView();
         setupPopularMenuItemsRecyclerView();
         setupNearbyRestaurantsRecyclerView();
+        setupLocation();
         observeViewModel();
         
         viewModel.loadBanners();
         viewModel.loadCategories();
         viewModel.loadPopularMenuItems();
         viewModel.loadNearbyRestaurants();
+    }
+
+    private void setupLocation() {
+        locationHelper = new LocationHelper(requireContext());
+        locationHelper.setLocationListener(new LocationHelper.LocationListener() {
+            @Override
+            public void onLocationReceived(LocationHelper.LocationData locationData) {
+                if (binding == null) return;
+                updateLocationUI(locationData);
+            }
+
+            @Override
+            public void onLocationError(String error) {
+                if (binding == null) return;
+                showLocationError(error);
+            }
+        });
+
+        if (locationHelper.hasLocationPermission()) {
+            fetchLocation();
+        } else {
+            requestLocationPermission();
+        }
+    }
+
+    private void requestLocationPermission() {
+        locationPermissionLauncher.launch(new String[]{
+                Manifest.permission.ACCESS_FINE_LOCATION,
+                Manifest.permission.ACCESS_COARSE_LOCATION
+        });
+    }
+
+    private void fetchLocation() {
+        if (locationHelper != null) {
+            locationHelper.getLastLocation();
+        }
+    }
+
+    private void updateLocationUI(LocationHelper.LocationData locationData) {
+        if (binding == null) return;
+        
+        if (locationData.address != null && !locationData.address.isEmpty()) {
+            binding.tvLocationAddress.setText(locationData.address);
+        } else {
+            binding.tvLocationAddress.setText(R.string.location_unknown);
+        }
+    }
+
+    private void showLocationError(String error) {
+        if (binding == null) return;
+        binding.tvLocationAddress.setText(R.string.location_error);
+        Snackbar.make(binding.getRoot(), error, Snackbar.LENGTH_LONG).show();
+    }
+
+    private void showLocationPermissionDenied() {
+        if (binding == null) return;
+        binding.tvLocationAddress.setText(R.string.location_permission_denied);
+        Snackbar.make(binding.getRoot(), R.string.location_permission_required, Snackbar.LENGTH_LONG)
+                .setAction(R.string.settings, v -> {
+                    Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
+                    intent.setData(Uri.fromParts("package", requireContext().getPackageName(), null));
+                    startActivity(intent);
+                })
+                .show();
     }
 
     private void setupBannerViewPager() {
@@ -317,6 +404,11 @@ public class HomeFragment extends BaseFragment {
     @Override
     public void onDestroyView() {
         super.onDestroyView();
+        if (locationHelper != null) {
+            locationHelper.stopLocationUpdates();
+            locationHelper.destroy();
+            locationHelper = null;
+        }
         binding = null;
     }
 }

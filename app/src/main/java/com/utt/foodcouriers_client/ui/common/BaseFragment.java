@@ -28,4 +28,10 @@ public abstract class BaseFragment extends Fragment {
                     .show();
         }
     }
+
+    protected void setToolbarTitle(String title) {
+        if (getActivity() != null && getActivity() instanceof com.utt.foodcouriers_client.ui.main.MainActivity) {
+            ((com.utt.foodcouriers_client.ui.main.MainActivity) getActivity()).setToolbarTitle(title);
+        }
+    }
 }

@@ -18,6 +18,7 @@
     <ScrollView
         android:layout_width="match_parent"
         android:layout_height="0dp"
+        android:paddingBottom="@dimen/spacing_md"
         app:layout_constraintTop_toBottomOf="@id/toolbar"
         app:layout_constraintBottom_toTopOf="@id/card_total">
 
@@ -119,11 +120,11 @@
                 <Button
                     android:id="@+id/btn_apply_promo"
                     android:layout_width="wrap_content"
-                    android:layout_height="@dimen/input_height"
+                    android:layout_height="wrap_content"
                     android:layout_marginStart="@dimen/spacing_sm"
+                    android:background="@drawable/button_outline"
                     android:text="Áp dụng"
-                    android:textColor="@color/primary"
-                    android:background="@drawable/button_outline" />
+                    android:textColor="@color/auth_indicator_inactive" />
 
             </LinearLayout>
 

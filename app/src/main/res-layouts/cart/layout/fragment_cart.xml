@@ -11,7 +11,7 @@
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginStart="@dimen/screen_padding"
-        android:layout_marginTop="@dimen/screen_padding"
+        android:layout_marginTop="@dimen/spacing_sm"
         android:layout_marginEnd="@dimen/screen_padding"
         android:orientation="vertical"
         app:layout_constraintEnd_toEndOf="parent"
@@ -24,102 +24,26 @@
             android:gravity="center_vertical"
             android:orientation="horizontal">
 
-            <TextView
-                android:id="@+id/tv_title"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="@string/cart_header_title"
-                android:textColor="@color/text_primary"
-                android:textSize="@dimen/text_title_large"
-                android:textStyle="bold" />
+            <ImageView
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:src="@drawable/ic_cart"
+                app:tint="@color/primary" />
 
             <TextView
                 android:id="@+id/tv_cart_count"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:layout_marginStart="@dimen/spacing_sm"
                 android:background="@drawable/bg_cart_count_chip"
                 android:paddingStart="12dp"
-                android:paddingTop="6dp"
+                android:paddingTop="4dp"
                 android:paddingEnd="12dp"
-                android:paddingBottom="6dp"
+                android:paddingBottom="4dp"
                 android:textColor="@color/secondary"
                 android:textSize="@dimen/text_caption"
                 android:textStyle="bold"
                 tools:text="4 items" />
-        </LinearLayout>
-
-        <TextView
-            android:id="@+id/tv_subtitle"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="@dimen/spacing_sm"
-            android:text="@string/cart_grouped_subtitle"
-            android:textColor="@color/text_secondary"
-            android:textSize="@dimen/text_body" />
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="@dimen/spacing_md"
-            android:background="@drawable/bg_cart_info_panel"
-            android:gravity="center_vertical"
-            android:orientation="horizontal"
-            android:padding="14dp">
-
-            <LinearLayout
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:orientation="vertical">
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="@string/cart_eta_label"
-                    android:textColor="@color/text_hint"
-                    android:textSize="@dimen/text_caption" />
-
-                <TextView
-                    android:id="@+id/tv_eta_value"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="4dp"
-                    android:textColor="@color/text_primary"
-                    android:textSize="@dimen/text_body"
-                    android:textStyle="bold"
-                    tools:text="18-25 min" />
-            </LinearLayout>
-
-            <View
-                android:layout_width="1dp"
-                android:layout_height="32dp"
-                android:background="@color/divider" />
-
-            <LinearLayout
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:orientation="vertical"
-                android:paddingStart="14dp">
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="@string/cart_restaurant_label"
-                    android:textColor="@color/text_hint"
-                    android:textSize="@dimen/text_caption" />
-
-                <TextView
-                    android:id="@+id/tv_restaurant_value"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="4dp"
-                    android:textColor="@color/text_primary"
-                    android:textSize="@dimen/text_body"
-                    android:textStyle="bold"
-                    tools:text="2 nha hang da chon" />
-            </LinearLayout>
         </LinearLayout>
     </LinearLayout>
 

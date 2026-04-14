@@ -51,7 +51,11 @@ public class ToastBanner implements Application.ActivityLifecycleCallbacks {
     }
 
     private static void show(String message, ToastBannerType type) {
-        if (currentActivity == null || message == null || message.trim().isEmpty()) {
+        if (message == null || message.trim().isEmpty()) {
+            return;
+        }
+
+        if (currentActivity == null) {
             return;
         }
 
@@ -85,10 +89,7 @@ public class ToastBanner implements Application.ActivityLifecycleCallbacks {
         }
 
         ViewGroup viewGroup = (ViewGroup) rootView;
-        int bannerId = activity.getResources().getIdentifier("banner_container", "id", activity.getPackageName());
-        if (bannerId == 0) {
-            bannerId = 12346;
-        }
+        int bannerId = 12346;
 
         for (int index = 0; index < viewGroup.getChildCount(); index++) {
             View child = viewGroup.getChildAt(index);
@@ -175,7 +176,7 @@ public class ToastBanner implements Application.ActivityLifecycleCallbacks {
     }
 
     @Override
-    public void onActivitySaveInstanceState(@NonNull Activity activity, @NonNull Bundle outState) {
+    public void onActivitySaveInstanceState(@NonNull Activity activity, @Nullable Bundle outState) {
     }
 
     @Override

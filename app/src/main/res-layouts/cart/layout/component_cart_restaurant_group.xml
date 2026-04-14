@@ -28,8 +28,7 @@
             <CheckBox
                 android:id="@+id/cb_select_restaurant"
                 android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:buttonTint="@color/white" />
+                android:layout_height="wrap_content" />
 
             <LinearLayout
                 android:layout_width="0dp"

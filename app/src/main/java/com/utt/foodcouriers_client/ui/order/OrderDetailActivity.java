@@ -13,6 +13,7 @@ import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
 
 import com.utt.foodcouriers_client.R;
+import com.utt.foodcouriers_client.data.model.DeliveryStatus;
 import com.utt.foodcouriers_client.data.model.OrderStatus;
 import com.utt.foodcouriers_client.data.model.OrderSummary;
 import com.utt.foodcouriers_client.ui.common.BaseActivity;
@@ -45,7 +46,7 @@ public class OrderDetailActivity extends BaseActivity {
             finish();
             return;
         }
-        viewModel.loadOrderDetail(orderId);
+        viewModel.loadOrderDetail(this, orderId);
     }
 
     private void setupRecyclerView() {
@@ -67,7 +68,13 @@ public class OrderDetailActivity extends BaseActivity {
     private void renderOrder(OrderSummary order) {
         ((TextView) findViewById(R.id.tv_order_code)).setText(order.getOrderCode());
         ((TextView) findViewById(R.id.tv_order_date)).setText(order.getCreatedAtLabel());
-        ((TextView) findViewById(R.id.tv_status)).setText(OrderStatus.fromValue(order.getStatus()).getLabel());
+        
+        String statusText = OrderStatus.fromValue(order.getStatus()).getLabel();
+        if (order.getDeliveryStatus() != null && !order.getDeliveryStatus().isEmpty()) {
+            statusText += " · " + DeliveryStatus.fromValue(order.getDeliveryStatus()).getLabel();
+        }
+        ((TextView) findViewById(R.id.tv_status)).setText(statusText);
+        
         ((TextView) findViewById(R.id.tv_restaurant_name)).setText(order.getRestaurantName());
         ((TextView) findViewById(R.id.tv_restaurant_address)).setText(order.getRestaurantAddress());
         ((TextView) findViewById(R.id.tv_subtotal)).setText(formatCurrency(order.getSubtotal()));
@@ -88,6 +95,14 @@ public class OrderDetailActivity extends BaseActivity {
 
         Button btnReview = findViewById(R.id.btn_review);
         Button btnReorder = findViewById(R.id.btn_reorder);
+        
+        // Link to tracking if order is active
+        findViewById(R.id.tv_status).setOnClickListener(v -> {
+            android.content.Intent intent = new android.content.Intent(this, OrderTrackingActivity.class);
+            intent.putExtra(OrderTrackingActivity.EXTRA_ORDER_ID, order.getId());
+            startActivity(intent);
+        });
+
         btnReview.setOnClickListener(v -> showToast("Module review se noi tiep sau khi order flow on dinh."));
         btnReorder.setOnClickListener(v -> showToast("Re-order se duoc noi sang cart/use case o buoc tiep theo."));
     }
@@ -99,19 +114,20 @@ public class OrderDetailActivity extends BaseActivity {
                 OrderStatus.PENDING,
                 OrderStatus.CONFIRMED,
                 OrderStatus.PREPARING,
+                OrderStatus.READY_FOR_PICKUP,
                 OrderStatus.DELIVERING,
                 OrderStatus.DELIVERED
         }) {
             TextView step = new TextView(this);
             step.setText(status.getLabel());
             step.setGravity(Gravity.CENTER);
-            step.setTextSize(12f);
-            step.setPadding(16, 12, 16, 12);
+            step.setTextSize(10f); // Smaller text to fit
+            step.setPadding(8, 8, 8, 8);
             step.setAlpha(isReached(currentStatus, status) ? 1f : 0.45f);
             step.setBackgroundResource(isReached(currentStatus, status) ? R.drawable.badge_featured : R.drawable.button_outline);
             LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
             if (timeline.getChildCount() > 0) {
-                params.setMarginStart(8);
+                params.setMarginStart(4);
             }
             timeline.addView(step, params);
         }

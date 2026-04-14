@@ -31,14 +31,14 @@ public class OrdersFragment extends BaseFragment {
         setupRecyclerView();
         setupTabs();
         bindObservers();
-        binding.swipeRefresh.setOnRefreshListener(() -> viewModel.refresh());
+        binding.swipeRefresh.setOnRefreshListener(() -> viewModel.refresh(requireContext()));
         return binding.getRoot();
     }
 
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
-        viewModel.loadOrders(OrderRepository.OrderFilter.ALL);
+        viewModel.loadOrders(requireContext(), OrderRepository.OrderFilter.ALL);
     }
 
     private void setupRecyclerView() {
@@ -62,7 +62,7 @@ public class OrdersFragment extends BaseFragment {
             @Override
             public void onTabSelected(TabLayout.Tab tab) {
                 Object filter = tab.getTag();
-                viewModel.loadOrders(filter instanceof OrderRepository.OrderFilter
+                viewModel.loadOrders(requireContext(), filter instanceof OrderRepository.OrderFilter
                         ? (OrderRepository.OrderFilter) filter
                         : OrderRepository.OrderFilter.ALL);
             }

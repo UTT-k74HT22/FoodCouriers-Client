@@ -31,14 +31,20 @@
             android:layout_height="wrap_content"
             android:textSize="@dimen/text_body"
             android:textStyle="bold"
-            android:textColor="@color/text_primary" />
+            android:textColor="@color/text_primary"
+            android:maxLines="1"
+            android:ellipsize="end"
+            android:minLines="1" />
 
         <TextView
             android:id="@+id/tv_step_description"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:textSize="@dimen/text_caption"
-            android:textColor="@color/text_secondary" />
+            android:textSize="@dimen/text_body"
+            android:textColor="@color/text_secondary"
+            android:maxLines="2"
+            android:ellipsize="end"
+            android:minLines="1" />
 
     </LinearLayout>
 

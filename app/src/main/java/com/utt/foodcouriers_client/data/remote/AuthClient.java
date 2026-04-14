@@ -386,6 +386,99 @@ public class AuthClient extends BaseSupabaseClient {
         return value == null || value.trim().isEmpty();
     }
 
+    public void updateProfile(String userDbId, String fullName, String phone, String avatarUrl, ApiCallback<UserProfile> callback) {
+        if (!isAuthenticated()) {
+            postError(callback, "Not authenticated");
+            return;
+        }
+
+        Map<String, Object> profile = new HashMap<>();
+        if (fullName != null) profile.put("full_name", fullName);
+        if (phone != null) profile.put("phone", phone);
+        if (avatarUrl != null && !avatarUrl.isEmpty()) profile.put("avatar_url", avatarUrl);
+
+        if (profile.isEmpty()) {
+            postError(callback, "No data to update");
+            return;
+        }
+
+        Log.d(TAG, "updateProfile payload: " + profile);
+
+        Request request = new Request.Builder()
+                .url(SupabaseConfig.REST_URL + "/users?id=eq." + userDbId)
+                .patch(RequestBody.create(gson.toJson(profile), MediaType.parse(SupabaseConfig.CONTENT_TYPE_JSON)))
+                .addHeader(SupabaseConfig.HEADER_AUTH, SupabaseConfig.SUPABASE_ANON_KEY)
+                .addHeader(SupabaseConfig.HEADER_AUTHORIZATION, "Bearer " + accessToken)
+                .addHeader(SupabaseConfig.HEADER_PREFER, "return=representation")
+                .build();
+
+        client.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(Call call, IOException exception) {
+                postError(callback, "Network error: " + exception.getMessage());
+            }
+
+            @Override
+            public void onResponse(Call call, Response response) throws IOException {
+                try (ResponseBody responseBody = response.body()) {
+                    String json = responseBody != null ? responseBody.string() : "";
+                    if (!response.isSuccessful()) {
+                        postError(callback, parseRestError("Failed to update profile", response.code(), json));
+                        return;
+                    }
+
+                    UserProfile[] profiles = gson.fromJson(json, UserProfile[].class);
+                    if (profiles == null || profiles.length == 0) {
+                        postError(callback, "Failed to update profile");
+                        return;
+                    }
+
+                    postSuccess(callback, profiles[0]);
+                }
+            }
+        });
+    }
+
+    public void getUserById(String userDbId, ApiCallback<UserProfile> callback) {
+        if (!isAuthenticated()) {
+            postError(callback, "Not authenticated");
+            return;
+        }
+
+        Request request = new Request.Builder()
+                .url(SupabaseConfig.REST_URL + "/users?id=eq." + userDbId + "&select=*")
+                .get()
+                .addHeader(SupabaseConfig.HEADER_AUTH, SupabaseConfig.SUPABASE_ANON_KEY)
+                .addHeader(SupabaseConfig.HEADER_AUTHORIZATION, "Bearer " + accessToken)
+                .build();
+
+        client.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(Call call, IOException exception) {
+                postError(callback, "Network error: " + exception.getMessage());
+            }
+
+            @Override
+            public void onResponse(Call call, Response response) throws IOException {
+                try (ResponseBody responseBody = response.body()) {
+                    String json = responseBody != null ? responseBody.string() : "";
+                    if (!response.isSuccessful()) {
+                        postError(callback, parseRestError("Failed to get user", response.code(), json));
+                        return;
+                    }
+
+                    UserProfile[] profiles = gson.fromJson(json, UserProfile[].class);
+                    if (profiles == null || profiles.length == 0) {
+                        postError(callback, "User not found");
+                        return;
+                    }
+
+                    postSuccess(callback, profiles[0]);
+                }
+            }
+        });
+    }
+
     private static class AuthResponse {
         @SerializedName("access_token")
         private String accessToken;

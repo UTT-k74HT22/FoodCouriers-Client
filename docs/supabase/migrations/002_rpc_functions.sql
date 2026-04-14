@@ -87,7 +87,7 @@ BEGIN
     v_total := v_subtotal + v_delivery_fee - v_discount;
 
     -- Generate order code
-    v_order_code := 'ORD' || TO_CHAR(NOW(), 'YYYYMMDD') || LPAD((EXTRACT(EPOCH FROM NOW()))::BIGINT % 100000, 5, '0');
+    v_order_code := 'ORD' || TO_CHAR(NOW(), 'YYYYMMDD') || lpad(((EXTRACT(EPOCH FROM NOW()))::BIGINT % 100000)::TEXT, 5, '0');
 
     -- Insert order
     INSERT INTO orders (
