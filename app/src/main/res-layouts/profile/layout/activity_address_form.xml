@@ -68,21 +68,82 @@
                 android:textColor="@color/text_secondary"
                 android:textSize="@dimen/text_caption" />
 
-            <EditText
-                android:id="@+id/et_address"
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="@dimen/spacing_xs"
-                android:background="@drawable/bg_input_field"
-                android:gravity="top"
-                android:hint="@string/address_detail"
-                android:inputType="textPostalAddress"
-                android:minLines="3"
-                android:paddingHorizontal="@dimen/spacing_md"
-                android:paddingVertical="@dimen/spacing_md"
-                android:textColor="@color/text_primary"
-                android:textColorHint="@color/text_hint"
-                android:textSize="@dimen/text_body" />
+                android:orientation="horizontal">
+
+                <AutoCompleteTextView
+                    android:id="@+id/et_address"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:background="@drawable/bg_input_field"
+                    android:completionThreshold="1"
+                    android:dropDownAnchor="@id/et_address"
+                    android:dropDownWidth="match_parent"
+                    android:gravity="top"
+                    android:hint="@string/address_detail_hint"
+                    android:imeOptions="actionSearch"
+                    android:inputType="textPostalAddress"
+                    android:minLines="2"
+                    android:paddingHorizontal="@dimen/spacing_md"
+                    android:paddingVertical="@dimen/spacing_md"
+                    android:popupBackground="@color/surface"
+                    android:textColor="@color/text_primary"
+                    android:textColorHint="@color/text_hint"
+                    android:textSize="@dimen/text_body" />
+
+                <ImageButton
+                    android:id="@+id/btn_search_address"
+                    android:layout_width="52dp"
+                    android:layout_height="52dp"
+                    android:layout_marginStart="@dimen/spacing_sm"
+                    android:background="@drawable/bg_input_field"
+                    android:contentDescription="@string/address_search"
+                    android:padding="@dimen/spacing_md"
+                    android:src="@drawable/ic_search"
+                    app:tint="@color/primary" />
+            </LinearLayout>
+
+            <ProgressBar
+                android:id="@+id/progress_location"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:layout_marginTop="@dimen/spacing_sm"
+                android:visibility="gone" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/spacing_md"
+                android:text="@string/address_map_title"
+                android:textColor="@color/text_secondary"
+                android:textSize="@dimen/text_caption" />
+
+            <TextView
+                android:id="@+id/tv_coordinates"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/spacing_xs"
+                android:textColor="@color/text_hint"
+                android:textSize="@dimen/text_caption" />
+
+            <org.osmdroid.views.MapView
+                android:id="@+id/map_view"
+                android:layout_width="match_parent"
+                android:layout_height="200dp"
+                android:layout_marginTop="@dimen/spacing_sm" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/spacing_sm"
+                android:text="@string/address_map_hint"
+                android:textColor="@color/text_hint"
+                android:textSize="@dimen/text_caption" />
 
             <TextView
                 android:layout_width="wrap_content"

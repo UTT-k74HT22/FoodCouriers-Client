@@ -216,6 +216,11 @@
     <string name="address_create_success">Thêm địa chỉ thành công</string>
     <string name="address_update_success">Cập nhật địa chỉ thành công</string>
     <string name="address_delete_success">Xóa địa chỉ thành công</string>
+    <string name="address_get_location">Lấy vị trí hiện tại</string>
+    <string name="address_search">Tìm địa chỉ</string>
+    <string name="address_map_title">Vị trí trên bản đồ</string>
+    <string name="address_map_hint">Kéo để chỉnh vị trí</string>
+    <string name="address_detail_hint">Ví dụ: 123 Đường Láng, Quận Đống Đa</string>
     <string name="error_title">Đã xảy ra lỗi</string>
     <string name="error_message">Vui lòng kiểm tra kết nối và thử lại.</string>
     <string name="retry">Retry</string>

@@ -10,12 +10,21 @@ public class CartRestaurantGroup implements Serializable {
     private final String restaurantName;
     private final int deliveryFee;
     private final List<CartItem> items;
+    private final Double restaurantLatitude;
+    private final Double restaurantLongitude;
 
     public CartRestaurantGroup(String restaurantId, String restaurantName, int deliveryFee, List<CartItem> items) {
+        this(restaurantId, restaurantName, deliveryFee, items, null, null);
+    }
+
+    public CartRestaurantGroup(String restaurantId, String restaurantName, int deliveryFee, List<CartItem> items,
+                                Double restaurantLatitude, Double restaurantLongitude) {
         this.restaurantId = restaurantId;
         this.restaurantName = restaurantName;
         this.deliveryFee = deliveryFee;
         this.items = items == null ? new ArrayList<>() : items;
+        this.restaurantLatitude = restaurantLatitude;
+        this.restaurantLongitude = restaurantLongitude;
     }
 
     public String getRestaurantId() {
@@ -32,5 +41,13 @@ public class CartRestaurantGroup implements Serializable {
 
     public List<CartItem> getItems() {
         return items;
+    }
+
+    public Double getRestaurantLatitude() {
+        return restaurantLatitude;
+    }
+
+    public Double getRestaurantLongitude() {
+        return restaurantLongitude;
     }
 }

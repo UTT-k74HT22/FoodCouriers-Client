@@ -2,22 +2,30 @@ package com.utt.foodcouriers_client.ui.checkout;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.view.LayoutInflater;
 import android.view.View;
+import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
 
 import androidx.annotation.Nullable;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.widget.Toolbar;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.utt.foodcouriers_client.R;
+import com.utt.foodcouriers_client.data.model.Address;
 import com.utt.foodcouriers_client.data.model.OrderSummary;
+import com.utt.foodcouriers_client.data.remote.AddressClient;
 import com.utt.foodcouriers_client.ui.cart.CartFragment;
+import com.utt.foodcouriers_client.ui.checkout.adapter.AddressSelectAdapter;
 import com.utt.foodcouriers_client.ui.common.BaseActivity;
 import com.utt.foodcouriers_client.ui.order.OrderSuccessActivity;
+import com.utt.foodcouriers_client.ui.profile.AddressFormActivity;
 import com.utt.foodcouriers_client.ui.cart.adapter.CartItemAdapter;
+import com.utt.foodcouriers_client.utils.SessionManager;
 import com.utt.foodcouriers_client.viewmodel.CheckoutViewModel;
 
 import java.text.NumberFormat;
@@ -31,10 +39,13 @@ public class CheckoutActivity extends BaseActivity {
     private CartItemAdapter adapter;
     private final NumberFormat currencyFormatter = NumberFormat.getCurrencyInstance(new Locale("vi", "VN"));
 
-    private TextView tvSubtotal, tvDeliveryFee, tvTotal, tvDiscount, tvAddress, tvPromoError;
+    private TextView tvSubtotal, tvDeliveryFee, tvTotal, tvDiscount, tvAddress, tvPromoError, tvAddressLabel, tvDistance;
     private View layoutDiscount;
     private EditText etNote, etPromoCode;
-    private View btnApplyPromo;
+    private View btnApplyPromo, cardAddress;
+
+    private Address selectedAddress;
+    private AddressClient.ApiCallback<Address[]> addressCallback;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -52,13 +63,23 @@ public class CheckoutActivity extends BaseActivity {
 
         ArrayList<String> selectedIds = getIntent().getStringArrayListExtra(CartFragment.EXTRA_SELECTED_CART_ITEM_IDS);
         if (selectedIds != null) {
-            viewModel.loadCheckoutData(this, selectedIds);
+            double deliveryLat = selectedAddress != null && selectedAddress.getLatitude() != null 
+                    ? selectedAddress.getLatitude() : 10.8231;
+            double deliveryLon = selectedAddress != null && selectedAddress.getLongitude() != null 
+                    ? selectedAddress.getLongitude() : 106.6297;
+            viewModel.loadCheckoutData(this, selectedIds, deliveryLat, deliveryLon);
         }
 
         findViewById(R.id.btn_place_order).setOnClickListener(v -> {
-            String address = tvAddress.getText().toString();
+            if (selectedAddress == null) {
+                showErrorBanner("Vui lòng chọn địa chỉ giao hàng");
+                return;
+            }
+            String address = selectedAddress.getDisplayAddress();
             String note = etNote.getText().toString();
-            viewModel.placeOrders(this, address, note, "cod");
+            double lat = selectedAddress.getLatitude() != null ? selectedAddress.getLatitude() : 21.002;
+            double lon = selectedAddress.getLongitude() != null ? selectedAddress.getLongitude() : 105.843;
+            viewModel.placeOrders(this, address, note, "cod", lat, lon);
         });
 
         btnApplyPromo.setOnClickListener(v -> {
@@ -74,14 +95,16 @@ public class CheckoutActivity extends BaseActivity {
         tvDiscount = findViewById(R.id.tv_discount);
         layoutDiscount = findViewById(R.id.layout_discount);
         tvAddress = findViewById(R.id.tv_address);
+        tvAddressLabel = findViewById(R.id.tv_address_label);
         etNote = findViewById(R.id.et_note);
         etPromoCode = findViewById(R.id.et_promo_code);
         btnApplyPromo = findViewById(R.id.btn_apply_promo);
         tvPromoError = findViewById(R.id.tv_promo_error);
+        cardAddress = findViewById(R.id.card_address);
 
-        // Mock address for now
-        tvAddress.setText("123 Phố Chùa Láng, Đống Đa, Hà Nội");
-        ((TextView) findViewById(R.id.tv_address_label)).setText("Nhà riêng");
+        cardAddress.setOnClickListener(v -> showAddressSelectionDialog());
+        
+        loadDefaultAddress();
     }
 
     private void setupRecyclerView() {
@@ -137,12 +160,122 @@ public class CheckoutActivity extends BaseActivity {
                 List<OrderSummary> orders = viewModel.getCreatedOrders().getValue();
                 if (orders != null && !orders.isEmpty()) {
                     Intent intent = new Intent(this, OrderSuccessActivity.class);
-                    // Truyền ID của đơn đầu tiên để hiển thị (nếu có nhiều đơn, ta có thể hiển thị danh sách sau)
                     intent.putExtra(OrderSuccessActivity.EXTRA_ORDER_ID, orders.get(0).getId());
                     startActivity(intent);
                     finish();
                 }
             }
         });
+    }
+
+    private void loadDefaultAddress() {
+        String userId = SessionManager.getInstance(this).getUserId();
+        if (userId == null) {
+            showErrorBanner("Vui lòng đăng nhập để sử dụng");
+            return;
+        }
+
+        AddressClient.getInstance().getAddressesByUserId(userId, new AddressClient.ApiCallback<Address[]>() {
+            @Override
+            public void onSuccess(Address[] result) {
+                runOnUiThread(() -> {
+                    if (result != null && result.length > 0) {
+                        Address defaultAddr = null;
+                        for (Address addr : result) {
+                            if (addr.isDefault()) {
+                                defaultAddr = addr;
+                                break;
+                            }
+                        }
+                        if (defaultAddr == null) {
+                            defaultAddr = result[0];
+                        }
+                        setSelectedAddress(defaultAddr);
+                    }
+                });
+            }
+
+            @Override
+            public void onError(String error) {
+                runOnUiThread(() -> showErrorBanner("Không thể tải địa chỉ: " + error));
+            }
+        });
+    }
+
+    private void setSelectedAddress(Address address) {
+        selectedAddress = address;
+        if (address != null) {
+            tvAddressLabel.setText(address.getLabel());
+            tvAddress.setText(address.getDisplayAddress());
+        } else {
+            tvAddressLabel.setText("");
+            tvAddress.setText("Chưa có địa chỉ");
+        }
+    }
+
+    private void showAddressSelectionDialog() {
+        String userId = SessionManager.getInstance(this).getUserId();
+        if (userId == null) return;
+
+        View dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_select_address, null);
+        RecyclerView rvAddresses = dialogView.findViewById(R.id.rv_addresses);
+        TextView tvEmpty = dialogView.findViewById(R.id.tv_empty);
+        Button btnAddAddress = dialogView.findViewById(R.id.btn_add_address);
+
+        AddressSelectAdapter adapter = new AddressSelectAdapter();
+        adapter.setOnAddressSelectedListener(address -> {
+            setSelectedAddress(address);
+        });
+        rvAddresses.setLayoutManager(new LinearLayoutManager(this));
+        rvAddresses.setAdapter(adapter);
+
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setView(dialogView);
+
+        AlertDialog dialog = builder.create();
+
+        AddressClient.getInstance().getAddressesByUserId(userId, new AddressClient.ApiCallback<Address[]>() {
+            @Override
+            public void onSuccess(Address[] result) {
+                runOnUiThread(() -> {
+                    if (result != null && result.length > 0) {
+                        rvAddresses.setVisibility(View.VISIBLE);
+                        tvEmpty.setVisibility(View.GONE);
+                        adapter.setAddresses(java.util.Arrays.asList(result));
+                        if (selectedAddress != null) {
+                            adapter.setSelectedAddressId(selectedAddress.getId());
+                        }
+                    } else {
+                        rvAddresses.setVisibility(View.GONE);
+                        tvEmpty.setVisibility(View.VISIBLE);
+                    }
+                });
+            }
+
+            @Override
+            public void onError(String error) {
+                runOnUiThread(() -> {
+                    rvAddresses.setVisibility(View.GONE);
+                    tvEmpty.setVisibility(View.VISIBLE);
+                    tvEmpty.setText("Lỗi: " + error);
+                });
+            }
+        });
+
+        btnAddAddress.setOnClickListener(v -> {
+            dialog.dismiss();
+            Intent intent = new Intent(this, AddressFormActivity.class);
+            startActivityForResult(intent, 200);
+        });
+
+        dialog.show();
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (resultCode == RESULT_OK) {
+            loadDefaultAddress();
+        }
     }
 }
