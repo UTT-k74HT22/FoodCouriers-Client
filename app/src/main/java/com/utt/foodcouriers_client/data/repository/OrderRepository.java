@@ -54,7 +54,7 @@ public class OrderRepository {
     public void getOrders(Context context, OrderFilter filter, RepositoryCallback<List<OrderSummary>> callback) {
         SessionManager sessionManager = SessionManager.getInstance(context);
         if (!sessionManager.isLoggedIn()) {
-            postError(callback, "AUTH_REQUIRED");
+            postError(callback, "Chức năng này cần đăng nhập");
             return;
         }
 
@@ -101,7 +101,7 @@ public class OrderRepository {
     public void getOrderById(Context context, String orderId, RepositoryCallback<OrderSummary> callback) {
         SessionManager sessionManager = SessionManager.getInstance(context);
         if (!sessionManager.isLoggedIn()) {
-            postError(callback, "AUTH_REQUIRED");
+            postError(callback, "Chức năng này cần đăng nhập");
             return;
         }
 
@@ -191,7 +191,7 @@ public class OrderRepository {
     ) {
         SessionManager sessionManager = SessionManager.getInstance(context);
         if (!sessionManager.isLoggedIn()) {
-            postError(callback, "AUTH_REQUIRED");
+            postError(callback, "Chức năng này cần đăng nhập");
             return;
         }
 

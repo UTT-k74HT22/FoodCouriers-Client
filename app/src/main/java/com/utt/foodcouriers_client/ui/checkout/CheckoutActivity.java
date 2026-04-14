@@ -20,6 +20,9 @@ import com.utt.foodcouriers_client.ui.order.OrderSuccessActivity;
 import com.utt.foodcouriers_client.ui.cart.adapter.CartItemAdapter;
 import com.utt.foodcouriers_client.viewmodel.CheckoutViewModel;
 
+import com.utt.foodcouriers_client.utils.SessionManager;
+import com.utt.foodcouriers_client.utils.ToastBanner;
+
 import java.text.NumberFormat;
 import java.util.ArrayList;
 import java.util.List;
@@ -29,6 +32,7 @@ public class CheckoutActivity extends BaseActivity {
 
     private CheckoutViewModel viewModel;
     private CartItemAdapter adapter;
+    private SessionManager sessionManager;
     private final NumberFormat currencyFormatter = NumberFormat.getCurrencyInstance(new Locale("vi", "VN"));
 
     private TextView tvSubtotal, tvDeliveryFee, tvTotal, tvDiscount, tvAddress, tvPromoError;
@@ -46,6 +50,7 @@ public class CheckoutActivity extends BaseActivity {
         setToolbarTitle(getString(R.string.checkout_title));
 
         viewModel = new ViewModelProvider(this).get(CheckoutViewModel.class);
+        sessionManager = SessionManager.getInstance(this);
         initViews();
         setupRecyclerView();
         bindObservers();
@@ -56,15 +61,38 @@ public class CheckoutActivity extends BaseActivity {
         }
 
         findViewById(R.id.btn_place_order).setOnClickListener(v -> {
-            String address = tvAddress.getText().toString();
-            String note = etNote.getText().toString();
-            viewModel.placeOrders(this, address, note, "cod");
+            showOrderConfirmationDialog();
         });
 
         btnApplyPromo.setOnClickListener(v -> {
             String code = etPromoCode.getText().toString();
             viewModel.validatePromotion(this, code);
         });
+    }
+
+    private void showOrderConfirmationDialog() {
+        String phone = sessionManager.getUserPhone();
+        String address = tvAddress.getText().toString().trim();
+
+        if (phone == null || phone.isEmpty()) {
+            ToastBanner.showError(getString(R.string.checkout_error_no_phone));
+            return;
+        }
+
+        if (address.isEmpty() || address.equals("Chưa có địa chỉ")) {
+            ToastBanner.showError(getString(R.string.checkout_error_no_address));
+            return;
+        }
+
+        new androidx.appcompat.app.AlertDialog.Builder(this)
+                .setTitle(R.string.checkout_confirm_title)
+                .setMessage(R.string.checkout_confirm_message)
+                .setPositiveButton(R.string.checkout_confirm_yes, (dialog, which) -> {
+                    String note = etNote.getText().toString();
+                    viewModel.placeOrders(this, address, note, "cod");
+                })
+                .setNegativeButton(R.string.checkout_confirm_no, (dialog, which) -> dialog.dismiss())
+                .show();
     }
 
     private void initViews() {
@@ -79,9 +107,10 @@ public class CheckoutActivity extends BaseActivity {
         btnApplyPromo = findViewById(R.id.btn_apply_promo);
         tvPromoError = findViewById(R.id.tv_promo_error);
 
-        // Mock address for now
-        tvAddress.setText("123 Phố Chùa Láng, Đống Đa, Hà Nội");
-        ((TextView) findViewById(R.id.tv_address_label)).setText("Nhà riêng");
+        // Hiển thị thông báo nếu chưa có địa chỉ, ngược lại có thể lấy từ session/API
+        // Hiện tại ta để mặc định là "Chưa có địa chỉ" để test logic validate
+        tvAddress.setText("Chưa có địa chỉ");
+        ((TextView) findViewById(R.id.tv_address_label)).setText("Địa chỉ giao hàng");
     }
 
     private void setupRecyclerView() {

@@ -13,13 +13,7 @@
         android:padding="16dp"
         app:layout_constraintTop_toTopOf="parent">
 
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="@string/nav_orders"
-            android:textSize="20sp"
-            android:textStyle="bold"
-            android:textColor="@color/text_primary" />
+
 
         <com.google.android.material.tabs.TabLayout
             android:id="@+id/tab_layout"

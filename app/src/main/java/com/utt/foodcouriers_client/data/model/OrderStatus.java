@@ -1,13 +1,13 @@
 package com.utt.foodcouriers_client.data.model;
 
 public enum OrderStatus {
-    PENDING("pending", "Cho xac nhan"),
-    CONFIRMED("confirmed", "Da xac nhan"),
-    PREPARING("preparing", "Dang chuan bi"),
-    READY_FOR_PICKUP("ready_for_pickup", "San sang lay"),
-    DELIVERING("delivering", "Dang giao"),
-    DELIVERED("delivered", "Hoan thanh"),
-    CANCELLED("cancelled", "Da huy");
+    PENDING("pending", "Chờ nhận"),
+    CONFIRMED("confirmed", "Đã nhận"),
+    PREPARING("preparing", "Đang làm"),
+    READY_FOR_PICKUP("ready_for_pickup", "Chờ lấy"),
+    DELIVERING("delivering", "Đang giao"),
+    DELIVERED("delivered", "Đã giao"),
+    CANCELLED("cancelled", "Đã hủy");
 
     private final String value;
     private final String label;
