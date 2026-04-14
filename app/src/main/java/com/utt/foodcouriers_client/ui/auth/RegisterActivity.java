@@ -3,20 +3,22 @@ package com.utt.foodcouriers_client.ui.auth;
 import android.content.Intent;
 import android.os.Bundle;
 import android.text.TextUtils;
+import android.util.Log;
 import android.util.Patterns;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ImageButton;
 import android.widget.TextView;
 
-import com.google.android.material.progressindicator.CircularProgressIndicator;
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textfield.TextInputLayout;
 import com.utt.foodcouriers_client.R;
+import com.utt.foodcouriers_client.data.auth.SocialAuthProvider;
 import com.utt.foodcouriers_client.data.common.RepositoryCallback;
 import com.utt.foodcouriers_client.data.model.UserProfile;
 import com.utt.foodcouriers_client.data.remote.AuthClient;
 import com.utt.foodcouriers_client.data.repository.AuthRepository;
+import com.utt.foodcouriers_client.data.repository.SocialAuthRepository;
 import com.utt.foodcouriers_client.ui.common.BaseActivity;
 import com.utt.foodcouriers_client.ui.main.MainActivity;
 import com.utt.foodcouriers_client.utils.SessionManager;
@@ -24,6 +26,7 @@ import com.utt.foodcouriers_client.utils.ToastBanner;
 
 public class RegisterActivity extends BaseActivity {
 
+    private static final String TAG = "RegisterActivity";
     private static final long TOKEN_EXPIRY_MILLIS = 3600000L;
 
     private TextInputLayout tilName;
@@ -37,8 +40,11 @@ public class RegisterActivity extends BaseActivity {
     private TextInputEditText etPassword;
     private TextInputEditText etConfirmPassword;
     private Button btnRegister;
+    private android.view.View cardGoogleAuth;
+    private android.view.View cardFacebookAuth;
 
     private AuthRepository authRepository;
+    private SocialAuthRepository socialAuthRepository;
     private SessionManager sessionManager;
 
     @Override
@@ -47,6 +53,7 @@ public class RegisterActivity extends BaseActivity {
         setContentView(R.layout.activity_register);
 
         authRepository = AuthRepository.getInstance();
+        socialAuthRepository = SocialAuthRepository.getInstance();
         sessionManager = SessionManager.getInstance(this);
 
         initViews();
@@ -65,6 +72,8 @@ public class RegisterActivity extends BaseActivity {
         etPassword = findViewById(R.id.etPassword);
         etConfirmPassword = findViewById(R.id.etConfirmPassword);
         btnRegister = findViewById(R.id.btnRegister);
+        cardGoogleAuth = findViewById(R.id.cardGoogleAuth);
+        cardFacebookAuth = findViewById(R.id.cardFacebookAuth);
     }
 
     private void setupListeners() {
@@ -76,6 +85,9 @@ public class RegisterActivity extends BaseActivity {
             startActivity(new Intent(this, LoginActivity.class));
             finish();
         });
+
+        cardGoogleAuth.setOnClickListener(v -> startSocialAuth(SocialAuthProvider.GOOGLE));
+        cardFacebookAuth.setOnClickListener(v -> startSocialAuth(SocialAuthProvider.FACEBOOK));
 
         btnRegister.setOnClickListener(v -> {
             if (validateInput()) {
@@ -166,6 +178,22 @@ public class RegisterActivity extends BaseActivity {
             public void onError(String error) {
                 showLoading(false);
                 ToastBanner.showError(error);
+            }
+        });
+    }
+
+    private void startSocialAuth(SocialAuthProvider provider) {
+        Log.d(TAG, "Step 1: User requested social auth | provider=" + provider.getValue());
+        socialAuthRepository.startAuth(this, provider, new RepositoryCallback<Boolean>() {
+            @Override
+            public void onSuccess(Boolean result) {
+                Log.d(TAG, "Step 2: Social auth launch delegated to manager | provider=" + provider.getValue());
+            }
+
+            @Override
+            public void onError(String error) {
+                Log.e(TAG, "Step 2: Social auth launch failed | provider=" + provider.getValue() + ", error=" + error);
+                showWarningBanner(error);
             }
         });
     }

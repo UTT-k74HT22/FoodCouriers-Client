@@ -21,6 +21,7 @@ import com.utt.foodcouriers_client.ui.auth.LoginActivity;
 import com.utt.foodcouriers_client.ui.common.BaseFragment;
 import com.utt.foodcouriers_client.utils.SessionManager;
 import com.utt.foodcouriers_client.utils.ToastBanner;
+import com.utt.foodcouriers_client.utils.SessionStore;
 
 public class ProfileFragment extends BaseFragment {
 
@@ -51,7 +52,7 @@ public class ProfileFragment extends BaseFragment {
         if (sessionManager.isLoggedIn()) {
             binding.tvUserName.setText(sessionManager.getUserName());
             binding.tvUserEmail.setText(sessionManager.getUserEmail());
-            
+
             String phone = sessionManager.getUserPhone();
             if (phone != null && !phone.isEmpty()) {
                 binding.tvUserPhone.setText(phone);
@@ -60,10 +61,10 @@ public class ProfileFragment extends BaseFragment {
                 binding.tvUserPhone.setText(R.string.profile_no_phone);
                 binding.tvUserPhone.setVisibility(View.VISIBLE);
             }
-            
+
             String avatarUrl = sessionManager.getUserAvatar();
             Log.d(TAG, "Avatar URL from session: " + avatarUrl);
-            
+
             if (!TextUtils.isEmpty(avatarUrl)) {
                 Glide.with(this)
                         .load(avatarUrl)
@@ -88,7 +89,7 @@ public class ProfileFragment extends BaseFragment {
             @Override
             public void onSuccess(Address[] result) {
                 if (result != null) {
-                    requireActivity().runOnUiThread(() -> 
+                    requireActivity().runOnUiThread(() ->
                         binding.tvAddressCount.setText(String.valueOf(result.length))
                     );
                 }
@@ -97,7 +98,7 @@ public class ProfileFragment extends BaseFragment {
             @Override
             public void onError(String error) {
                 Log.e(TAG, "Failed to load addresses: " + error);
-                requireActivity().runOnUiThread(() -> 
+                requireActivity().runOnUiThread(() ->
                     binding.tvAddressCount.setText("0")
                 );
             }
@@ -128,6 +129,7 @@ public class ProfileFragment extends BaseFragment {
                 @Override
                 public void onSuccess(Void result) {
                     sessionManager.clearSession();
+                    SessionStore.clearSession(requireContext());
                     requireActivity().runOnUiThread(() -> {
                         ToastBanner.showSuccess(getString(R.string.auth_login_success));
                         startActivity(new Intent(requireContext(), LoginActivity.class));
@@ -138,6 +140,7 @@ public class ProfileFragment extends BaseFragment {
                 @Override
                 public void onError(String error) {
                     sessionManager.clearSession();
+                    SessionStore.clearSession(requireContext());
                     requireActivity().runOnUiThread(() -> {
                         startActivity(new Intent(requireContext(), LoginActivity.class));
                         requireActivity().finish();
