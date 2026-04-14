@@ -151,8 +151,8 @@
             android:layout_height="@dimen/button_height"
             android:layout_weight="1"
             android:text="Theo dõi đơn"
-            android:textColor="@color/primary"
-            android:background="@drawable/button_outline" />
+            android:textColor="@color/auth_surface_alt"
+            android:background="@drawable/bg_auth_chip_yellow" />
 
         <Button
             android:id="@+id/btn_back_home"

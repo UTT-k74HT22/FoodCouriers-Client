@@ -13,6 +13,7 @@ import com.google.gson.JsonParser;
 import com.utt.foodcouriers_client.data.common.RepositoryCallback;
 import com.utt.foodcouriers_client.data.model.OrderLineItem;
 import com.utt.foodcouriers_client.data.model.OrderSummary;
+import com.utt.foodcouriers_client.data.model.PromotionValidationResult;
 import com.utt.foodcouriers_client.data.remote.SupabaseConfig;
 import com.utt.foodcouriers_client.utils.SessionManager;
 
@@ -130,6 +131,48 @@ public class OrderRepository {
                 }
 
                 postSuccess(callback, parseOrderSummary(array.get(0).getAsJsonObject()));
+            }
+        });
+    }
+
+    public void validatePromotion(Context context, String code, int subtotal, RepositoryCallback<PromotionValidationResult> callback) {
+        SessionManager sessionManager = SessionManager.getInstance(context);
+        String url = SupabaseConfig.REST_URL + "/rpc/rpc_apply_promotion";
+        
+        JsonObject payload = new JsonObject();
+        payload.addProperty("p_promotion_code", code);
+        payload.addProperty("p_subtotal", subtotal);
+
+        Request request = authorizedBuilder(sessionManager, url)
+                .post(RequestBody.create(payload.toString(), JSON))
+                .build();
+
+        client.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(@NonNull Call call, @NonNull IOException e) {
+                postError(callback, "Lỗi kết nối: " + e.getMessage());
+            }
+
+            @Override
+            public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
+                String body = readBody(response);
+                if (!response.isSuccessful()) {
+                    postError(callback, "Không thể xác thực mã (" + response.code() + ")");
+                    return;
+                }
+
+                try {
+                    JsonObject obj = JsonParser.parseString(body).getAsJsonObject();
+                    PromotionValidationResult result = new PromotionValidationResult(
+                            obj.get("valid").getAsBoolean(),
+                            obj.get("message").getAsString(),
+                            obj.get("discount").getAsInt(),
+                            getAsString(obj, "promotion_id")
+                    );
+                    postSuccess(callback, result);
+                } catch (Exception e) {
+                    postError(callback, "Lỗi phân tích dữ liệu: " + e.getMessage());
+                }
             }
         });
     }

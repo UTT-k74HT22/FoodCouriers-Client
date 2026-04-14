@@ -31,9 +31,10 @@ public class CheckoutActivity extends BaseActivity {
     private CartItemAdapter adapter;
     private final NumberFormat currencyFormatter = NumberFormat.getCurrencyInstance(new Locale("vi", "VN"));
 
-    private TextView tvSubtotal, tvDeliveryFee, tvTotal, tvDiscount, tvAddress;
+    private TextView tvSubtotal, tvDeliveryFee, tvTotal, tvDiscount, tvAddress, tvPromoError;
     private View layoutDiscount;
-    private EditText etNote;
+    private EditText etNote, etPromoCode;
+    private View btnApplyPromo;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -59,6 +60,11 @@ public class CheckoutActivity extends BaseActivity {
             String note = etNote.getText().toString();
             viewModel.placeOrders(this, address, note, "cod");
         });
+
+        btnApplyPromo.setOnClickListener(v -> {
+            String code = etPromoCode.getText().toString();
+            viewModel.validatePromotion(this, code);
+        });
     }
 
     private void initViews() {
@@ -69,6 +75,9 @@ public class CheckoutActivity extends BaseActivity {
         layoutDiscount = findViewById(R.id.layout_discount);
         tvAddress = findViewById(R.id.tv_address);
         etNote = findViewById(R.id.et_note);
+        etPromoCode = findViewById(R.id.et_promo_code);
+        btnApplyPromo = findViewById(R.id.btn_apply_promo);
+        tvPromoError = findViewById(R.id.tv_promo_error);
 
         // Mock address for now
         tvAddress.setText("123 Phố Chùa Láng, Đống Đa, Hà Nội");
@@ -97,9 +106,24 @@ public class CheckoutActivity extends BaseActivity {
             }
         });
 
+        viewModel.getAppliedPromotion().observe(this, result -> {
+            if (result == null) {
+                tvPromoError.setVisibility(View.GONE);
+                return;
+            }
+            tvPromoError.setVisibility(View.VISIBLE);
+            tvPromoError.setText(result.getMessage());
+            if (result.isValid()) {
+                tvPromoError.setTextColor(getResources().getColor(R.color.success, getTheme()));
+            } else {
+                tvPromoError.setTextColor(getResources().getColor(R.color.error, getTheme()));
+            }
+        });
+
         viewModel.getLoading().observe(this, isLoading -> {
             findViewById(R.id.btn_place_order).setEnabled(!isLoading);
             findViewById(R.id.btn_place_order).setAlpha(isLoading ? 0.5f : 1.0f);
+            btnApplyPromo.setEnabled(!isLoading);
         });
 
         viewModel.getErrorMessage().observe(this, error -> {
