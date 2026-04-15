@@ -86,8 +86,8 @@ public class OrdersFragment extends BaseFragment {
             binding.rvOrders.setVisibility(isEmpty ? View.GONE : View.VISIBLE);
             binding.emptyState.getRoot().setVisibility(isEmpty ? View.VISIBLE : View.GONE);
             if (isEmpty) {
-                binding.emptyState.tvEmptyTitle.setText("Chua co don hang");
-                binding.emptyState.tvEmptyMessage.setText("Don moi tu Checkout va don duoc admin cap nhat se hien o day.");
+                binding.emptyState.tvEmptyTitle.setText(R.string.orders_empty_title);
+                binding.emptyState.tvEmptyMessage.setText(R.string.orders_empty_message);
             }
         });
         viewModel.getErrorMessage().observe(getViewLifecycleOwner(), error -> {

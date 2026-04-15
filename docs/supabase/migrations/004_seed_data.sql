@@ -1,166 +1,127 @@
 -- =====================================================
 -- Seed Data for Food Ordering App
--- Version: 1.0
--- Date: 2026-04-04
--- Description: Initial seed data for development
+-- Version: 1.1
+-- Date: 2026-04-14
+-- Description: Cập nhật dữ liệu mẫu tiếng Việt chuyên nghiệp
 -- =====================================================
 
 -- =====================================================
--- Categories
+-- Categories (Danh mục món ăn)
 -- =====================================================
 INSERT INTO categories (name, sort_order, is_active) VALUES 
-    ('Món chính', 1, true),
-    ('Món phụ', 2, true),
-    ('Đồ uống', 3, true),
-    ('Tráng miệng', 4, true),
-    ('Combo', 5, true)
+    ('Cơm Trưa', 1, true),
+    ('Bún & Phở', 2, true),
+    ('Bánh Mì', 3, true),
+    ('Ăn Vặt', 4, true),
+    ('Trà Sữa & Giải Khát', 5, true),
+    ('Tráng Miệng', 6, true)
 ON CONFLICT DO NOTHING;
 
 -- =====================================================
--- Sample Restaurants
+-- Sample Restaurants (Nhà hàng mẫu)
 -- =====================================================
 INSERT INTO restaurants (name, description, address, phone, image_url, rating, review_count, is_active, is_open, open_time, close_time, delivery_fee, min_order) VALUES 
     (
-        'Cơm Tấm 79',
-        'Cơm tấm ngon, giá cả hợp lý',
+        'Cơm Tấm Sài Gòn 79',
+        'Cơm tấm sườn bì chả đặc sản Sài Gòn, chuẩn vị truyền thống.',
         '123 Nguyễn Trãi, Quận 1, TP.HCM',
         '0901234567',
         'https://images.unsplash.com/photo-1555126634-323283e090fa?w=800',
-        4.5, 120, true, true, '07:00', '22:00', 15000, 50000
+        4.8, 1250, true, true, '07:00', '21:00', 15000, 30000
     ),
     (
-        'Bánh Mì Huynh Đệ',
-        'Bánh mì pate thơm ngon',
+        'Bánh Mì Huynh Đệ - Chợ Bến Thành',
+        'Bánh mì đặc biệt đầy đủ topping, pate gan béo ngậy.',
         '456 Lê Lợi, Quận 1, TP.HCM',
         '0901234568',
         'https://images.unsplash.com/photo-1601050690597-df0568f70950?w=800',
-        4.3, 85, true, true, '06:00', '21:00', 10000, 30000
+        4.6, 850, true, true, '06:00', '22:00', 12000, 20000
     ),
     (
-        'Phở Hàng Bè',
-        'Phở bò tái nạm chín',
+        'Phở Bò Gia Truyền',
+        'Phở bò tái nạm chín, nước lèo trong vắt đậm đà từ xương ống.',
         '789 Pasteur, Quận 1, TP.HCM',
         '0901234569',
         'https://images.unsplash.com/photo-1582878826629-29b7a1a9d3f6?w=800',
-        4.7, 200, true, true, '06:30', '23:00', 20000, 80000
+        4.9, 2100, true, true, '06:00', '23:30', 20000, 50000
+    ),
+    (
+        'Trà Sữa Miutea',
+        'Trà sữa đậm vị trà, trân châu dai giòn sần sật.',
+        '12 Đinh Tiên Hoàng, Quận 1, TP.HCM',
+        '0901234570',
+        'https://images.unsplash.com/photo-1576092768241-dec231879fc3?w=800',
+        4.5, 560, true, true, '09:00', '22:00', 10000, 25000
     )
 ON CONFLICT DO NOTHING;
 
 -- =====================================================
--- Sample Menu Items
+-- Sample Menu Items (Món ăn mẫu)
 -- =====================================================
--- Restaurant 1: Cơm Tấm 79 (sẽ được tạo trước đó)
+-- Cơm Tấm Sài Gòn 79
 INSERT INTO menu_items (restaurant_id, category_id, name, description, price, is_available, is_featured, sort_order) 
-SELECT 
-    r.id,
-    c.id,
-    'Cơm tấm sường bì',
-    'Cơm tấm với sường nướng và bì',
-    45000,
-    true,
-    true,
-    1
-FROM restaurants r, categories c
-WHERE r.name = 'Cơm Tấm 79' AND c.name = 'Món chính'
+SELECT r.id, c.id, 'Cơm Tấm Sườn Bì Chả', 'Phần đặc biệt gồm sườn nướng, bì, chả và trứng ốp la.', 55000, true, true, 1
+FROM restaurants r, categories c WHERE r.name = 'Cơm Tấm Sài Gòn 79' AND c.name = 'Cơm Trưa'
 ON CONFLICT DO NOTHING;
 
 INSERT INTO menu_items (restaurant_id, category_id, name, description, price, is_available, is_featured, sort_order) 
-SELECT r.id, c.id, 'Cơm tấm gà', 'Cơm tấm với gà nướng', 40000, true, false, 2
-FROM restaurants r, categories c
-WHERE r.name = 'Cơm Tấm 79' AND c.name = 'Món chính'
+SELECT r.id, c.id, 'Cơm Tấm Đùi Gà Nướng', 'Đùi gà góc tư nướng mật ong vàng óng.', 50000, true, false, 2
+FROM restaurants r, categories c WHERE r.name = 'Cơm Tấm Sài Gòn 79' AND c.name = 'Cơm Trưa'
 ON CONFLICT DO NOTHING;
 
+-- Bánh Mì Huynh Đệ
 INSERT INTO menu_items (restaurant_id, category_id, name, description, price, is_available, is_featured, sort_order) 
-SELECT r.id, c.id, 'Trứng chiên', 'Trứng chiên giòn', 10000, true, false, 1
-FROM restaurants r, categories c
-WHERE r.name = 'Cơm Tấm 79' AND c.name = 'Món phụ'
+SELECT r.id, c.id, 'Bánh Mì Thập Cẩm', 'Bánh mì giòn rụm với thịt nguội, pate, chả lụa và bơ.', 35000, true, true, 1
+FROM restaurants r, categories c WHERE r.name = 'Bánh Mì Huynh Đệ - Chợ Bến Thành' AND c.name = 'Bánh Mì'
 ON CONFLICT DO NOTHING;
 
+-- Phở Bò Gia Truyền
 INSERT INTO menu_items (restaurant_id, category_id, name, description, price, is_available, is_featured, sort_order) 
-SELECT r.id, c.id, 'Chè', 'Chè thái', 15000, true, false, 1
-FROM restaurants r, categories c
-WHERE r.name = 'Cơm Tấm 79' AND c.name = 'Tráng miệng'
+SELECT r.id, c.id, 'Phở Tái Nạm', 'Bánh phở tươi, bò tái và nạm bò mềm tan.', 65000, true, true, 1
+FROM restaurants r, categories c WHERE r.name = 'Phở Bò Gia Truyền' AND c.name = 'Bún & Phở'
 ON CONFLICT DO NOTHING;
 
--- Restaurant 2: Bánh Mì Huynh Đệ
+-- Trà Sữa Miutea
 INSERT INTO menu_items (restaurant_id, category_id, name, description, price, is_available, is_featured, sort_order) 
-SELECT r.id, c.id, 'Bánh mì pate', 'Bánh mì pate trứng', 25000, true, true, 1
-FROM restaurants r, categories c
-WHERE r.name = 'Bánh Mì Huynh Đệ' AND c.name = 'Món chính'
-ON CONFLICT DO NOTHING;
-
-INSERT INTO menu_items (restaurant_id, category_id, name, description, price, is_available, is_featured, sort_order) 
-SELECT r.id, c.id, 'Bánh mì thịt', 'Bánh mì thịt nướng', 30000, true, false, 2
-FROM restaurants r, categories c
-WHERE r.name = 'Bánh Mì Huynh Đệ' AND c.name = 'Món chính'
-ON CONFLICT DO NOTHING;
-
-INSERT INTO menu_items (restaurant_id, category_id, name, description, price, is_available, is_featured, sort_order) 
-SELECT r.id, c.id, 'Sữa đá', 'Sữa tươi đá', 12000, true, false, 1
-FROM restaurants r, categories c
-WHERE r.name = 'Bánh Mì Huynh Đệ' AND c.name = 'Đồ uống'
-ON CONFLICT DO NOTHING;
-
--- Restaurant 3: Phở Hàng Bè
-INSERT INTO menu_items (restaurant_id, category_id, name, description, price, is_available, is_featured, sort_order) 
-SELECT r.id, c.id, 'Phở tái nạm', 'Phở bò tái nạm', 60000, true, true, 1
-FROM restaurants r, categories c
-WHERE r.name = 'Phở Hàng Bè' AND c.name = 'Món chính'
-ON CONFLICT DO NOTHING;
-
-INSERT INTO menu_items (restaurant_id, category_id, name, description, price, is_available, is_featured, sort_order) 
-SELECT r.id, c.id, 'Phở gân', 'Phở bò gân', 70000, true, false, 2
-FROM restaurants r, categories c
-WHERE r.name = 'Phở Hàng Bè' AND c.name = 'Món chính'
-ON CONFLICT DO NOTHING;
-
-INSERT INTO menu_items (restaurant_id, category_id, name, description, price, is_available, is_featured, sort_order) 
-SELECT r.id, c.id, 'Phở chín', 'Phở bò chín', 65000, true, false, 3
-FROM restaurants r, categories c
-WHERE r.name = 'Phở Hàng Bè' AND c.name = 'Món chính'
-ON CONFLICT DO NOTHING;
-
-INSERT INTO menu_items (restaurant_id, category_id, name, description, price, is_available, is_featured, sort_order) 
-SELECT r.id, c.id, 'Trà đá', 'Trà đá miễn phí', 0, true, false, 1
-FROM restaurants r, categories c
-WHERE r.name = 'Phở Hàng Bè' AND c.name = 'Đồ uống'
+SELECT r.id, c.id, 'Trà Sữa Truyền Thống', 'Trà sữa đen đậm vị kèm trân châu đen.', 35000, true, true, 1
+FROM restaurants r, categories c WHERE r.name = 'Trà Sữa Miutea' AND c.name = 'Trà Sữa & Giải Khát'
 ON CONFLICT DO NOTHING;
 
 -- =====================================================
--- Sample Promotions
+-- Sample Promotions (Khuyến mãi mẫu)
 -- =====================================================
 INSERT INTO promotions (code, name, description, discount_type, discount_value, min_order, max_discount, start_date, end_date, usage_limit, is_active) VALUES 
-    ('WELCOME50', 'Chào mừng khách mới', 'Giảm 50% cho đơn đầu tiên', 'percent', 50, 50000, 30000, NOW(), NOW() + INTERVAL '30 days', 1000, true),
-    ('FREESHIP', 'Miễn phí vận chuyển', 'Miễn phí giao hàng cho đơn từ 100k', 'fixed', 15000, 100000, NULL, NOW(), NOW() + INTERVAL '60 days', NULL, true),
-    ('GIAM20K', 'Giảm 20k', 'Giảm 20k cho mọi đơn', 'fixed', 20000, 150000, NULL, NOW(), NOW() + INTERVAL '90 days', NULL, true)
+    ('BANMOI', 'Chào Bạn Mới', 'Giảm ngay 50% (tối đa 30k) cho đơn đầu tiên.', 'percent', 50, 40000, 30000, NOW(), NOW() + INTERVAL '30 days', 1000, true),
+    ('FREESHIP', 'Miễn Phí Giao Hàng', 'Freeship tối đa 15k cho đơn hàng từ 100k.', 'fixed', 15000, 100000, NULL, NOW(), NOW() + INTERVAL '60 days', NULL, true),
+    ('ANNGON', 'Ăn Ngon Cuối Tuần', 'Giảm 20k cho đơn từ 150k vào thứ 7 và CN.', 'fixed', 20000, 150000, NULL, NOW(), NOW() + INTERVAL '90 days', NULL, true)
 ON CONFLICT DO NOTHING;
 
 -- =====================================================
--- Sample Banners
+-- Sample Banners (Banner quảng cáo)
 -- =====================================================
 INSERT INTO banners (title, image_url, link_type, link_value, sort_order, is_active, start_date, end_date) VALUES 
     (
-        'Chào mừng khách mới',
+        'Ưu đãi bạn mới - Giảm ngay 50%',
         'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=1200',
         'promotion',
-        'WELCOME50',
+        'BANMOI',
         1,
         true,
         NOW(),
         NOW() + INTERVAL '30 days'
     ),
     (
-        'Phở ngon giá hời',
+        'Phở gia truyền - Chuẩn vị Hà Nội',
         'https://images.unsplash.com/photo-1552611052-33e04de081de?w=1200',
         'restaurant',
-        (SELECT id FROM restaurants WHERE name = 'Phở Hàng Bè'),
+        (SELECT id FROM restaurants WHERE name = 'Phở Bò Gia Truyền'),
         2,
         true,
         NOW(),
         NULL
     ),
     (
-        'Miễn phí vận chuyển',
+        'Đặt đơn ngay - Freeship tận tay',
         'https://images.unsplash.com/photo-1567620905732-2d1ec7ab7445?w=1200',
         'promotion',
         'FREESHIP',
@@ -170,25 +131,3 @@ INSERT INTO banners (title, image_url, link_type, link_value, sort_order, is_act
         NOW() + INTERVAL '60 days'
     )
 ON CONFLICT DO NOTHING;
-
--- =====================================================
--- Notes for deployment:
--- 1. After creating Supabase project, run migrations in order:
---    - 001_initial_schema.sql
---    - 002_rpc_functions.sql  
---    - 003_rls_policies.sql
---    - 004_seed_data.sql
---
--- 2. Create auth users first, then update users table with auth_id
---    Example:
---    INSERT INTO auth.users (email, password) VALUES ('admin@foodapp.com', 'password123');
---    UPDATE users SET auth_id = (SELECT id FROM auth.users WHERE email = 'admin@foodapp.com')
---    WHERE email = 'admin@foodapp.com';
---
--- 3. For testing, create users with role 'admin' for admin app access
---
--- 4. Storage buckets should be created manually in Supabase dashboard:
---    - avatars (for user avatars)
---    - restaurants (for restaurant images)
---    - menu-items (for food images)
---    - banners (for banner images)

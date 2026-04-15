@@ -30,6 +30,7 @@
 
     <dimen name="search_bar_height">48dp</dimen>
     <dimen name="category_chip_height">36dp</dimen>
+    <dimen name="badge_min_width">110dp</dimen>
     <dimen name="food_card_image_height">120dp</dimen>
 
     <dimen name="icon_size_sm">16dp</dimen>

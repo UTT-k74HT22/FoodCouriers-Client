@@ -69,11 +69,14 @@ public class OrderDetailActivity extends BaseActivity {
         ((TextView) findViewById(R.id.tv_order_code)).setText(order.getOrderCode());
         ((TextView) findViewById(R.id.tv_order_date)).setText(order.getCreatedAtLabel());
         
-        String statusText = OrderStatus.fromValue(order.getStatus()).getLabel();
+        OrderStatus status = OrderStatus.fromValue(order.getStatus());
+        String statusText = status.getLabel();
         if (order.getDeliveryStatus() != null && !order.getDeliveryStatus().isEmpty()) {
             statusText += " · " + DeliveryStatus.fromValue(order.getDeliveryStatus()).getLabel();
         }
-        ((TextView) findViewById(R.id.tv_status)).setText(statusText);
+        TextView tvStatus = findViewById(R.id.tv_status);
+        tvStatus.setText(statusText);
+        tvStatus.setBackgroundResource(resolveBadge(status));
         
         ((TextView) findViewById(R.id.tv_restaurant_name)).setText(order.getRestaurantName());
         ((TextView) findViewById(R.id.tv_restaurant_address)).setText(order.getRestaurantAddress());
@@ -123,13 +126,33 @@ public class OrderDetailActivity extends BaseActivity {
             step.setGravity(Gravity.CENTER);
             step.setTextSize(10f); // Smaller text to fit
             step.setPadding(8, 8, 8, 8);
-            step.setAlpha(isReached(currentStatus, status) ? 1f : 0.45f);
-            step.setBackgroundResource(isReached(currentStatus, status) ? R.drawable.badge_featured : R.drawable.button_outline);
+            boolean isReached = isReached(currentStatus, status);
+            step.setAlpha(isReached ? 1f : 0.45f);
+            step.setTextColor(isReached ? getResources().getColor(R.color.white) : getResources().getColor(R.color.text_secondary));
+            step.setBackgroundResource(isReached ? resolveBadge(status) : R.drawable.button_outline);
             LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
             if (timeline.getChildCount() > 0) {
                 params.setMarginStart(4);
             }
             timeline.addView(step, params);
+        }
+    }
+
+    private int resolveBadge(OrderStatus status) {
+        switch (status) {
+            case DELIVERED:
+                return R.drawable.badge_success;
+            case CANCELLED:
+                return R.drawable.badge_error;
+            case PENDING:
+                return R.drawable.badge_warning;
+            case DELIVERING:
+                return R.drawable.badge_info;
+            case CONFIRMED:
+            case PREPARING:
+            case READY_FOR_PICKUP:
+            default:
+                return R.drawable.badge_primary;
         }
     }
 

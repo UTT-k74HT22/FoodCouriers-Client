@@ -2,8 +2,13 @@ package com.utt.foodcouriers_client.utils;
 
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.util.Base64;
 
 import com.utt.foodcouriers_client.data.model.UserProfile;
+
+import org.json.JSONObject;
+
+import java.nio.charset.StandardCharsets;
 
 public class SessionManager {
 
@@ -12,6 +17,7 @@ public class SessionManager {
     private static final String KEY_ACCESS_TOKEN = "access_token";
     private static final String KEY_REFRESH_TOKEN = "refresh_token";
     private static final String KEY_USER_ID = "user_id";
+    private static final String KEY_AUTH_USER_ID = "auth_user_id";
     private static final String KEY_USER_EMAIL = "user_email";
     private static final String KEY_USER_NAME = "user_name";
     private static final String KEY_USER_PHONE = "user_phone";
@@ -41,6 +47,7 @@ public class SessionManager {
                 .putString(KEY_ACCESS_TOKEN, accessToken)
                 .putString(KEY_REFRESH_TOKEN, refreshToken)
                 .putString(KEY_USER_ID, userProfile.getId())
+                .putString(KEY_AUTH_USER_ID, resolveAuthUserId(accessToken, userProfile))
                 .putString(KEY_USER_EMAIL, userProfile.getEmail())
                 .putString(KEY_USER_NAME, userProfile.getFullName())
                 .putString(KEY_USER_PHONE, userProfile.getPhone())
@@ -56,6 +63,7 @@ public class SessionManager {
         }
         preferences.edit()
                 .putString(KEY_USER_ID, userProfile.getId())
+                .putString(KEY_AUTH_USER_ID, userProfile.getAuthId())
                 .putString(KEY_USER_EMAIL, userProfile.getEmail())
                 .putString(KEY_USER_NAME, userProfile.getFullName())
                 .putString(KEY_USER_PHONE, userProfile.getPhone())
@@ -87,6 +95,19 @@ public class SessionManager {
         return preferences.getString(KEY_USER_ID, null);
     }
 
+    public String getAuthUserId() {
+        String storedAuthUserId = preferences.getString(KEY_AUTH_USER_ID, null);
+        if (storedAuthUserId != null && !storedAuthUserId.trim().isEmpty()) {
+            return storedAuthUserId;
+        }
+
+        String decodedAuthUserId = extractAuthUserIdFromToken(getAccessToken());
+        if (decodedAuthUserId != null && !decodedAuthUserId.trim().isEmpty()) {
+            preferences.edit().putString(KEY_AUTH_USER_ID, decodedAuthUserId).apply();
+        }
+        return decodedAuthUserId;
+    }
+
     public String getUserEmail() {
         return preferences.getString(KEY_USER_EMAIL, null);
     }
@@ -116,7 +137,13 @@ public class SessionManager {
     }
 
     public void setCartId(String cartId) {
-        preferences.edit().putString(KEY_CART_ID, cartId).apply();
+        SharedPreferences.Editor editor = preferences.edit();
+        if (cartId == null || cartId.trim().isEmpty()) {
+            editor.remove(KEY_CART_ID);
+        } else {
+            editor.putString(KEY_CART_ID, cartId);
+        }
+        editor.apply();
     }
 
     public boolean isTokenExpired() {
@@ -144,6 +171,7 @@ public class SessionManager {
         preferences.edit()
                 .putString(KEY_ACCESS_TOKEN, accessToken)
                 .putString(KEY_REFRESH_TOKEN, refreshToken)
+                .putString(KEY_AUTH_USER_ID, extractAuthUserIdFromToken(accessToken))
                 .putLong(KEY_TOKEN_EXPIRES_AT, System.currentTimeMillis() + expiresInMillis)
                 .apply();
     }
@@ -153,13 +181,43 @@ public class SessionManager {
                 .remove(KEY_ACCESS_TOKEN)
                 .remove(KEY_REFRESH_TOKEN)
                 .remove(KEY_USER_ID)
+                .remove(KEY_AUTH_USER_ID)
                 .remove(KEY_USER_EMAIL)
                 .remove(KEY_USER_NAME)
                 .remove(KEY_USER_PHONE)
                 .remove(KEY_USER_AVATAR)
                 .remove(KEY_USER_ROLE)
+                .remove(KEY_CART_ID)
                 .remove(KEY_TOKEN_EXPIRES_AT)
                 .putBoolean(KEY_IS_LOGGED_IN, false)
                 .apply();
+    }
+
+    private String resolveAuthUserId(String accessToken, UserProfile userProfile) {
+        if (userProfile != null && userProfile.getAuthId() != null && !userProfile.getAuthId().trim().isEmpty()) {
+            return userProfile.getAuthId();
+        }
+        return extractAuthUserIdFromToken(accessToken);
+    }
+
+    private String extractAuthUserIdFromToken(String accessToken) {
+        if (accessToken == null || accessToken.trim().isEmpty()) {
+            return null;
+        }
+
+        try {
+            String[] parts = accessToken.split("\\.");
+            if (parts.length < 2) {
+                return null;
+            }
+
+            byte[] payloadBytes = Base64.decode(parts[1], Base64.URL_SAFE | Base64.NO_WRAP | Base64.NO_PADDING);
+            String payloadJson = new String(payloadBytes, StandardCharsets.UTF_8);
+            JSONObject payload = new JSONObject(payloadJson);
+            String subject = payload.optString("sub", null);
+            return subject != null && !subject.trim().isEmpty() ? subject : null;
+        } catch (Exception ignored) {
+            return null;
+        }
     }
 }
