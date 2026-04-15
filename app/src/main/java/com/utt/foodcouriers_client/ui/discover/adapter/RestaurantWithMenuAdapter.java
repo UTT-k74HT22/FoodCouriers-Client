@@ -136,6 +136,7 @@ public class RestaurantWithMenuAdapter extends RecyclerView.Adapter<RestaurantWi
                     listener.onFoodAddClick(menuItem, restaurant);
                 }
             });
+            foodAdapter.setRestaurantInfo(restaurant);
             rvMenuItems.setLayoutManager(new LinearLayoutManager(context, LinearLayoutManager.HORIZONTAL, false));
             rvMenuItems.setAdapter(foodAdapter);
             foodAdapter.setItems(item.menuItems);

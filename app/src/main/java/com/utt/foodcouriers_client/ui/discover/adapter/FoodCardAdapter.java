@@ -1,6 +1,7 @@
 package com.utt.foodcouriers_client.ui.discover.adapter;
 
 import android.content.Context;
+import android.content.Intent;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -13,6 +14,8 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.bumptech.glide.Glide;
 import com.utt.foodcouriers_client.R;
 import com.utt.foodcouriers_client.data.model.MenuItem;
+import com.utt.foodcouriers_client.data.model.Restaurant;
+import com.utt.foodcouriers_client.ui.restaurant.FoodDetailActivity;
 
 import java.text.NumberFormat;
 import java.util.ArrayList;
@@ -25,6 +28,9 @@ public class FoodCardAdapter extends RecyclerView.Adapter<FoodCardAdapter.ViewHo
     private final OnFoodAddClickListener listener;
     private final NumberFormat formatter = NumberFormat.getCurrencyInstance(new Locale("vi", "VN"));
     private final Context context;
+    private String restaurantId;
+    private String restaurantName;
+    private Restaurant restaurant;
 
     public interface OnFoodAddClickListener {
         void onFoodAddClick(MenuItem menuItem);
@@ -33,6 +39,10 @@ public class FoodCardAdapter extends RecyclerView.Adapter<FoodCardAdapter.ViewHo
     public FoodCardAdapter(Context context, OnFoodAddClickListener listener) {
         this.context = context;
         this.listener = listener;
+    }
+
+    public void setRestaurantInfo(Restaurant restaurant) {
+        this.restaurant = restaurant;
     }
 
     public void setItems(List<MenuItem> newItems) {
@@ -89,6 +99,15 @@ public class FoodCardAdapter extends RecyclerView.Adapter<FoodCardAdapter.ViewHo
             } else {
                 ivFoodImage.setImageResource(R.drawable.food_placeholder_burger);
             }
+
+            itemView.setOnClickListener(v -> {
+                Intent intent = new Intent(context, FoodDetailActivity.class);
+                intent.putExtra(FoodDetailActivity.EXTRA_MENU_ITEM, item);
+                if (restaurant != null) {
+                    intent.putExtra(FoodDetailActivity.EXTRA_RESTAURANT, restaurant);
+                }
+                context.startActivity(intent);
+            });
 
             btnAddToCart.setOnClickListener(v -> {
                 if (listener != null) {
