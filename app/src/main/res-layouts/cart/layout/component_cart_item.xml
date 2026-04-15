@@ -31,13 +31,12 @@
 
             <ImageView
                 android:id="@+id/iv_food_image"
-                android:layout_width="32dp"
-                android:layout_height="32dp"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
                 android:layout_gravity="center"
                 android:contentDescription="@null"
                 android:scaleType="centerCrop"
-                android:src="@drawable/ic_food_bowl"
-                app:tint="@color/primary_dark" />
+                android:src="@drawable/ic_food_bowl" />
         </FrameLayout>
 
         <LinearLayout

@@ -14,6 +14,7 @@ import com.utt.foodcouriers_client.data.model.OrderSummary;
 import com.utt.foodcouriers_client.data.model.PromotionValidationResult;
 import com.utt.foodcouriers_client.data.repository.CartRepository;
 import com.utt.foodcouriers_client.data.repository.OrderRepository;
+import com.utt.foodcouriers_client.utils.DistanceUtils;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -25,6 +26,7 @@ public class CheckoutViewModel extends BaseViewModel {
     private final MutableLiveData<List<OrderSummary>> createdOrders = new MutableLiveData<>();
     private final MutableLiveData<Boolean> isOrderSuccess = new MutableLiveData<>(false);
     private final MutableLiveData<PromotionValidationResult> appliedPromotion = new MutableLiveData<>();
+    private final MutableLiveData<String> deliveryDistance = new MutableLiveData<>();
     private String appliedPromoCode = null;
 
     public LiveData<List<CartRestaurantGroup>> getRestaurantGroups() {
@@ -47,7 +49,11 @@ public class CheckoutViewModel extends BaseViewModel {
         return appliedPromotion;
     }
 
-    public void loadCheckoutData(Context context, List<String> selectedIds) {
+    public LiveData<String> getDeliveryDistance() {
+        return deliveryDistance;
+    }
+
+    public void loadCheckoutData(Context context, List<String> selectedIds, double deliveryLat, double deliveryLon) {
         setLoading(true);
         CartRepository.getInstance().getCart(context, new RepositoryCallback<CartRepository.CartState>() {
             @Override
@@ -67,17 +73,33 @@ public class CheckoutViewModel extends BaseViewModel {
                         }
                     }
                     if (!selectedInGroup.isEmpty()) {
+                        Double restLat = group.getRestaurantLatitude();//tọa độ nhà hàng
+                        Double restLon = group.getRestaurantLongitude();//vĩ độ nhà hàng
+                        
+                        int calculatedDeliveryFee = 0; // khởi tạo phí giao hàng mặc định
+                        if (restLat != null && restLon != null && deliveryLat != 0 && deliveryLon != 0) { // chỉ tính phí giao hàng nếu có tọa độ hợp lệ
+                            double distanceKm = DistanceUtils.calculateDistanceKm(restLat, restLon, deliveryLat, deliveryLon); // gọi hàm tính khoảng cách
+                            int pricePerKm = group.getDeliveryFee(); // giả sử deliveryFee trong CartRestaurantGroup là giá trên mỗi km
+                            calculatedDeliveryFee = (int) (distanceKm * pricePerKm); // tính phí giao hàng dựa trên khoảng cách và giá trên mỗi km
+                        }
+                        
                         filteredGroups.add(new CartRestaurantGroup(
                                 group.getRestaurantId(),
                                 group.getRestaurantName(),
-                                group.getDeliveryFee(),
-                                selectedInGroup
+                                calculatedDeliveryFee,
+                                selectedInGroup,
+                                restLat,
+                                restLon
                         ));
-                        deliveryFee += group.getDeliveryFee();
+                        deliveryFee += calculatedDeliveryFee;
                     }
                 }
 
                 restaurantGroups.setValue(filteredGroups);
+                
+                String distanceText = calculateTotalDistance(filteredGroups, deliveryLat, deliveryLon);
+                deliveryDistance.setValue(distanceText);
+                
                 updateSummary(itemCount, subtotal, deliveryFee, 0);
                 setLoading(false);
             }
@@ -88,6 +110,27 @@ public class CheckoutViewModel extends BaseViewModel {
                 setLoading(false);
             }
         });
+    }
+
+    private String calculateTotalDistance(List<CartRestaurantGroup> groups, double deliveryLat, double deliveryLon) {
+        if (groups == null || groups.isEmpty()) {
+            return "";
+        }
+        
+        double totalDistance = 0;
+        for (CartRestaurantGroup group : groups) {
+            Double restLat = group.getRestaurantLatitude();
+            Double restLon = group.getRestaurantLongitude();
+            if (restLat != null && restLon != null) {
+                totalDistance += DistanceUtils.calculateDistanceKm(restLat, restLon, deliveryLat, deliveryLon);
+            }
+        }
+        
+        if (totalDistance == 0) {
+            return "";
+        }
+        
+        return DistanceUtils.formatDistance(totalDistance);
     }
 
     private void updateSummary(int itemCount, int subtotal, int deliveryFee, int discount) {
@@ -134,7 +177,7 @@ public class CheckoutViewModel extends BaseViewModel {
         });
     }
 
-    public void placeOrders(Context context, String address, String note, String paymentMethod) {
+    public void placeOrders(Context context, String address, String note, String paymentMethod, double lat, double lon) {
         List<CartRestaurantGroup> groups = restaurantGroups.getValue();
         if (groups == null || groups.isEmpty()) {
             postError("Không có món ăn nào để đặt.");
@@ -143,11 +186,11 @@ public class CheckoutViewModel extends BaseViewModel {
 
         setLoading(true);
         List<OrderSummary> results = new ArrayList<>();
-        placeOrderSequentially(context, groups, 0, address, note, paymentMethod, appliedPromoCode, results);
+        placeOrderSequentially(context, groups, 0, address, note, paymentMethod, appliedPromoCode, lat, lon, results);
     }
 
     private void placeOrderSequentially(Context context, List<CartRestaurantGroup> groups, int index, 
-                                        String address, String note, String paymentMethod, String promoCode, List<OrderSummary> results) {
+                                        String address, String note, String paymentMethod, String promoCode, double lat, double lon, List<OrderSummary> results) {
         if (index >= groups.size()) {
             createdOrders.setValue(results);
             isOrderSuccess.setValue(true);
@@ -168,7 +211,7 @@ public class CheckoutViewModel extends BaseViewModel {
         OrderRepository.getInstance().createOrder(
                 context,
                 group.getRestaurantId(),
-                address, 21.002, 105.843, // Mock lat/lon
+                address, lat, lon,
                 note,
                 paymentMethod,
                 promoCode,
@@ -177,10 +220,7 @@ public class CheckoutViewModel extends BaseViewModel {
                     @Override
                     public void onSuccess(OrderSummary order) {
                         results.add(order);
-                        // Khi thanh toán qua nhiều nhà hàng, hiện tại ta chỉ apply code cho đơn đầu tiên hoặc cho tất cả?
-                        // Theo logic của rpc_create_order, nó sẽ trừ tiền dựa trên subtotal của mỗi đơn.
-                        // Nếu dùng 1 code cho nhiều đơn, mỗi đơn sẽ được giảm nếu thỏa điều kiện.
-                        placeOrderSequentially(context, groups, index + 1, address, note, paymentMethod, promoCode, results);
+                        placeOrderSequentially(context, groups, index + 1, address, note, paymentMethod, promoCode, lat, lon, results);
                     }
 
                     @Override

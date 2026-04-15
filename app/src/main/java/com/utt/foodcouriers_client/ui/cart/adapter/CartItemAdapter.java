@@ -296,12 +296,14 @@ public class CartItemAdapter extends RecyclerView.Adapter<CartItemAdapter.GroupV
             tvQuantity.setText(String.valueOf(item.getQuantity()));
 
             if (item.getImageUrl() != null && !item.getImageUrl().isEmpty()) {
+                ivFoodImage.setImageTintList(null);
                 Glide.with(context)
                         .load(item.getImageUrl())
                         .apply(IMAGE_REQUEST_OPTIONS)
                         .into(ivFoodImage);
             } else {
                 ivFoodImage.setImageResource(R.drawable.ic_food_bowl);
+                ivFoodImage.setImageTintList(android.content.res.ColorStateList.valueOf(context.getColor(R.color.primary_dark)));
             }
 
             boolean isSelected = item.getId() != null && selectedCartItemIds.contains(item.getId());

@@ -399,7 +399,7 @@ public class CartRepository {
         String url = SupabaseConfig.REST_URL
                 + "/cart_items?cart_id=eq."
                 + cartMeta.getCartId()
-                + "&select=id,quantity,note,menu_items(id,restaurant_id,name,price,image_url,restaurants(id,name,delivery_fee))"
+                + "&select=id,quantity,note,menu_items(id,restaurant_id,name,price,image_url,restaurants(id,name,delivery_fee,latitude,longitude))"
                 + "&order=id";
 
         Request request = authorizedBuilder(sessionManager, url)
@@ -453,11 +453,18 @@ public class CartRepository {
                     String restaurantName = restaurant != null ? getAsString(restaurant, "name") : "";
                     int deliveryFee = restaurant != null ? getAsInt(restaurant, "delivery_fee") : 0;
                     item.setRestaurantName(restaurantName);
+                    
+                    Double restaurantLat = restaurant != null ? getAsDouble(restaurant, "latitude") : null;
+                    Double restaurantLon = restaurant != null ? getAsDouble(restaurant, "longitude") : null;
+                    item.setRestaurantLatitude(restaurantLat);
+                    item.setRestaurantLongitude(restaurantLon);
 
                     items.add(item);
                     MutableRestaurantGroup group = groups.get(restaurantId);
                     if (group == null) {
                         group = new MutableRestaurantGroup(restaurantId, restaurantName, deliveryFee);
+                        group.restaurantLatitude = restaurantLat;
+                        group.restaurantLongitude = restaurantLon;
                         groups.put(restaurantId, group);
                     }
                     group.items.add(item);
@@ -469,7 +476,14 @@ public class CartRepository {
                 int deliveryFee = 0;
                 List<CartRestaurantGroup> restaurantGroups = new ArrayList<>();
                 for (MutableRestaurantGroup group : groups.values()) {
-                    restaurantGroups.add(new CartRestaurantGroup(group.restaurantId, group.restaurantName, group.deliveryFee, group.items));
+                    restaurantGroups.add(new CartRestaurantGroup(
+                            group.restaurantId, 
+                            group.restaurantName, 
+                            group.deliveryFee, 
+                            group.items,
+                            group.restaurantLatitude,
+                            group.restaurantLongitude
+                    ));
                     deliveryFee += group.items.isEmpty() ? 0 : group.deliveryFee;
                 }
                 int total = subtotal + deliveryFee;
@@ -748,6 +762,13 @@ public class CartRepository {
         return object.get(key).getAsInt();
     }
 
+    private Double getAsDouble(JsonObject object, String key) {
+        if (object == null || !object.has(key) || object.get(key).isJsonNull()) {
+            return null;
+        }
+        return object.get(key).getAsDouble();
+    }
+
     public static class CartSummary {
         private final int itemCount;
         private final int subtotal;
@@ -853,6 +874,8 @@ public class CartRepository {
         private final String restaurantName;
         private final int deliveryFee;
         private final List<CartItem> items = new ArrayList<>();
+        private Double restaurantLatitude;
+        private Double restaurantLongitude;
 
         private MutableRestaurantGroup(String restaurantId, String restaurantName, int deliveryFee) {
             this.restaurantId = restaurantId;

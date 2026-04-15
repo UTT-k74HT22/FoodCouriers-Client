@@ -229,6 +229,14 @@
                     android:textColor="@color/text_secondary" />
 
                 <TextView
+                    android:id="@+id/tv_delivery_distance"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginEnd="@dimen/spacing_xs"
+                    android:textSize="@dimen/text_caption"
+                    android:textColor="@color/text_secondary" />
+
+                <TextView
                     android:id="@+id/tv_delivery_fee"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
