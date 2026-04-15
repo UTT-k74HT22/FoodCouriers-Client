@@ -124,6 +124,20 @@ public class HomeViewModel extends BaseViewModel {
         });
     }
 
+    public void loadAllMenuItems() {
+        catalogRepository.getAllMenuItems(new RepositoryCallback<List<MenuItem>>() {
+            @Override
+            public void onSuccess(List<MenuItem> result) {
+                popularMenuItems.postValue(result);
+            }
+
+            @Override
+            public void onError(String error) {
+                postError(error);
+            }
+        });
+    }
+
     public void selectCategory(Category category) {
         selectedCategoryId.setValue(category != null ? category.getId() : null);
     }
