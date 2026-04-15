@@ -243,6 +243,57 @@ public class AuthClient extends BaseSupabaseClient {
         fetchCurrentUserProfile(false, callback);
     }
 
+    public void refreshSession(ApiCallback<Boolean> callback) {
+        if (isNullOrBlank(refreshToken)) {
+            postError(callback, "Missing refresh token");
+            return;
+        }
+
+        Map<String, String> body = new HashMap<>();
+        body.put("refresh_token", refreshToken);
+
+        Request request = new Request.Builder()
+                .url(SupabaseConfig.AUTH_URL + "/token?grant_type=refresh_token")
+                .post(RequestBody.create(gson.toJson(body), MediaType.parse(SupabaseConfig.CONTENT_TYPE_JSON)))
+                .addHeader(SupabaseConfig.HEADER_AUTH, SupabaseConfig.SUPABASE_ANON_KEY)
+                .addHeader(SupabaseConfig.HEADER_CONTENT_TYPE, SupabaseConfig.CONTENT_TYPE_JSON)
+                .build();
+
+        Log.d(TAG, "refreshSession: requesting new access token");
+
+        client.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(Call call, IOException exception) {
+                Log.e(TAG, "refreshSession failure", exception);
+                postError(callback, "Network error: " + exception.getMessage());
+            }
+
+            @Override
+            public void onResponse(Call call, Response response) throws IOException {
+                try (ResponseBody responseBody = response.body()) {
+                    String json = responseBody != null ? responseBody.string() : "";
+                    Log.d(TAG, "refreshSession response code=" + response.code());
+                    if (!response.isSuccessful()) {
+                        postError(callback, parseAuthError(json));
+                        return;
+                    }
+
+                    AuthResponse authResponse = gson.fromJson(json, AuthResponse.class);
+                    if (authResponse == null || isNullOrBlank(authResponse.getAccessToken())) {
+                        postError(callback, "Invalid refresh response");
+                        return;
+                    }
+
+                    setSession(
+                            authResponse.getAccessToken(),
+                            authResponse.getRefreshToken() != null ? authResponse.getRefreshToken() : refreshToken
+                    );
+                    postSuccess(callback, true);
+                }
+            }
+        });
+    }
+
     private void fetchCurrentUserProfile(boolean createMissingProfile, ApiCallback<UserProfile> callback) {
         Request request = new Request.Builder()
                 .url(SupabaseConfig.AUTH_URL + "/user")

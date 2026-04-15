@@ -1,25 +1,31 @@
 package com.utt.foodcouriers_client.viewmodel;
 
 import android.content.Context;
+import android.util.Log;
 
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
+import com.utt.foodcouriers_client.R;
 import com.utt.foodcouriers_client.data.common.RepositoryCallback;
 import com.utt.foodcouriers_client.data.model.CartItem;
 import com.utt.foodcouriers_client.data.model.CartRestaurantGroup;
 import com.utt.foodcouriers_client.data.model.OrderSummary;
+import com.utt.foodcouriers_client.data.model.PaymentInitResult;
 import com.utt.foodcouriers_client.data.model.PromotionValidationResult;
 import com.utt.foodcouriers_client.data.repository.CartRepository;
 import com.utt.foodcouriers_client.data.repository.OrderRepository;
+import com.utt.foodcouriers_client.data.repository.PaymentRepository;
 import com.utt.foodcouriers_client.utils.DistanceUtils;
+import com.utt.foodcouriers_client.utils.payment.PaymentMethodEnum;
 
 import java.util.ArrayList;
 import java.util.List;
 
 public class CheckoutViewModel extends BaseViewModel {
+    private static final String TAG = "CheckoutFlow";
 
     private final MutableLiveData<List<CartRestaurantGroup>> restaurantGroups = new MutableLiveData<>();
     private final MutableLiveData<CartRepository.CartSummary> checkoutSummary = new MutableLiveData<>();
@@ -27,6 +33,8 @@ public class CheckoutViewModel extends BaseViewModel {
     private final MutableLiveData<Boolean> isOrderSuccess = new MutableLiveData<>(false);
     private final MutableLiveData<PromotionValidationResult> appliedPromotion = new MutableLiveData<>();
     private final MutableLiveData<String> deliveryDistance = new MutableLiveData<>();
+    private final MutableLiveData<PaymentInitResult> vnpayPaymentResult = new MutableLiveData<>();
+
     private String appliedPromoCode = null;
 
     public LiveData<List<CartRestaurantGroup>> getRestaurantGroups() {
@@ -53,6 +61,10 @@ public class CheckoutViewModel extends BaseViewModel {
         return deliveryDistance;
     }
 
+    public LiveData<PaymentInitResult> getVnpayPaymentResult() {
+        return vnpayPaymentResult;
+    }
+
     public void loadCheckoutData(Context context, List<String> selectedIds, double deliveryLat, double deliveryLon) {
         setLoading(true);
         CartRepository.getInstance().getCart(context, new RepositoryCallback<CartRepository.CartState>() {
@@ -72,17 +84,12 @@ public class CheckoutViewModel extends BaseViewModel {
                             itemCount += item.getQuantity();
                         }
                     }
+
                     if (!selectedInGroup.isEmpty()) {
-                        Double restLat = group.getRestaurantLatitude();//tọa độ nhà hàng
-                        Double restLon = group.getRestaurantLongitude();//vĩ độ nhà hàng
-                        
-                        int calculatedDeliveryFee = 0; // khởi tạo phí giao hàng mặc định
-                        if (restLat != null && restLon != null && deliveryLat != 0 && deliveryLon != 0) { // chỉ tính phí giao hàng nếu có tọa độ hợp lệ
-                            double distanceKm = DistanceUtils.calculateDistanceKm(restLat, restLon, deliveryLat, deliveryLon); // gọi hàm tính khoảng cách
-                            int pricePerKm = group.getDeliveryFee(); // giả sử deliveryFee trong CartRestaurantGroup là giá trên mỗi km
-                            calculatedDeliveryFee = (int) (distanceKm * pricePerKm); // tính phí giao hàng dựa trên khoảng cách và giá trên mỗi km
-                        }
-                        
+                        Double restLat = group.getRestaurantLatitude();
+                        Double restLon = group.getRestaurantLongitude();
+                        int calculatedDeliveryFee = group.getDeliveryFee();
+
                         filteredGroups.add(new CartRestaurantGroup(
                                 group.getRestaurantId(),
                                 group.getRestaurantName(),
@@ -96,10 +103,7 @@ public class CheckoutViewModel extends BaseViewModel {
                 }
 
                 restaurantGroups.setValue(filteredGroups);
-                
-                String distanceText = calculateTotalDistance(filteredGroups, deliveryLat, deliveryLon);
-                deliveryDistance.setValue(distanceText);
-                
+                deliveryDistance.setValue(calculateTotalDistance(filteredGroups, deliveryLat, deliveryLon));
                 updateSummary(itemCount, subtotal, deliveryFee, 0);
                 setLoading(false);
             }
@@ -113,11 +117,11 @@ public class CheckoutViewModel extends BaseViewModel {
     }
 
     private String calculateTotalDistance(List<CartRestaurantGroup> groups, double deliveryLat, double deliveryLon) {
-        if (groups == null || groups.isEmpty()) {
+        if (groups == null || groups.isEmpty() || deliveryLat == 0d || deliveryLon == 0d) {
             return "";
         }
-        
-        double totalDistance = 0;
+
+        double totalDistance = 0d;
         for (CartRestaurantGroup group : groups) {
             Double restLat = group.getRestaurantLatitude();
             Double restLon = group.getRestaurantLongitude();
@@ -125,17 +129,19 @@ public class CheckoutViewModel extends BaseViewModel {
                 totalDistance += DistanceUtils.calculateDistanceKm(restLat, restLon, deliveryLat, deliveryLon);
             }
         }
-        
-        if (totalDistance == 0) {
-            return "";
-        }
-        
-        return DistanceUtils.formatDistance(totalDistance);
+
+        return totalDistance > 0d ? DistanceUtils.formatDistance(totalDistance) : "";
     }
 
     private void updateSummary(int itemCount, int subtotal, int deliveryFee, int discount) {
         checkoutSummary.setValue(new CartRepository.CartSummary(
-                itemCount, subtotal, deliveryFee, 0, discount, subtotal + deliveryFee - discount, ""
+                itemCount,
+                subtotal,
+                deliveryFee,
+                0,
+                discount,
+                subtotal + deliveryFee - discount,
+                ""
         ));
     }
 
@@ -151,7 +157,9 @@ public class CheckoutViewModel extends BaseViewModel {
         }
 
         CartRepository.CartSummary current = checkoutSummary.getValue();
-        if (current == null) return;
+        if (current == null) {
+            return;
+        }
 
         setLoading(true);
         OrderRepository.getInstance().validatePromotion(context, code, current.getSubtotal(), new RepositoryCallback<PromotionValidationResult>() {
@@ -163,7 +171,7 @@ public class CheckoutViewModel extends BaseViewModel {
                     appliedPromoCode = code;
                     updateSummary(current.getItemCount(), current.getSubtotal(), current.getDeliveryFee(), result.getDiscount());
                 } else {
-                    appliedPromotion.setValue(result); // result.isValid() is false
+                    appliedPromotion.setValue(result);
                     appliedPromoCode = null;
                     updateSummary(current.getItemCount(), current.getSubtotal(), current.getDeliveryFee(), 0);
                 }
@@ -177,24 +185,44 @@ public class CheckoutViewModel extends BaseViewModel {
         });
     }
 
-    public void placeOrders(Context context, String address, String note, String paymentMethod, double lat, double lon) {
+    public void placeOrders(Context context, String address, double latitude, double longitude, String note, String paymentMethod) {
         List<CartRestaurantGroup> groups = restaurantGroups.getValue();
         if (groups == null || groups.isEmpty()) {
-            postError("Không có món ăn nào để đặt.");
+            postError(context.getString(R.string.checkout_error_no_items));
             return;
         }
 
+        if (PaymentMethodEnum.VNPAY.getValue().equals(paymentMethod) && groups.size() > 1) {
+            postError(context.getString(R.string.checkout_payment_multi_restaurant_error));
+            return;
+        }
+
+        Log.d(TAG, "Step 2: Checkout validated groups=" + groups.size() + ", paymentMethod=" + paymentMethod);
         setLoading(true);
         List<OrderSummary> results = new ArrayList<>();
-        placeOrderSequentially(context, groups, 0, address, note, paymentMethod, appliedPromoCode, lat, lon, results);
+        placeOrderSequentially(context, groups, 0, address, latitude, longitude, note, paymentMethod, appliedPromoCode, results);
     }
 
-    private void placeOrderSequentially(Context context, List<CartRestaurantGroup> groups, int index, 
-                                        String address, String note, String paymentMethod, String promoCode, double lat, double lon, List<OrderSummary> results) {
+    private void placeOrderSequentially(Context context,
+                                        List<CartRestaurantGroup> groups,
+                                        int index,
+                                        String address,
+                                        double latitude,
+                                        double longitude,
+                                        String note,
+                                        String paymentMethod,
+                                        String promoCode,
+                                        List<OrderSummary> results) {
         if (index >= groups.size()) {
             createdOrders.setValue(results);
-            isOrderSuccess.setValue(true);
-            setLoading(false);
+            if (PaymentMethodEnum.VNPAY.getValue().equals(paymentMethod)) {
+                String orderId = results.get(0).getId();
+                Log.d(TAG, "Step 4: Requesting VNPAY payment URL for orderId=" + orderId);
+                fetchVnpayPaymentUrl(context, orderId);
+            } else {
+                isOrderSuccess.setValue(true);
+                setLoading(false);
+            }
             return;
         }
 
@@ -211,7 +239,9 @@ public class CheckoutViewModel extends BaseViewModel {
         OrderRepository.getInstance().createOrder(
                 context,
                 group.getRestaurantId(),
-                address, lat, lon,
+                address,
+                latitude,
+                longitude,
                 note,
                 paymentMethod,
                 promoCode,
@@ -219,16 +249,40 @@ public class CheckoutViewModel extends BaseViewModel {
                 new RepositoryCallback<OrderSummary>() {
                     @Override
                     public void onSuccess(OrderSummary order) {
+                        Log.d(TAG, "Step 3: Order created id=" + order.getId()
+                                + ", restaurant=" + group.getRestaurantName()
+                                + ", paymentMethod=" + order.getPaymentMethod()
+                                + ", paymentStatus=" + order.getPaymentStatus());
                         results.add(order);
-                        placeOrderSequentially(context, groups, index + 1, address, note, paymentMethod, promoCode, lat, lon, results);
+                        placeOrderSequentially(context, groups, index + 1, address, latitude, longitude, note, paymentMethod, promoCode, results);
                     }
 
                     @Override
                     public void onError(String error) {
+                        Log.e(TAG, "Step 3: Create order failed for restaurant=" + group.getRestaurantName()
+                                + ", error=" + error);
                         postError("Lỗi khi đặt đơn tại " + group.getRestaurantName() + ": " + error);
                         setLoading(false);
                     }
                 }
         );
+    }
+
+    private void fetchVnpayPaymentUrl(Context context, String orderId) {
+        PaymentRepository.getInstance().createVnpayPayment(context, orderId, new RepositoryCallback<PaymentInitResult>() {
+            @Override
+            public void onSuccess(PaymentInitResult result) {
+                Log.d(TAG, "Step 4: VNPAY payment initialized txnRef=" + result.getProviderOrderRef());
+                setLoading(false);
+                vnpayPaymentResult.setValue(result);
+            }
+
+            @Override
+            public void onError(String error) {
+                Log.e(TAG, "Step 4: VNPAY payment initialization failed: " + error);
+                setLoading(false);
+                postError(context.getString(R.string.payment_init_error, error));
+            }
+        });
     }
 }
