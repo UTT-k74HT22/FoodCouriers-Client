@@ -1,6 +1,7 @@
 package com.utt.foodcouriers_client.viewmodel;
 
 import android.content.Context;
+import android.util.Log;
 
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
@@ -11,21 +12,29 @@ import com.utt.foodcouriers_client.data.common.RepositoryCallback;
 import com.utt.foodcouriers_client.data.model.CartItem;
 import com.utt.foodcouriers_client.data.model.CartRestaurantGroup;
 import com.utt.foodcouriers_client.data.model.OrderSummary;
+import com.utt.foodcouriers_client.data.model.PaymentInitResult;
 import com.utt.foodcouriers_client.data.model.PromotionValidationResult;
 import com.utt.foodcouriers_client.data.repository.CartRepository;
 import com.utt.foodcouriers_client.data.repository.OrderRepository;
+import com.utt.foodcouriers_client.data.repository.PaymentRepository;
+import com.utt.foodcouriers_client.utils.payment.PaymentMethodEnum;
 
 import java.util.ArrayList;
 import java.util.List;
 
 public class CheckoutViewModel extends BaseViewModel {
+    private static final String TAG = "CheckoutFlow";
 
     private final MutableLiveData<List<CartRestaurantGroup>> restaurantGroups = new MutableLiveData<>();
     private final MutableLiveData<CartRepository.CartSummary> checkoutSummary = new MutableLiveData<>();
     private final MutableLiveData<List<OrderSummary>> createdOrders = new MutableLiveData<>();
     private final MutableLiveData<Boolean> isOrderSuccess = new MutableLiveData<>(false);
     private final MutableLiveData<PromotionValidationResult> appliedPromotion = new MutableLiveData<>();
+    private final MutableLiveData<PaymentInitResult> vnpayPaymentResult = new MutableLiveData<>();
+
     private String appliedPromoCode = null;
+
+    // --- Getters ---
 
     public LiveData<List<CartRestaurantGroup>> getRestaurantGroups() {
         return restaurantGroups;
@@ -46,6 +55,13 @@ public class CheckoutViewModel extends BaseViewModel {
     public LiveData<PromotionValidationResult> getAppliedPromotion() {
         return appliedPromotion;
     }
+
+    /** Emit khi tạo VNPAY payment thành công — chứa paymentUrl để mở browser */
+    public LiveData<PaymentInitResult> getVnpayPaymentResult() {
+        return vnpayPaymentResult;
+    }
+
+    // --- Logic ---
 
     public void loadCheckoutData(Context context, List<String> selectedIds) {
         setLoading(true);
@@ -120,7 +136,7 @@ public class CheckoutViewModel extends BaseViewModel {
                     appliedPromoCode = code;
                     updateSummary(current.getItemCount(), current.getSubtotal(), current.getDeliveryFee(), result.getDiscount());
                 } else {
-                    appliedPromotion.setValue(result); // result.isValid() is false
+                    appliedPromotion.setValue(result);
                     appliedPromoCode = null;
                     updateSummary(current.getItemCount(), current.getSubtotal(), current.getDeliveryFee(), 0);
                 }
@@ -134,24 +150,41 @@ public class CheckoutViewModel extends BaseViewModel {
         });
     }
 
-    public void placeOrders(Context context, String address, String note, String paymentMethod) {
+    public void placeOrders(Context context, String address, double latitude, double longitude, String note, String paymentMethod) {
         List<CartRestaurantGroup> groups = restaurantGroups.getValue();
         if (groups == null || groups.isEmpty()) {
             postError("Không có món ăn nào để đặt.");
             return;
         }
 
+        // VNPAY chỉ hỗ trợ đơn 1 nhà hàng ở phase này
+        if (PaymentMethodEnum.VNPAY.getValue().equals(paymentMethod) && groups.size() > 1) {
+            postError("Thanh toán VNPAY chỉ áp dụng cho đơn hàng từ 1 nhà hàng. Vui lòng bỏ chọn bớt món.");
+            return;
+        }
+
+        Log.d(TAG, "Step 2: Checkout validated groups=" + groups.size() + ", paymentMethod=" + paymentMethod);
         setLoading(true);
         List<OrderSummary> results = new ArrayList<>();
-        placeOrderSequentially(context, groups, 0, address, note, paymentMethod, appliedPromoCode, results);
+        placeOrderSequentially(context, groups, 0, address, latitude, longitude, note, paymentMethod, appliedPromoCode, results);
     }
 
-    private void placeOrderSequentially(Context context, List<CartRestaurantGroup> groups, int index, 
-                                        String address, String note, String paymentMethod, String promoCode, List<OrderSummary> results) {
+    private void placeOrderSequentially(Context context, List<CartRestaurantGroup> groups, int index,
+                                        String address, double latitude, double longitude, String note, String paymentMethod,
+                                        String promoCode, List<OrderSummary> results) {
         if (index >= groups.size()) {
             createdOrders.setValue(results);
-            isOrderSuccess.setValue(true);
-            setLoading(false);
+
+            if (PaymentMethodEnum.VNPAY.getValue().equals(paymentMethod)) {
+                // VNPAY: gọi edge function lấy payment URL, không navigate ngay
+                String orderId = results.get(0).getId();
+                Log.d(TAG, "Step 4: Requesting VNPAY payment URL for orderId=" + orderId);
+                fetchVnpayPaymentUrl(context, orderId);
+            } else {
+                // COD: báo thành công và navigate như cũ
+                isOrderSuccess.setValue(true);
+                setLoading(false);
+            }
             return;
         }
 
@@ -168,7 +201,7 @@ public class CheckoutViewModel extends BaseViewModel {
         OrderRepository.getInstance().createOrder(
                 context,
                 group.getRestaurantId(),
-                address, 21.002, 105.843, // Mock lat/lon
+                address, latitude, longitude,
                 note,
                 paymentMethod,
                 promoCode,
@@ -176,19 +209,42 @@ public class CheckoutViewModel extends BaseViewModel {
                 new RepositoryCallback<OrderSummary>() {
                     @Override
                     public void onSuccess(OrderSummary order) {
+                        Log.d(TAG, "Step 3: Order created id=" + order.getId()
+                                + ", restaurant=" + group.getRestaurantName()
+                                + ", paymentMethod=" + order.getPaymentMethod()
+                                + ", paymentStatus=" + order.getPaymentStatus());
                         results.add(order);
-                        // Khi thanh toán qua nhiều nhà hàng, hiện tại ta chỉ apply code cho đơn đầu tiên hoặc cho tất cả?
-                        // Theo logic của rpc_create_order, nó sẽ trừ tiền dựa trên subtotal của mỗi đơn.
-                        // Nếu dùng 1 code cho nhiều đơn, mỗi đơn sẽ được giảm nếu thỏa điều kiện.
-                        placeOrderSequentially(context, groups, index + 1, address, note, paymentMethod, promoCode, results);
+                        placeOrderSequentially(context, groups, index + 1, address, latitude, longitude, note,
+                                paymentMethod, promoCode, results);
                     }
 
                     @Override
                     public void onError(String error) {
+                        Log.e(TAG, "Step 3: Create order failed for restaurant=" + group.getRestaurantName()
+                                + ", error=" + error);
                         postError("Lỗi khi đặt đơn tại " + group.getRestaurantName() + ": " + error);
                         setLoading(false);
                     }
                 }
         );
+    }
+
+    private void fetchVnpayPaymentUrl(Context context, String orderId) {
+        PaymentRepository.getInstance().createVnpayPayment(context, orderId,
+                new RepositoryCallback<PaymentInitResult>() {
+                    @Override
+                    public void onSuccess(PaymentInitResult result) {
+                        Log.d(TAG, "Step 4: VNPAY payment initialized txnRef=" + result.getProviderOrderRef());
+                        setLoading(false);
+                        vnpayPaymentResult.setValue(result);
+                    }
+
+                    @Override
+                    public void onError(String error) {
+                        Log.e(TAG, "Step 4: VNPAY payment initialization failed: " + error);
+                        setLoading(false);
+                        postError("Không thể khởi tạo thanh toán VNPAY: " + error);
+                    }
+                });
     }
 }

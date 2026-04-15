@@ -19,6 +19,7 @@ public class SessionManager {
     private static final String KEY_USER_ROLE = "user_role";
     private static final String KEY_TOKEN_EXPIRES_AT = "token_expires_at";
     private static final String KEY_CART_ID = "cart_id";
+    private static final String KEY_PENDING_PAYMENT_ORDER_ID = "pending_payment_order_id";
 
     private static SessionManager instance;
     private final SharedPreferences preferences;
@@ -117,6 +118,19 @@ public class SessionManager {
 
     public void setCartId(String cartId) {
         preferences.edit().putString(KEY_CART_ID, cartId).apply();
+    }
+
+    /** Lưu order_id đang chờ callback VNPAY để PaymentCallbackActivity đọc lại */
+    public void setPendingPaymentOrderId(String orderId) {
+        preferences.edit().putString(KEY_PENDING_PAYMENT_ORDER_ID, orderId).apply();
+    }
+
+    public String getPendingPaymentOrderId() {
+        return preferences.getString(KEY_PENDING_PAYMENT_ORDER_ID, null);
+    }
+
+    public void clearPendingPaymentOrderId() {
+        preferences.edit().remove(KEY_PENDING_PAYMENT_ORDER_ID).apply();
     }
 
     public boolean isTokenExpired() {
