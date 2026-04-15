@@ -26,10 +26,8 @@ import com.utt.foodcouriers_client.ui.order.OrderSuccessActivity;
 import com.utt.foodcouriers_client.ui.profile.AddressFormActivity;
 import com.utt.foodcouriers_client.ui.cart.adapter.CartItemAdapter;
 import com.utt.foodcouriers_client.utils.SessionManager;
-import com.utt.foodcouriers_client.viewmodel.CheckoutViewModel;
-
-import com.utt.foodcouriers_client.utils.SessionManager;
 import com.utt.foodcouriers_client.utils.ToastBanner;
+import com.utt.foodcouriers_client.viewmodel.CheckoutViewModel;
 
 import java.text.NumberFormat;
 import java.util.ArrayList;
@@ -43,13 +41,12 @@ public class CheckoutActivity extends BaseActivity {
     private SessionManager sessionManager;
     private final NumberFormat currencyFormatter = NumberFormat.getCurrencyInstance(new Locale("vi", "VN"));
 
-    private TextView tvSubtotal, tvDeliveryFee, tvTotal, tvDiscount, tvAddress, tvPromoError, tvAddressLabel, tvDistance;
+    private TextView tvSubtotal, tvDeliveryFee, tvTotal, tvDiscount, tvAddress, tvPromoError, tvAddressLabel;
     private View layoutDiscount;
     private EditText etNote, etPromoCode;
     private View btnApplyPromo, cardAddress;
 
     private Address selectedAddress;
-    private AddressClient.ApiCallback<Address[]> addressCallback;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -113,7 +110,9 @@ public class CheckoutActivity extends BaseActivity {
                 .setMessage(R.string.checkout_confirm_message)
                 .setPositiveButton(R.string.checkout_confirm_yes, (dialog, which) -> {
                     String note = etNote.getText().toString();
-                    viewModel.placeOrders(this, address, note, "cod");
+                    double lat = selectedAddress != null && selectedAddress.getLatitude() != null ? selectedAddress.getLatitude() : 21.002;
+                    double lon = selectedAddress != null && selectedAddress.getLongitude() != null ? selectedAddress.getLongitude() : 105.843;
+                    viewModel.placeOrders(this, address, note, "cod", lat, lon);
                 })
                 .setNegativeButton(R.string.checkout_confirm_no, (dialog, which) -> dialog.dismiss())
                 .show();
