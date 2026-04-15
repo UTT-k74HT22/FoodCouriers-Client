@@ -215,6 +215,7 @@ public class CheckoutViewModel extends BaseViewModel {
                                         List<OrderSummary> results) {
         if (index >= groups.size()) {
             createdOrders.setValue(results);
+            clearCartAfterOrderSuccess(context);
             if (PaymentMethodEnum.VNPAY.getValue().equals(paymentMethod)) {
                 String orderId = results.get(0).getId();
                 Log.d(TAG, "Step 4: Requesting VNPAY payment URL for orderId=" + orderId);
@@ -266,6 +267,20 @@ public class CheckoutViewModel extends BaseViewModel {
                     }
                 }
         );
+    }
+
+    private void clearCartAfterOrderSuccess(Context context) {
+        CartRepository.getInstance().clearCart(context, new RepositoryCallback<Boolean>() {
+            @Override
+            public void onSuccess(Boolean result) {
+                Log.d(TAG, "Cart cleared after successful order");
+            }
+
+            @Override
+            public void onError(String error) {
+                Log.w(TAG, "Failed to clear cart: " + error);
+            }
+        });
     }
 
     private void fetchVnpayPaymentUrl(Context context, String orderId) {

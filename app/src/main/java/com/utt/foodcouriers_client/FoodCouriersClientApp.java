@@ -3,6 +3,7 @@ package com.utt.foodcouriers_client;
 import android.app.Application;
 
 import com.utt.foodcouriers_client.data.remote.AuthClient;
+import com.utt.foodcouriers_client.data.remote.SupabaseRealtimeClient;
 import com.utt.foodcouriers_client.utils.SessionManager;
 import com.utt.foodcouriers_client.utils.ToastBanner;
 
@@ -19,6 +20,20 @@ public class FoodCouriersClientApp extends Application {
                     sessionManager.getAccessToken(),
                     sessionManager.getRefreshToken()
             );
+            initializeRealtime(sessionManager.getAccessToken());
         }
+    }
+
+    public static void initializeRealtime(String accessToken) {
+        if (accessToken == null || accessToken.isEmpty()) {
+            return;
+        }
+        SupabaseRealtimeClient client = SupabaseRealtimeClient.getInstance();
+        client.initialize(accessToken);
+        client.connect();
+    }
+
+    public static void disconnectRealtime() {
+        SupabaseRealtimeClient.getInstance().disconnect();
     }
 }
