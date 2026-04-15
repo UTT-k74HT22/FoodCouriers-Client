@@ -177,7 +177,12 @@ public class RegisterActivity extends BaseActivity {
             @Override
             public void onError(String error) {
                 showLoading(false);
-                ToastBanner.showError(error);
+                if ("EMAIL_CONFIRM_REQUIRED".equals(error)) {
+                    ToastBanner.showSuccess(getString(R.string.register_success_confirm_email));
+                    finish();
+                } else {
+                    ToastBanner.showError(error);
+                }
             }
         });
     }

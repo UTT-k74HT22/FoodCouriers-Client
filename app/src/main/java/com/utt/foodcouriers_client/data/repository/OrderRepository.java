@@ -187,6 +187,7 @@ public class OrderRepository {
             String paymentMethod,
             String promotionCode,
             JsonArray items,
+            int deliveryFee,
             RepositoryCallback<OrderSummary> callback
     ) {
         SessionManager sessionManager = SessionManager.getInstance(context);
@@ -206,6 +207,7 @@ public class OrderRepository {
         payload.addProperty("p_payment_method", paymentMethod != null ? paymentMethod : "cod");
         payload.addProperty("p_promotion_code", promotionCode);
         payload.add("p_items", items);
+        payload.addProperty("p_delivery_fee", deliveryFee);
 
         Request request = authorizedBuilder(sessionManager, url)
                 .post(RequestBody.create(payload.toString(), JSON))
