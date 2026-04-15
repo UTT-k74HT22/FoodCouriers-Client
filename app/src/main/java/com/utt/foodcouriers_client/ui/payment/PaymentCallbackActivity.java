@@ -7,6 +7,7 @@ import android.util.Log;
 
 import androidx.annotation.Nullable;
 
+import com.utt.foodcouriers_client.R;
 import com.utt.foodcouriers_client.data.model.PaymentCallbackResult;
 import com.utt.foodcouriers_client.ui.common.BaseActivity;
 import com.utt.foodcouriers_client.ui.main.MainActivity;
@@ -51,9 +52,9 @@ public class PaymentCallbackActivity extends BaseActivity {
                 + ", checksumValid=" + callbackResult.isChecksumValid());
 
         if (callbackResult.isSuccess()) {
-            showSuccessBanner("Thanh toán thành công!");
+            showSuccessBanner(getString(R.string.payment_success));
         } else {
-            showWarningBanner("Thanh toán không thành công. Vui lòng thử lại.");
+            showWarningBanner(getString(R.string.payment_failed));
         }
 
         if (orderId != null && !orderId.isEmpty()) {

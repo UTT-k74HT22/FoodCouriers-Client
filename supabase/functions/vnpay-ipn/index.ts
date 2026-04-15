@@ -38,7 +38,7 @@ serve(async (req) => {
 
     const { data: tx, error: txError } = await supabase
       .from("payment_transactions")
-      .select("*, orders!inner(id, status)")
+      .select("*, orders!inner(id, status, payment_status)")
       .eq("provider", "vnpay")
       .eq("provider_order_ref", txnRef)
       .single();
@@ -58,6 +58,28 @@ serve(async (req) => {
     }
 
     const ipnPayload = Object.fromEntries(query.entries());
+    const orderId = (tx as any).orders?.id;
+    const orderStatus = (tx as any).orders?.status;
+
+    // Check if order is cancelled - do not update payment if order was cancelled
+    if (orderStatus === "cancelled") {
+      await supabase
+        .from("payment_transactions")
+        .update({
+          status: "failed",
+          gateway_transaction_no: transactionNo,
+          gateway_response_code: responseCode,
+          bank_code: bankCode,
+          failure_reason: `Order was cancelled. Payment received but order is no longer active.`,
+          ipn_payload: ipnPayload,
+        })
+        .eq("id", tx.id);
+
+      return new Response(JSON.stringify({ RspCode: "00", Message: "Confirm Success" }), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     if (responseCode === "00") {
       await supabase
@@ -72,7 +94,6 @@ serve(async (req) => {
         })
         .eq("id", tx.id);
 
-      const orderId = (tx as any).orders?.id;
       if (orderId) {
         await supabase
           .from("orders")
@@ -98,7 +119,6 @@ serve(async (req) => {
       })
       .eq("id", tx.id);
 
-    const orderId = (tx as any).orders?.id;
     if (orderId) {
       await supabase
         .from("orders")

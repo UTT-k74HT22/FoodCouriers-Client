@@ -106,8 +106,8 @@ public class CheckoutActivity extends BaseActivity {
         btnPlaceOrder = findViewById(R.id.btn_place_order);
         rgPaymentMethod = findViewById(R.id.rg_payment_method);
 
-        tvAddressLabel.setText("Dia chi giao hang");
-        tvAddress.setText("Chua co dia chi");
+        tvAddressLabel.setText(R.string.checkout_payment_address_label);
+        tvAddress.setText(R.string.checkout_payment_no_address);
     }
 
     private void setupRecyclerView() {
@@ -120,10 +120,10 @@ public class CheckoutActivity extends BaseActivity {
     private void setupPaymentMethodSelector() {
         rgPaymentMethod.setOnCheckedChangeListener((group, checkedId) -> {
             if (checkedId == R.id.rb_vnpay) {
-                btnPlaceOrder.setText("Dat hang & Thanh toan VNPAY");
+                btnPlaceOrder.setText(R.string.checkout_payment_vnpay_button);
                 tvVnpayNote.setVisibility(View.VISIBLE);
             } else {
-                btnPlaceOrder.setText("Dat hang");
+                btnPlaceOrder.setText(R.string.checkout_payment_cod_button);
                 tvVnpayNote.setVisibility(View.GONE);
             }
         });
@@ -132,7 +132,7 @@ public class CheckoutActivity extends BaseActivity {
     private void setupActions() {
         btnPlaceOrder.setOnClickListener(v -> {
             if (selectedAddress == null) {
-                showErrorBanner("Vui long chon dia chi giao hang");
+                showErrorBanner(getString(R.string.checkout_error_no_address));
                 return;
             }
             showOrderConfirmationDialog();
@@ -268,8 +268,8 @@ public class CheckoutActivity extends BaseActivity {
     private void setSelectedAddress(@Nullable Address address, boolean reloadCheckout) {
         selectedAddress = address;
         if (address == null) {
-            tvAddressLabel.setText("Dia chi giao hang");
-            tvAddress.setText("Chua co dia chi");
+            tvAddressLabel.setText(R.string.checkout_payment_address_label);
+            tvAddress.setText(R.string.checkout_payment_no_address);
             if (reloadCheckout) {
                 loadCheckoutForCurrentAddress();
             }
@@ -277,7 +277,7 @@ public class CheckoutActivity extends BaseActivity {
         }
 
         String label = address.getLabel() != null && !address.getLabel().isBlank()
-                ? address.getLabel() : "Dia chi giao hang";
+                ? address.getLabel() : getString(R.string.checkout_payment_address_label);
         tvAddressLabel.setText(label);
         tvAddress.setText(address.getDisplayAddress());
         Log.d(TAG, "Step 0: Selected address id=" + address.getId()
@@ -304,7 +304,7 @@ public class CheckoutActivity extends BaseActivity {
             return;
         }
 
-        if (selectedAddress == null || address.isEmpty() || "Chua co dia chi".equals(address)) {
+        if (selectedAddress == null || address.isEmpty() || getString(R.string.checkout_payment_no_address).equals(address)) {
             ToastBanner.showError(getString(R.string.checkout_error_no_address));
             return;
         }
@@ -333,7 +333,7 @@ public class CheckoutActivity extends BaseActivity {
 
     private void openVnpayBrowser(PaymentInitResult result) {
         if (result == null || result.getPaymentUrl().isEmpty()) {
-            showErrorBanner("Khong lay duoc duong dan thanh toan.");
+            showErrorBanner(getString(R.string.payment_url_error));
             return;
         }
 

@@ -7,6 +7,7 @@ import android.util.Log;
 
 import androidx.annotation.NonNull;
 
+import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.utt.foodcouriers_client.data.common.RepositoryCallback;
@@ -14,6 +15,7 @@ import com.utt.foodcouriers_client.data.model.PaymentInitResult;
 import com.utt.foodcouriers_client.data.remote.AuthClient;
 import com.utt.foodcouriers_client.data.remote.SupabaseConfig;
 import com.utt.foodcouriers_client.utils.SessionManager;
+import com.utt.foodcouriers_client.utils.payment.TransactionStatus;
 
 import java.io.IOException;
 
@@ -52,12 +54,23 @@ public class PaymentRepository {
      */
     public void createVnpayPayment(Context context, String orderId,
                                    RepositoryCallback<PaymentInitResult> callback) {
-        createVnpayPayment(context, orderId, callback, false);
+        String idempotencyKey = orderId + "-" + System.currentTimeMillis();
+        createVnpayPayment(context, orderId, idempotencyKey, callback, false);
     }
 
-    private void createVnpayPayment(Context context, String orderId,
-                                    RepositoryCallback<PaymentInitResult> callback,
-                                    boolean hasRetriedAfterRefresh) {
+    /**
+     * Gọi Edge Function create-vnpay-payment để tạo payment transaction
+     * và lấy paymentUrl để mở trình duyệt.
+     *
+     * @param context  Context để lấy session
+     * @param orderId  UUID của order vừa tạo (payment_method phải là 'vnpay')
+     * @param idempotencyKey
+     * @param callback Trả về PaymentInitResult chứa paymentUrl khi thành công
+     * @param hasRetriedAfterRefresh
+     */
+    private void createVnpayPayment(Context context, String orderId, String idempotencyKey,
+                                     RepositoryCallback<PaymentInitResult> callback,
+                                     boolean hasRetriedAfterRefresh) {
         SessionManager sessionManager = SessionManager.getInstance(context);
         if (!sessionManager.isLoggedIn()) {
             Log.e(FLOW_TAG, "Step 4: No active session, VNPAY payment request aborted");
@@ -70,16 +83,19 @@ public class PaymentRepository {
         Log.d(FLOW_TAG, "Step 4: Calling edge function create-vnpay-payment for orderId=" + orderId
                 + ", tokenExpired=" + sessionManager.isTokenExpired()
                 + ", hasRefreshToken=" + sessionManager.hasRefreshToken()
-                + ", retried=" + hasRetriedAfterRefresh);
+                + ", retried=" + hasRetriedAfterRefresh
+                + ", idempotencyKey=" + idempotencyKey);
 
         JsonObject body = new JsonObject();
         body.addProperty("order_id", orderId);
+        body.addProperty("idempotency_key", idempotencyKey);
 
         Request request = new Request.Builder()
                 .url(url)
                 .addHeader("apikey", SupabaseConfig.SUPABASE_ANON_KEY)
                 .addHeader("Authorization", "Bearer " + sessionManager.getAccessToken())
                 .addHeader(SupabaseConfig.HEADER_CONTENT_TYPE, SupabaseConfig.CONTENT_TYPE_JSON)
+                .addHeader("Idempotency-Key", idempotencyKey)
                 .post(RequestBody.create(body.toString(), JSON))
                 .build();
 
@@ -102,7 +118,7 @@ public class PaymentRepository {
                     if (response.code() == 401 && !hasRetriedAfterRefresh) {
                         Log.w(TAG, "Step 4: JWT rejected, attempting session refresh before retry");
                         Log.w(FLOW_TAG, "Step 4: JWT rejected, attempting session refresh before retry");
-                        refreshSessionAndRetry(context, orderId, callback);
+                        refreshSessionAndRetry(context, orderId, idempotencyKey, callback);
                         return;
                     }
                     postError(callback, parseErrorMessage(responseBody, response.code()));
@@ -130,7 +146,7 @@ public class PaymentRepository {
         });
     }
 
-    private void refreshSessionAndRetry(Context context, String orderId,
+    private void refreshSessionAndRetry(Context context, String orderId, String idempotencyKey,
                                         RepositoryCallback<PaymentInitResult> callback) {
         SessionManager sessionManager = SessionManager.getInstance(context);
         AuthClient.getInstance().setSession(
@@ -146,7 +162,7 @@ public class PaymentRepository {
                 SessionManager.getInstance(context).updateSession(newAccessToken, newRefreshToken);
                 Log.d(TAG, "Step 4: Session refresh succeeded, retrying create-vnpay-payment");
                 Log.d(FLOW_TAG, "Step 4: Session refresh succeeded, retrying create-vnpay-payment");
-                createVnpayPayment(context, orderId, callback, true);
+                createVnpayPayment(context, orderId, idempotencyKey, callback, true);
             }
 
             @Override
@@ -177,5 +193,66 @@ public class PaymentRepository {
 
     private void postError(RepositoryCallback<?> callback, String error) {
         mainHandler.post(() -> callback.onError(error));
+    }
+
+    public void getTransactionStatus(Context context, String orderId,
+                                      RepositoryCallback<TransactionStatus> callback) {
+        SessionManager sessionManager = SessionManager.getInstance(context);
+        if (!sessionManager.isLoggedIn()) {
+            postError(callback, "AUTH_REQUIRED");
+            return;
+        }
+
+        String url = SupabaseConfig.SUPABASE_URL + "/rest/v1/payment_transactions"
+                + "?order_id=eq." + orderId
+                + "&select=id,status,provider_order_ref,pay_url,expires_at,failure_reason"
+                + "&order=created_at.desc"
+                + "&limit=1";
+
+        Request request = new Request.Builder()
+                .url(url)
+                .addHeader("apikey", SupabaseConfig.SUPABASE_ANON_KEY)
+                .addHeader("Authorization", "Bearer " + sessionManager.getAccessToken())
+                .addHeader("Accept", "application/json")
+                .get()
+                .build();
+
+        client.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(@NonNull Call call, @NonNull IOException e) {
+                Log.e(TAG, "Failed to get transaction status", e);
+                postError(callback, "Lỗi kết nối: " + e.getMessage());
+            }
+
+            @Override
+            public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
+                String responseBody = response.body() == null ? "" : response.body().string();
+                if (!response.isSuccessful()) {
+                    Log.e(TAG, "Failed to get transaction status HTTP " + response.code());
+                    postError(callback, "Lỗi: HTTP " + response.code());
+                    return;
+                }
+                try {
+                    JsonArray arr = JsonParser.parseString(responseBody).getAsJsonArray();
+                    if (arr.isEmpty()) {
+                        postError(callback, "Không tìm thấy giao dịch");
+                        return;
+                    }
+                    JsonObject obj = arr.get(0).getAsJsonObject();
+                    TransactionStatus status = new TransactionStatus(
+                            getString(obj, "id"),
+                            getString(obj, "status"),
+                            getString(obj, "provider_order_ref"),
+                            getString(obj, "pay_url"),
+                            getString(obj, "expires_at"),
+                            getString(obj, "failure_reason")
+                    );
+                    postSuccess(callback, status);
+                } catch (Exception e) {
+                    Log.e(TAG, "Failed to parse transaction status", e);
+                    postError(callback, "Lỗi xử lý dữ liệu");
+                }
+            }
+        });
     }
 }

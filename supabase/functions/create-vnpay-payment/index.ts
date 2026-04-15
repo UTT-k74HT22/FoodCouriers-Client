@@ -30,6 +30,7 @@ serve(async (req) => {
 
     const body = await req.json();
     const orderId = body?.order_id;
+    const clientIdempotencyKey = req.headers.get("Idempotency-Key") ?? body?.idempotency_key ?? null;
 
     if (!orderId) {
       return new Response(
@@ -97,6 +98,69 @@ serve(async (req) => {
       );
     }
 
+    // Check for existing pending transaction - return existing if not expired
+    const { data: existingTx } = await supabase
+      .from("payment_transactions")
+      .select("*")
+      .eq("order_id", order.id)
+      .eq("status", "pending")
+      .single();
+
+    // Check idempotency - if same key exists, return existing transaction
+    if (clientIdempotencyKey) {
+      const { data: idempotentTx } = await supabase
+        .from("payment_transactions")
+        .select("*")
+        .eq("order_id", order.id)
+        .eq("idempotency_key", clientIdempotencyKey)
+        .single();
+      
+      if (idempotentTx) {
+        return new Response(
+          JSON.stringify({
+            order_id: order.id,
+            transaction_id: idempotentTx.id,
+            provider: "vnpay",
+            provider_order_ref: idempotentTx.provider_order_ref,
+            payment_url: idempotentTx.pay_url,
+            expires_at: idempotentTx.expires_at,
+            reused: true,
+            idempotent: true,
+          }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+    }
+
+    if (existingTx) {
+      const expiresAt = new Date(existingTx.expires_at);
+      const now = new Date();
+      
+      // If existing transaction not expired, return it
+      if (expiresAt > now && existingTx.pay_url) {
+        return new Response(
+          JSON.stringify({
+            order_id: order.id,
+            transaction_id: existingTx.id,
+            provider: "vnpay",
+            provider_order_ref: existingTx.provider_order_ref,
+            payment_url: existingTx.pay_url,
+            expires_at: existingTx.expires_at,
+            reused: true,
+          }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      
+      // If expired, mark as failed and create new one
+      if (expiresAt <= now) {
+        await supabase
+          .from("payment_transactions")
+          .update({ status: "failed", failure_reason: "Payment expired without completion" })
+          .eq("id", existingTx.id);
+      }
+    }
+
     const now = new Date();
     const createDate = formatDateVN(now);
     const expireDate = buildExpireDate(now, 15);
@@ -141,6 +205,7 @@ serve(async (req) => {
         status: "pending",
         pay_url: paymentUrl,
         expires_at: new Date(now.getTime() + 15 * 60 * 1000).toISOString(),
+        idempotency_key: clientIdempotencyKey,
       })
       .select()
       .single();

@@ -8,6 +8,7 @@ import androidx.lifecycle.MutableLiveData;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
+import com.utt.foodcouriers_client.R;
 import com.utt.foodcouriers_client.data.common.RepositoryCallback;
 import com.utt.foodcouriers_client.data.model.CartItem;
 import com.utt.foodcouriers_client.data.model.CartRestaurantGroup;
@@ -187,12 +188,12 @@ public class CheckoutViewModel extends BaseViewModel {
     public void placeOrders(Context context, String address, double latitude, double longitude, String note, String paymentMethod) {
         List<CartRestaurantGroup> groups = restaurantGroups.getValue();
         if (groups == null || groups.isEmpty()) {
-            postError("Khong co mon an nao de dat.");
+            postError(context.getString(R.string.checkout_error_no_items));
             return;
         }
 
         if (PaymentMethodEnum.VNPAY.getValue().equals(paymentMethod) && groups.size() > 1) {
-            postError("Thanh toan VNPAY chi ap dung cho don hang tu 1 nha hang. Vui long bo chon bot mon.");
+            postError(context.getString(R.string.checkout_payment_multi_restaurant_error));
             return;
         }
 
@@ -260,7 +261,7 @@ public class CheckoutViewModel extends BaseViewModel {
                     public void onError(String error) {
                         Log.e(TAG, "Step 3: Create order failed for restaurant=" + group.getRestaurantName()
                                 + ", error=" + error);
-                        postError("Loi khi dat don tai " + group.getRestaurantName() + ": " + error);
+                        postError("Lỗi khi đặt đơn tại " + group.getRestaurantName() + ": " + error);
                         setLoading(false);
                     }
                 }
@@ -280,7 +281,7 @@ public class CheckoutViewModel extends BaseViewModel {
             public void onError(String error) {
                 Log.e(TAG, "Step 4: VNPAY payment initialization failed: " + error);
                 setLoading(false);
-                postError("Khong the khoi tao thanh toan VNPAY: " + error);
+                postError(context.getString(R.string.payment_init_error, error));
             }
         });
     }
