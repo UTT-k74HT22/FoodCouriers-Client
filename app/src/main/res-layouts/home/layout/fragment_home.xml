@@ -133,6 +133,7 @@
                 android:textSize="14sp" />
 
             <Button
+                android:id="@+id/btn_banner_cta"
                 android:layout_width="132dp"
                 android:layout_height="48dp"
                 android:layout_marginTop="16dp"

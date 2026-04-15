@@ -51,10 +51,10 @@ public class OrderTrackingActivity extends BaseActivity {
         stepPreparing = findViewById(R.id.step_preparing);
         stepDelivering = findViewById(R.id.step_delivering);
         stepDelivered = findViewById(R.id.step_delivered);
-        setupStep(stepConfirmed, "Da tiep nhan", "Nha hang da nhan don cua ban");
-        setupStep(stepPreparing, "Dang chuan bi", "Mon dang duoc che bien");
-        setupStep(stepDelivering, "Dang giao", "Shipper dang di giao don");
-        setupStep(stepDelivered, "Da giao xong", "Don hang da duoc giao thanh cong");
+        setupStep(stepConfirmed, "Đã nhận", "Nhà hàng đã nhận đơn");
+        setupStep(stepPreparing, "Đang làm", "Món đang được chế biến");
+        setupStep(stepDelivering, "Đang giao", "Shipper đang giao đơn");
+        setupStep(stepDelivered, "Đã giao", "Đơn hàng giao thành công");
     }
 
     private void bindObservers() {

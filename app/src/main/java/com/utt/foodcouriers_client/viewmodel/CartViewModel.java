@@ -23,6 +23,7 @@ public class CartViewModel extends BaseViewModel {
     private final MutableLiveData<CartRepository.CartSummary> cartSummary = new MutableLiveData<>();
     private final MutableLiveData<Map<String, Integer>> menuItemQuantities = new MutableLiveData<>();
     private final MutableLiveData<Boolean> emptyState = new MutableLiveData<>(true);
+    private final MutableLiveData<Integer> selectedItemCount = new MutableLiveData<>(0);
 
     public LiveData<List<CartItem>> getCartItems() {
         return cartItems;
@@ -42,6 +43,10 @@ public class CartViewModel extends BaseViewModel {
 
     public LiveData<Boolean> getEmptyState() {
         return emptyState;
+    }
+
+    public LiveData<Integer> getSelectedItemCount() {
+        return selectedItemCount;
     }
 
     public void loadCart(Context context) {
@@ -137,5 +142,26 @@ public class CartViewModel extends BaseViewModel {
         cartSummary.setValue(safeState.getSummary());
         menuItemQuantities.setValue(safeState.getMenuItemQuantities());
         emptyState.setValue(safeState.getItems() == null || safeState.getItems().isEmpty());
+    }
+
+    public void removeSelectedItems(Context context, List<String> cartItemIds) {
+        if (cartItemIds == null || cartItemIds.isEmpty()) {
+            return;
+        }
+        setLoading(true);
+        repository.removeItems(context.getApplicationContext(), cartItemIds, new RepositoryCallback<CartRepository.CartState>() {
+            @Override
+            public void onSuccess(CartRepository.CartState result) {
+                publishState(result);
+                postSuccess("Đã xóa " + cartItemIds.size() + " món khỏi giỏ hàng");
+                setLoading(false);
+            }
+
+            @Override
+            public void onError(String error) {
+                postError(error);
+                setLoading(false);
+            }
+        });
     }
 }

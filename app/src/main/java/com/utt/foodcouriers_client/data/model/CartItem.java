@@ -12,6 +12,8 @@ public class CartItem implements Serializable {
     private int quantity;
     private String note;
     private String imageUrl;
+    private Double restaurantLatitude;
+    private Double restaurantLongitude;
 
     public CartItem() {
         this.id = null;
@@ -109,5 +111,21 @@ public class CartItem implements Serializable {
 
     public void setRestaurantName(String restaurantName) {
         this.restaurantName = restaurantName;
+    }
+
+    public Double getRestaurantLatitude() {
+        return restaurantLatitude;
+    }
+
+    public void setRestaurantLatitude(Double restaurantLatitude) {
+        this.restaurantLatitude = restaurantLatitude;
+    }
+
+    public Double getRestaurantLongitude() {
+        return restaurantLongitude;
+    }
+
+    public void setRestaurantLongitude(Double restaurantLongitude) {
+        this.restaurantLongitude = restaurantLongitude;
     }
 }

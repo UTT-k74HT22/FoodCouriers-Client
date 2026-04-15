@@ -83,6 +83,14 @@ public class CartFragment extends BaseFragment {
     }
 
     private void setupActions() {
+        binding.btnRemoveSelected.setOnClickListener(v -> {
+            if (currentSelection.getSelectedCartItemIds().isEmpty()) {
+                showErrorSnackbar("Vui lòng chọn ít nhất một món để xóa.");
+                return;
+            }
+            viewModel.removeSelectedItems(requireContext(), currentSelection.getSelectedCartItemIds());
+        });
+
         binding.btnCheckout.setOnClickListener(v -> {
             if (currentSelection.getSelectedCartItemIds().isEmpty()) {
                 showErrorSnackbar("Hay chon it nhat mot mon de tiep tuc.");
@@ -140,6 +148,9 @@ public class CartFragment extends BaseFragment {
         binding.btnCheckout.setEnabled(!selectionState.getSelectedCartItemIds().isEmpty());
         binding.btnCheckout.setAlpha(selectionState.getSelectedCartItemIds().isEmpty() ? 0.5f : 1f);
         binding.tvCartCount.setText(getString(R.string.cart_item_count, selectionState.getSelectedItemCount()));
+        
+        boolean hasSelection = !selectionState.getSelectedCartItemIds().isEmpty();
+        binding.btnRemoveSelected.setVisibility(hasSelection ? View.VISIBLE : View.GONE);
     }
 
     @Override

@@ -16,6 +16,7 @@ import com.utt.foodcouriers_client.data.model.PaymentInitResult;
 import com.utt.foodcouriers_client.data.model.PromotionValidationResult;
 import com.utt.foodcouriers_client.data.repository.CartRepository;
 import com.utt.foodcouriers_client.data.repository.OrderRepository;
+import com.utt.foodcouriers_client.utils.DistanceUtils;
 import com.utt.foodcouriers_client.data.repository.PaymentRepository;
 import com.utt.foodcouriers_client.utils.payment.PaymentMethodEnum;
 
@@ -30,6 +31,7 @@ public class CheckoutViewModel extends BaseViewModel {
     private final MutableLiveData<List<OrderSummary>> createdOrders = new MutableLiveData<>();
     private final MutableLiveData<Boolean> isOrderSuccess = new MutableLiveData<>(false);
     private final MutableLiveData<PromotionValidationResult> appliedPromotion = new MutableLiveData<>();
+    private final MutableLiveData<String> deliveryDistance = new MutableLiveData<>();
     private final MutableLiveData<PaymentInitResult> vnpayPaymentResult = new MutableLiveData<>();
 
     private String appliedPromoCode = null;
@@ -56,6 +58,11 @@ public class CheckoutViewModel extends BaseViewModel {
         return appliedPromotion;
     }
 
+    public LiveData<String> getDeliveryDistance() {
+        return deliveryDistance;
+    }
+
+    public void loadCheckoutData(Context context, List<String> selectedIds, double deliveryLat, double deliveryLon) {
     /** Emit khi tạo VNPAY payment thành công — chứa paymentUrl để mở browser */
     public LiveData<PaymentInitResult> getVnpayPaymentResult() {
         return vnpayPaymentResult;
@@ -83,17 +90,33 @@ public class CheckoutViewModel extends BaseViewModel {
                         }
                     }
                     if (!selectedInGroup.isEmpty()) {
+                        Double restLat = group.getRestaurantLatitude();//tọa độ nhà hàng
+                        Double restLon = group.getRestaurantLongitude();//vĩ độ nhà hàng
+
+                        int calculatedDeliveryFee = 0; // khởi tạo phí giao hàng mặc định
+                        if (restLat != null && restLon != null && deliveryLat != 0 && deliveryLon != 0) { // chỉ tính phí giao hàng nếu có tọa độ hợp lệ
+                            double distanceKm = DistanceUtils.calculateDistanceKm(restLat, restLon, deliveryLat, deliveryLon); // gọi hàm tính khoảng cách
+                            int pricePerKm = group.getDeliveryFee(); // giả sử deliveryFee trong CartRestaurantGroup là giá trên mỗi km
+                            calculatedDeliveryFee = (int) (distanceKm * pricePerKm); // tính phí giao hàng dựa trên khoảng cách và giá trên mỗi km
+                        }
+
                         filteredGroups.add(new CartRestaurantGroup(
                                 group.getRestaurantId(),
                                 group.getRestaurantName(),
-                                group.getDeliveryFee(),
-                                selectedInGroup
+                                calculatedDeliveryFee,
+                                selectedInGroup,
+                                restLat,
+                                restLon
                         ));
-                        deliveryFee += group.getDeliveryFee();
+                        deliveryFee += calculatedDeliveryFee;
                     }
                 }
 
                 restaurantGroups.setValue(filteredGroups);
+
+                String distanceText = calculateTotalDistance(filteredGroups, deliveryLat, deliveryLon);
+                deliveryDistance.setValue(distanceText);
+
                 updateSummary(itemCount, subtotal, deliveryFee, 0);
                 setLoading(false);
             }
@@ -104,6 +127,27 @@ public class CheckoutViewModel extends BaseViewModel {
                 setLoading(false);
             }
         });
+    }
+
+    private String calculateTotalDistance(List<CartRestaurantGroup> groups, double deliveryLat, double deliveryLon) {
+        if (groups == null || groups.isEmpty()) {
+            return "";
+        }
+
+        double totalDistance = 0;
+        for (CartRestaurantGroup group : groups) {
+            Double restLat = group.getRestaurantLatitude();
+            Double restLon = group.getRestaurantLongitude();
+            if (restLat != null && restLon != null) {
+                totalDistance += DistanceUtils.calculateDistanceKm(restLat, restLon, deliveryLat, deliveryLon);
+            }
+        }
+
+        if (totalDistance == 0) {
+            return "";
+        }
+
+        return DistanceUtils.formatDistance(totalDistance);
     }
 
     private void updateSummary(int itemCount, int subtotal, int deliveryFee, int discount) {
@@ -166,6 +210,7 @@ public class CheckoutViewModel extends BaseViewModel {
         Log.d(TAG, "Step 2: Checkout validated groups=" + groups.size() + ", paymentMethod=" + paymentMethod);
         setLoading(true);
         List<OrderSummary> results = new ArrayList<>();
+        placeOrderSequentially(context, groups, 0, address, note, paymentMethod, appliedPromoCode, lat, lon, results);
         placeOrderSequentially(context, groups, 0, address, latitude, longitude, note, paymentMethod, appliedPromoCode, results);
     }
 
@@ -201,6 +246,7 @@ public class CheckoutViewModel extends BaseViewModel {
         OrderRepository.getInstance().createOrder(
                 context,
                 group.getRestaurantId(),
+                address, lat, lon,
                 address, latitude, longitude,
                 note,
                 paymentMethod,
@@ -214,6 +260,7 @@ public class CheckoutViewModel extends BaseViewModel {
                                 + ", paymentMethod=" + order.getPaymentMethod()
                                 + ", paymentStatus=" + order.getPaymentStatus());
                         results.add(order);
+                        placeOrderSequentially(context, groups, index + 1, address, note, paymentMethod, promoCode, lat, lon, results);
                         placeOrderSequentially(context, groups, index + 1, address, latitude, longitude, note,
                                 paymentMethod, promoCode, results);
                     }

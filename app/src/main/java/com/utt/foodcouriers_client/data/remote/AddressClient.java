@@ -76,6 +76,12 @@ public class AddressClient extends BaseSupabaseClient {
 
     public void createAddress(String userId, String label, String fullAddress, 
                              String district, String city, boolean isDefault, ApiCallback<Address> callback) {
+        createAddressWithCoordinates(userId, label, fullAddress, district, city, isDefault, 0, 0, callback);
+    }
+
+    public void createAddressWithCoordinates(String userId, String label, String fullAddress, 
+                             String district, String city, boolean isDefault, 
+                             double latitude, double longitude, ApiCallback<Address> callback) {
         syncSession();
         
         if (!isAuthenticated()) {
@@ -90,6 +96,11 @@ public class AddressClient extends BaseSupabaseClient {
         address.put("district", district);
         address.put("city", city != null ? city : "HCM");
         address.put("is_default", isDefault);
+        
+        if (latitude != 0 && longitude != 0) {
+            address.put("latitude", latitude);
+            address.put("longitude", longitude);
+        }
 
         Request request = new Request.Builder()
                 .url(SupabaseConfig.REST_URL + "/user_addresses")
@@ -127,6 +138,12 @@ public class AddressClient extends BaseSupabaseClient {
 
     public void updateAddress(String addressId, String label, String fullAddress,
                             String district, String city, boolean isDefault, ApiCallback<Address> callback) {
+        updateAddressWithCoordinates(addressId, label, fullAddress, district, city, isDefault, 0, 0, callback);
+    }
+
+    public void updateAddressWithCoordinates(String addressId, String label, String fullAddress,
+                            String district, String city, boolean isDefault,
+                            double latitude, double longitude, ApiCallback<Address> callback) {
         syncSession();
         
         if (!isAuthenticated()) {
@@ -140,6 +157,11 @@ public class AddressClient extends BaseSupabaseClient {
         if (district != null) address.put("district", district);
         if (city != null) address.put("city", city);
         address.put("is_default", isDefault);
+        
+        if (latitude != 0 && longitude != 0) {
+            address.put("latitude", latitude);
+            address.put("longitude", longitude);
+        }
 
         Request request = new Request.Builder()
                 .url(SupabaseConfig.REST_URL + "/user_addresses?id=eq." + addressId)
