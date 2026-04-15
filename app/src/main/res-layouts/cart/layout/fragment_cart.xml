@@ -175,7 +175,7 @@
                     android:layout_height="wrap_content"
                     android:textColor="@color/text_primary"
                     android:textSize="@dimen/text_body"
-                    tools:text="0 ₫" />
+                    tools:text="0 ₫/km" />
             </LinearLayout>
 
             <View

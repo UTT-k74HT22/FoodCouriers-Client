@@ -54,7 +54,7 @@
                     android:alpha="0.9"
                     android:textColor="@color/white"
                     android:textSize="@dimen/text_caption"
-                    tools:text="3 mon • Phi giao 18.000 ₫" />
+                    tools:text="3 mon • Phi giao 18.000 ₫/km" />
             </LinearLayout>
         </LinearLayout>
 

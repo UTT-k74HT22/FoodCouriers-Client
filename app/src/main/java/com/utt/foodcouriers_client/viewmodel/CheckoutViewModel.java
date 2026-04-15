@@ -73,15 +73,25 @@ public class CheckoutViewModel extends BaseViewModel {
                         }
                     }
                     if (!selectedInGroup.isEmpty()) {
+                        Double restLat = group.getRestaurantLatitude();//tọa độ nhà hàng
+                        Double restLon = group.getRestaurantLongitude();//vĩ độ nhà hàng
+                        
+                        int calculatedDeliveryFee = 0; // khởi tạo phí giao hàng mặc định
+                        if (restLat != null && restLon != null && deliveryLat != 0 && deliveryLon != 0) { // chỉ tính phí giao hàng nếu có tọa độ hợp lệ
+                            double distanceKm = DistanceUtils.calculateDistanceKm(restLat, restLon, deliveryLat, deliveryLon); // gọi hàm tính khoảng cách
+                            int pricePerKm = group.getDeliveryFee(); // giả sử deliveryFee trong CartRestaurantGroup là giá trên mỗi km
+                            calculatedDeliveryFee = (int) (distanceKm * pricePerKm); // tính phí giao hàng dựa trên khoảng cách và giá trên mỗi km
+                        }
+                        
                         filteredGroups.add(new CartRestaurantGroup(
                                 group.getRestaurantId(),
                                 group.getRestaurantName(),
-                                group.getDeliveryFee(),
+                                calculatedDeliveryFee,
                                 selectedInGroup,
-                                group.getRestaurantLatitude(),
-                                group.getRestaurantLongitude()
+                                restLat,
+                                restLon
                         ));
-                        deliveryFee += group.getDeliveryFee();
+                        deliveryFee += calculatedDeliveryFee;
                     }
                 }
 

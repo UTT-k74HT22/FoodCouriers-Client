@@ -41,7 +41,7 @@ public class CheckoutActivity extends BaseActivity {
     private SessionManager sessionManager;
     private final NumberFormat currencyFormatter = NumberFormat.getCurrencyInstance(new Locale("vi", "VN"));
 
-    private TextView tvSubtotal, tvDeliveryFee, tvTotal, tvDiscount, tvAddress, tvPromoError, tvAddressLabel;
+    private TextView tvSubtotal, tvDeliveryFee, tvTotal, tvDiscount, tvAddress, tvPromoError, tvAddressLabel, tvDeliveryDistance;
     private View layoutDiscount;
     private EditText etNote, etPromoCode;
     private View btnApplyPromo, cardAddress;
@@ -65,24 +65,23 @@ public class CheckoutActivity extends BaseActivity {
 
         ArrayList<String> selectedIds = getIntent().getStringArrayListExtra(CartFragment.EXTRA_SELECTED_CART_ITEM_IDS);
         if (selectedIds != null) {
-            double deliveryLat = selectedAddress != null && selectedAddress.getLatitude() != null
-                    ? selectedAddress.getLatitude() : 10.8231;
-            double deliveryLon = selectedAddress != null && selectedAddress.getLongitude() != null
-                    ? selectedAddress.getLongitude() : 106.6297;
+            // Sử dụng tọa độ mặc định là 0,0 nếu chưa có địa chỉ để tránh tính phí sai lệch lớn (Hà Nội vs HCM)
+            // CheckoutViewModel sẽ xử lý trường hợp này
+            double deliveryLat = 0;
+            double deliveryLon = 0;
+            if (selectedAddress != null && selectedAddress.getLatitude() != null) {
+                deliveryLat = selectedAddress.getLatitude();
+                deliveryLon = selectedAddress.getLongitude();
+            }
             viewModel.loadCheckoutData(this, selectedIds, deliveryLat, deliveryLon);
         }
 
         findViewById(R.id.btn_place_order).setOnClickListener(v -> {
-            showOrderConfirmationDialog();
             if (selectedAddress == null) {
                 showErrorBanner("Vui lòng chọn địa chỉ giao hàng");
                 return;
             }
-            String address = selectedAddress.getDisplayAddress();
-            String note = etNote.getText().toString();
-            double lat = selectedAddress.getLatitude() != null ? selectedAddress.getLatitude() : 21.002;
-            double lon = selectedAddress.getLongitude() != null ? selectedAddress.getLongitude() : 105.843;
-            viewModel.placeOrders(this, address, note, "cod", lat, lon);
+            showOrderConfirmationDialog();
         });
 
         btnApplyPromo.setOnClickListener(v -> {
@@ -123,6 +122,7 @@ public class CheckoutActivity extends BaseActivity {
         tvDeliveryFee = findViewById(R.id.tv_delivery_fee);
         tvTotal = findViewById(R.id.tv_total);
         tvDiscount = findViewById(R.id.tv_discount);
+        tvDeliveryDistance = findViewById(R.id.tv_delivery_distance);
         layoutDiscount = findViewById(R.id.layout_discount);
         tvAddress = findViewById(R.id.tv_address);
         tvAddressLabel = findViewById(R.id.tv_address_label);
@@ -160,6 +160,15 @@ public class CheckoutActivity extends BaseActivity {
                 tvDiscount.setText("-" + currencyFormatter.format(summary.getSavings()));
             } else {
                 layoutDiscount.setVisibility(View.GONE);
+            }
+        });
+
+        viewModel.getDeliveryDistance().observe(this, distance -> {
+            if (distance != null && !distance.isEmpty()) {
+                tvDeliveryDistance.setVisibility(View.VISIBLE);
+                tvDeliveryDistance.setText("(" + distance + ")");
+            } else {
+                tvDeliveryDistance.setVisibility(View.GONE);
             }
         });
 
@@ -241,6 +250,12 @@ public class CheckoutActivity extends BaseActivity {
         if (address != null) {
             tvAddressLabel.setText(address.getLabel());
             tvAddress.setText(address.getDisplayAddress());
+            
+            // Recalculate checkout data with new coordinates
+            ArrayList<String> selectedIds = getIntent().getStringArrayListExtra(CartFragment.EXTRA_SELECTED_CART_ITEM_IDS);
+            if (selectedIds != null) {
+                viewModel.loadCheckoutData(this, selectedIds, address.getLatitude(), address.getLongitude());
+            }
         } else {
             tvAddressLabel.setText("");
             tvAddress.setText("Chưa có địa chỉ");
