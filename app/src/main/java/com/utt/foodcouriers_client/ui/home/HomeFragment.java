@@ -85,7 +85,7 @@ public class HomeFragment extends BaseFragment {
         
         viewModel.loadBanners();
         viewModel.loadCategories();
-        viewModel.loadPopularMenuItems();
+        viewModel.loadAllMenuItems();
         viewModel.loadNearbyRestaurants();
 
         binding.btnBannerCta.setOnClickListener(v -> {
@@ -356,7 +356,7 @@ public class HomeFragment extends BaseFragment {
         if (category != null && category.getId() != null) {
             viewModel.filterMenuItemsByCategory(category.getId());
         } else {
-            viewModel.loadPopularMenuItems();
+            viewModel.loadAllMenuItems();
         }
     }
 

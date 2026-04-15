@@ -132,6 +132,20 @@ public class CatalogRepository {
         });
     }
 
+    public void getAllMenuItems(RepositoryCallback<List<MenuItem>> callback) {
+        menuItemClient.fetchAllMenuItems(new MenuItemClient.ApiCallback<List<MenuItem>>() {
+            @Override
+            public void onSuccess(List<MenuItem> result) {
+                callback.onSuccess(result);
+            }
+
+            @Override
+            public void onError(String error) {
+                callback.onError(error);
+            }
+        });
+    }
+
     public void getMenuItemsByCategory(String categoryId, RepositoryCallback<List<MenuItem>> callback) {
         menuItemClient.fetchMenuItemsByCategory(categoryId, new MenuItemClient.ApiCallback<List<MenuItem>>() {
             @Override
