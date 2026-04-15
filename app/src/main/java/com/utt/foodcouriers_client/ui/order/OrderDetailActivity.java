@@ -1,6 +1,8 @@
 package com.utt.foodcouriers_client.ui.order;
 
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.view.Gravity;
 import android.view.View;
 import android.widget.Button;
@@ -23,9 +25,18 @@ import com.utt.foodcouriers_client.viewmodel.OrdersViewModel;
 public class OrderDetailActivity extends BaseActivity {
 
     public static final String EXTRA_ORDER_ID = "extra_order_id";
+    public static final String EXTRA_FROM_PAYMENT_CALLBACK = "extra_from_payment_callback";
 
     private OrdersViewModel viewModel;
     private OrderLineItemAdapter lineItemAdapter;
+    private final Handler handler = new Handler(Looper.getMainLooper());
+    private String currentOrderId;
+    private boolean shouldDelayedRefresh;
+    private final Runnable delayedRefreshRunnable = () -> {
+        if (currentOrderId != null && !currentOrderId.isBlank()) {
+            viewModel.loadOrderDetail(this, currentOrderId);
+        }
+    };
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -40,13 +51,33 @@ public class OrderDetailActivity extends BaseActivity {
         setupRecyclerView();
         bindObservers();
 
-        String orderId = getIntent().getStringExtra(EXTRA_ORDER_ID);
-        if (orderId == null || orderId.isBlank()) {
+        currentOrderId = getIntent().getStringExtra(EXTRA_ORDER_ID);
+        shouldDelayedRefresh = getIntent().getBooleanExtra(EXTRA_FROM_PAYMENT_CALLBACK, false);
+        if (currentOrderId == null || currentOrderId.isBlank()) {
             showErrorBanner("Khong co thong tin don hang.");
             finish();
             return;
         }
-        viewModel.loadOrderDetail(this, orderId);
+        viewModel.loadOrderDetail(this, currentOrderId);
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (currentOrderId != null && !currentOrderId.isBlank()) {
+            viewModel.loadOrderDetail(this, currentOrderId);
+            if (shouldDelayedRefresh) {
+                handler.removeCallbacks(delayedRefreshRunnable);
+                handler.postDelayed(delayedRefreshRunnable, 2500L);
+                shouldDelayedRefresh = false;
+            }
+        }
+    }
+
+    @Override
+    protected void onDestroy() {
+        handler.removeCallbacks(delayedRefreshRunnable);
+        super.onDestroy();
     }
 
     private void setupRecyclerView() {

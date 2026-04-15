@@ -70,6 +70,7 @@ public class PaymentCallbackActivity extends BaseActivity {
     private void navigateToOrderDetail(String orderId) {
         Intent intent = new Intent(this, OrderDetailActivity.class);
         intent.putExtra(OrderDetailActivity.EXTRA_ORDER_ID, orderId);
+        intent.putExtra(OrderDetailActivity.EXTRA_FROM_PAYMENT_CALLBACK, true);
         // Xóa stack: CheckoutActivity đã finish(), không cần back về đó
         intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
         startActivity(intent);

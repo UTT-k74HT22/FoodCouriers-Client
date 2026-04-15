@@ -77,11 +77,10 @@ public class SessionManager {
         if (!preferences.getBoolean(KEY_IS_LOGGED_IN, false)) {
             return false;
         }
-        if (isTokenExpired()) {
-            clearSession();
-            return false;
+        if (!isTokenExpired()) {
+            return true;
         }
-        return true;
+        return hasRefreshToken();
     }
 
     public String getAccessToken() {
@@ -163,6 +162,11 @@ public class SessionManager {
     public boolean isTokenExpired() {
         long expiresAt = getTokenExpiresAt();
         return expiresAt == 0L || System.currentTimeMillis() >= expiresAt;
+    }
+
+    public boolean hasRefreshToken() {
+        String refreshToken = getRefreshToken();
+        return refreshToken != null && !refreshToken.trim().isEmpty();
     }
 
     public UserProfile getCurrentUser() {
