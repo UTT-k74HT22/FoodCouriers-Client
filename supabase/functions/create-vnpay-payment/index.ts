@@ -22,29 +22,45 @@ serve(async (req) => {
   try {
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
-      return new Response(JSON.stringify({ error: "Missing Authorization header" }), { status: 401, headers: corsHeaders });
+      return new Response(
+        JSON.stringify({ error: "Missing Authorization header" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     const body = await req.json();
     const orderId = body?.order_id;
 
     if (!orderId) {
-      return new Response(JSON.stringify({ error: "order_id is required" }), { status: 400, headers: corsHeaders });
+      return new Response(
+        JSON.stringify({ error: "order_id is required" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-    const supabase = createClient(supabaseUrl, serviceKey);
+    const anonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
 
-    const jwt = authHeader.replace("Bearer ", "");
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser(jwt);
+    // Pattern đúng cho Supabase Edge Functions:
+    // Dùng anon key + override Authorization = user JWT để verify identity.
+    // Không dùng service role key để verify user vì có thể conflict.
+    const supabaseUser = createClient(supabaseUrl, anonKey, {
+      global: { headers: { Authorization: authHeader } },
+      auth: { persistSession: false },
+    });
+
+    const { data: { user }, error: userError } = await supabaseUser.auth.getUser();
 
     if (userError || !user) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: corsHeaders });
+      return new Response(
+        JSON.stringify({ error: "Unauthorized", detail: userError?.message ?? "User not found" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
+
+    // Service role client cho tất cả thao tác DB (bypass RLS)
+    const supabase = createClient(supabaseUrl, serviceKey);
 
     const { data: order, error: orderError } = await supabase
       .from("orders")
@@ -54,19 +70,31 @@ serve(async (req) => {
       .single();
 
     if (orderError || !order) {
-      return new Response(JSON.stringify({ error: "Order not found" }), { status: 404, headers: corsHeaders });
+      return new Response(
+        JSON.stringify({ error: "Order not found" }),
+        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     if (order.payment_method !== "vnpay") {
-      return new Response(JSON.stringify({ error: "Order payment_method must be vnpay" }), { status: 400, headers: corsHeaders });
+      return new Response(
+        JSON.stringify({ error: "Order payment_method must be vnpay" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     if (order.payment_status === "paid") {
-      return new Response(JSON.stringify({ error: "Order already paid" }), { status: 400, headers: corsHeaders });
+      return new Response(
+        JSON.stringify({ error: "Order already paid" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     if (order.status === "cancelled") {
-      return new Response(JSON.stringify({ error: "Order is cancelled" }), { status: 400, headers: corsHeaders });
+      return new Response(
+        JSON.stringify({ error: "Order is cancelled" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     const now = new Date();
@@ -77,7 +105,10 @@ serve(async (req) => {
 
     const amount = Math.round(Number(order.total || 0));
     if (!amount || amount <= 0) {
-      return new Response(JSON.stringify({ error: "Invalid order amount" }), { status: 400, headers: corsHeaders });
+      return new Response(
+        JSON.stringify({ error: "Invalid order amount", total: order.total }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     const txnParams: Record<string, string> = {
@@ -115,7 +146,10 @@ serve(async (req) => {
       .single();
 
     if (txError) {
-      return new Response(JSON.stringify({ error: txError.message }), { status: 500, headers: corsHeaders });
+      return new Response(
+        JSON.stringify({ error: txError.message }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     return new Response(
@@ -130,9 +164,9 @@ serve(async (req) => {
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (e) {
-    return new Response(JSON.stringify({ error: String(e) }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return new Response(
+      JSON.stringify({ error: String(e) }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
   }
 });

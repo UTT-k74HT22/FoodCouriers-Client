@@ -703,11 +703,11 @@ FEATURE_VNPAY_ENABLED=true
 ```text
 SUPABASE_URL=...
 SUPABASE_SERVICE_ROLE_KEY=...
-VNPAY_TMN_CODE=...
-VNPAY_HASH_SECRET=...
+VNPAY_TMN_CODE=K1GG6ZU3
+VNPAY_HASH_SECRET=I845ZAAM8ZD9CI7SJPX38NGUX0OGHJZC
 VNPAY_PAYMENT_URL=https://sandbox.vnpayment.vn/paymentv2/vpcpay.html
-VNPAY_RETURN_URL=https://<project>.supabase.co/functions/v1/vnpay-return
-VNPAY_IPN_URL=https://<project>.supabase.co/functions/v1/vnpay-ipn
+VNPAY_RETURN_URL=https://xgpmxfujvjgebtohujgk.supabase.co/functions/v1/vnpay-return
+VNPAY_IPN_URL=https://xgpmxfujvjgebtohujgk.supabase.co/functions/v1/vnpay-ipn
 APP_PAYMENT_DEEP_LINK_BASE=com.utt.foodcouriers.client://payment/vnpay/callback
 TZ=Asia/Ho_Chi_Minh
 ```

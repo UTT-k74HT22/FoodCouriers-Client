@@ -5,13 +5,13 @@
  */
 
 export const VNPAY_CONFIG = {
-  tmnCode: "ANBB2CT1",
-  hashSecret: "HV8WLKRENFNZP2ECO14M02RS4HM7E5KN",
+  tmnCode: "K1GG6ZU3",
+  hashSecret: "I845ZAAM8ZD9CI7SJPX38NGUX0OGHJZC",
   paymentUrl: "https://sandbox.vnpayment.vn/paymentv2/vpcpay.html",
 
   // domain project
-  returnUrl: "https://xgpmxfujvjgebtohujgk.supabase.co.functions.supabase.co/vnpay-return",
-  ipnUrl: "https://xgpmxfujvjgebtohujgk.supabase.co.functions.supabase.co/vnpay-ipn",
+  returnUrl: "https://xgpmxfujvjgebtohujgk.supabase.co/functions/v1/vnpay-return",
+  ipnUrl: "https://xgpmxfujvjgebtohujgk.supabase.co/functions/v1/vnpay-ipn",
 
   // deep link app client
   appDeepLinkBase: "com.utt.foodcouriers.client://payment/vnpay/callback",
@@ -21,21 +21,27 @@ export const VNPAY_CONFIG = {
   version: "2.1.0",
   command: "pay",
   orderType: "other",
-  timezone: "Asia/Ho_Chi_Minh",
 };
 
 function pad2(n: number): string {
   return n < 10 ? `0${n}` : `${n}`;
 }
 
+function toVietnamTime(date: Date): Date {
+  const utcTime = date.getTime() + date.getTimezoneOffset() * 60 * 1000;
+  const vietnamOffsetMs = 7 * 60 * 60 * 1000;
+  return new Date(utcTime + vietnamOffsetMs);
+}
+
 export function formatDateVN(date: Date): string {
+  const vnDate = toVietnamTime(date);
   return (
-    date.getFullYear().toString() +
-    pad2(date.getMonth() + 1) +
-    pad2(date.getDate()) +
-    pad2(date.getHours()) +
-    pad2(date.getMinutes()) +
-    pad2(date.getSeconds())
+    vnDate.getFullYear().toString() +
+    pad2(vnDate.getMonth() + 1) +
+    pad2(vnDate.getDate()) +
+    pad2(vnDate.getHours()) +
+    pad2(vnDate.getMinutes()) +
+    pad2(vnDate.getSeconds())
   );
 }
 

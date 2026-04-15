@@ -27,6 +27,7 @@ import okhttp3.Response;
 
 public class PaymentRepository {
     private static final String TAG = "PAYMENT_REPO";
+    private static final String FLOW_TAG = "CheckoutFlow";
 
     private static final MediaType JSON = MediaType.parse(SupabaseConfig.CONTENT_TYPE_JSON);
     private static PaymentRepository instance;
@@ -59,12 +60,17 @@ public class PaymentRepository {
                                     boolean hasRetriedAfterRefresh) {
         SessionManager sessionManager = SessionManager.getInstance(context);
         if (!sessionManager.isLoggedIn()) {
+            Log.e(FLOW_TAG, "Step 4: No active session, VNPAY payment request aborted");
             postError(callback, "AUTH_REQUIRED");
             return;
         }
 
         String url = SupabaseConfig.SUPABASE_URL + "/functions/v1/create-vnpay-payment";
         Log.d(TAG, "Step 4: Calling edge function create-vnpay-payment for orderId=" + orderId);
+        Log.d(FLOW_TAG, "Step 4: Calling edge function create-vnpay-payment for orderId=" + orderId
+                + ", tokenExpired=" + sessionManager.isTokenExpired()
+                + ", hasRefreshToken=" + sessionManager.hasRefreshToken()
+                + ", retried=" + hasRetriedAfterRefresh);
 
         JsonObject body = new JsonObject();
         body.addProperty("order_id", orderId);
@@ -81,6 +87,7 @@ public class PaymentRepository {
             @Override
             public void onFailure(@NonNull Call call, @NonNull IOException e) {
                 Log.e(TAG, "Step 4: Network error calling create-vnpay-payment", e);
+                Log.e(FLOW_TAG, "Step 4: Network error calling create-vnpay-payment: " + e.getMessage());
                 postError(callback, "Lỗi kết nối: " + e.getMessage());
             }
 
@@ -89,10 +96,12 @@ public class PaymentRepository {
                 String responseBody = response.body() == null ? "" : response.body().string();
                 if (!response.isSuccessful()) {
                     Log.e(TAG, "Step 4: Edge function failed HTTP " + response.code() + ", body=" + responseBody);
-                    if (response.code() == 401
-                            && responseBody.contains("Invalid JWT")
-                            && !hasRetriedAfterRefresh) {
+                    Log.e(FLOW_TAG, "Step 4: Edge function failed HTTP " + response.code()
+                            + ", body=" + responseBody
+                            + ", retried=" + hasRetriedAfterRefresh);
+                    if (response.code() == 401 && !hasRetriedAfterRefresh) {
                         Log.w(TAG, "Step 4: JWT rejected, attempting session refresh before retry");
+                        Log.w(FLOW_TAG, "Step 4: JWT rejected, attempting session refresh before retry");
                         refreshSessionAndRetry(context, orderId, callback);
                         return;
                     }
@@ -110,9 +119,11 @@ public class PaymentRepository {
                             getString(obj, "expires_at")
                     );
                     Log.d(TAG, "Step 4: Edge function success txnRef=" + result.getProviderOrderRef());
+                    Log.d(FLOW_TAG, "Step 4: VNPAY payment initialized txnRef=" + result.getProviderOrderRef());
                     postSuccess(callback, result);
                 } catch (Exception e) {
                     Log.e(TAG, "Step 4: Failed to parse create-vnpay-payment response", e);
+                    Log.e(FLOW_TAG, "Step 4: Failed to parse create-vnpay-payment response: " + e.getMessage());
                     postError(callback, "Lỗi xử lý dữ liệu: " + e.getMessage());
                 }
             }
@@ -121,6 +132,12 @@ public class PaymentRepository {
 
     private void refreshSessionAndRetry(Context context, String orderId,
                                         RepositoryCallback<PaymentInitResult> callback) {
+        SessionManager sessionManager = SessionManager.getInstance(context);
+        AuthClient.getInstance().setSession(
+                sessionManager.getAccessToken(),
+                sessionManager.getRefreshToken()
+        );
+        Log.d(FLOW_TAG, "Step 4: Refreshing session before retry, hasRefreshToken=" + sessionManager.hasRefreshToken());
         AuthClient.getInstance().refreshSession(new AuthClient.ApiCallback<Boolean>() {
             @Override
             public void onSuccess(Boolean result) {
@@ -128,12 +145,14 @@ public class PaymentRepository {
                 String newRefreshToken = AuthClient.getInstance().getRefreshToken();
                 SessionManager.getInstance(context).updateSession(newAccessToken, newRefreshToken);
                 Log.d(TAG, "Step 4: Session refresh succeeded, retrying create-vnpay-payment");
+                Log.d(FLOW_TAG, "Step 4: Session refresh succeeded, retrying create-vnpay-payment");
                 createVnpayPayment(context, orderId, callback, true);
             }
 
             @Override
             public void onError(String error) {
                 Log.e(TAG, "Step 4: Session refresh failed: " + error);
+                Log.e(FLOW_TAG, "Step 4: Session refresh failed: " + error);
                 postError(callback, "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.");
             }
         });

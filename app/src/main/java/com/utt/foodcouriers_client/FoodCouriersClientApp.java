@@ -14,7 +14,7 @@ public class FoodCouriersClientApp extends Application {
         ToastBanner.init(this);
 
         SessionManager sessionManager = SessionManager.getInstance(this);
-        if (sessionManager.isLoggedIn() && !sessionManager.isTokenExpired()) {
+        if (sessionManager.isLoggedIn()) {
             AuthClient.getInstance().setSession(
                     sessionManager.getAccessToken(),
                     sessionManager.getRefreshToken()

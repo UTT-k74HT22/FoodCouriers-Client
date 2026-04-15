@@ -16,14 +16,21 @@ function pad2(n: number): string {
   return n < 10 ? `0${n}` : `${n}`;
 }
 
+function toVietnamTime(date: Date): Date {
+  const utcTime = date.getTime() + date.getTimezoneOffset() * 60 * 1000;
+  const vietnamOffsetMs = 7 * 60 * 60 * 1000;
+  return new Date(utcTime + vietnamOffsetMs);
+}
+
 export function formatDateVN(date: Date): string {
+  const vnDate = toVietnamTime(date);
   return (
-    date.getFullYear().toString() +
-    pad2(date.getMonth() + 1) +
-    pad2(date.getDate()) +
-    pad2(date.getHours()) +
-    pad2(date.getMinutes()) +
-    pad2(date.getSeconds())
+    vnDate.getFullYear().toString() +
+    pad2(vnDate.getMonth() + 1) +
+    pad2(vnDate.getDate()) +
+    pad2(vnDate.getHours()) +
+    pad2(vnDate.getMinutes()) +
+    pad2(vnDate.getSeconds())
   );
 }
 
