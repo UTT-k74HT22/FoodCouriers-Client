@@ -52,8 +52,9 @@
 - Đăng nhập / đăng xuất
 - Tự động đăng nhập lại khi có session hợp lệ (token còn hạn)
 - Đặt lại mật khẩu qua email (Supabase Auth)
+- Đăng nhập Google bằng Supabase OAuth + deep link callback
 
-> Phase 2: Đăng nhập Google / Facebook
+> Facebook OAuth vẫn đang ở mức khung triển khai
 
 ### Trang Chủ
 

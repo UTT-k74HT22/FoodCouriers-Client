@@ -87,6 +87,12 @@ public class HomeFragment extends BaseFragment {
         viewModel.loadCategories();
         viewModel.loadPopularMenuItems();
         viewModel.loadNearbyRestaurants();
+
+        binding.btnBannerCta.setOnClickListener(v -> {
+            if (requireActivity() instanceof com.utt.foodcouriers_client.ui.main.MainActivity) {
+                ((com.utt.foodcouriers_client.ui.main.MainActivity) requireActivity()).openCartScreen();
+            }
+        });
     }
 
     private void setupLocation() {

@@ -274,12 +274,14 @@
                     android:padding="@dimen/spacing_md">
 
                     <ImageView
+                        android:id="@+id/iv_logout_icon"
                         android:layout_width="24dp"
                         android:layout_height="24dp"
                         android:src="@drawable/ic_lock"
                         app:tint="@color/error" />
 
                     <TextView
+                        android:id="@+id/tv_logout_text"
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_marginStart="@dimen/spacing_md"

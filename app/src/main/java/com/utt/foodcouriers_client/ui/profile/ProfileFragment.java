@@ -21,6 +21,7 @@ import com.utt.foodcouriers_client.ui.auth.LoginActivity;
 import com.utt.foodcouriers_client.ui.common.BaseFragment;
 import com.utt.foodcouriers_client.utils.SessionManager;
 import com.utt.foodcouriers_client.utils.ToastBanner;
+import com.utt.foodcouriers_client.utils.SessionStore;
 
 public class ProfileFragment extends BaseFragment {
 
@@ -51,7 +52,7 @@ public class ProfileFragment extends BaseFragment {
         if (sessionManager.isLoggedIn()) {
             binding.tvUserName.setText(sessionManager.getUserName());
             binding.tvUserEmail.setText(sessionManager.getUserEmail());
-            
+
             String phone = sessionManager.getUserPhone();
             if (phone != null && !phone.isEmpty()) {
                 binding.tvUserPhone.setText(phone);
@@ -60,10 +61,10 @@ public class ProfileFragment extends BaseFragment {
                 binding.tvUserPhone.setText(R.string.profile_no_phone);
                 binding.tvUserPhone.setVisibility(View.VISIBLE);
             }
-            
+
             String avatarUrl = sessionManager.getUserAvatar();
             Log.d(TAG, "Avatar URL from session: " + avatarUrl);
-            
+
             if (!TextUtils.isEmpty(avatarUrl)) {
                 Glide.with(this)
                         .load(avatarUrl)
@@ -74,6 +75,26 @@ public class ProfileFragment extends BaseFragment {
             } else {
                 binding.ivAvatar.setImageResource(R.drawable.ic_profile);
             }
+        } else {
+            binding.tvUserName.setText("Người dùng ẩn danh");
+            binding.tvUserEmail.setText("Đăng nhập để trải nghiệm đầy đủ");
+            binding.tvUserPhone.setVisibility(View.GONE);
+            binding.ivAvatar.setImageResource(R.drawable.ic_profile);
+        }
+        updateAuthUI();
+    }
+
+    private void updateAuthUI() {
+        if (sessionManager.isLoggedIn()) {
+            binding.tvLogoutText.setText(R.string.profile_logout);
+            binding.tvLogoutText.setTextColor(getResources().getColor(R.color.error));
+            binding.ivLogoutIcon.setImageResource(R.drawable.ic_lock);
+            binding.ivLogoutIcon.setImageTintList(android.content.res.ColorStateList.valueOf(getResources().getColor(R.color.error)));
+        } else {
+            binding.tvLogoutText.setText(R.string.login_cta);
+            binding.tvLogoutText.setTextColor(getResources().getColor(R.color.primary));
+            binding.ivLogoutIcon.setImageResource(R.drawable.ic_person);
+            binding.ivLogoutIcon.setImageTintList(android.content.res.ColorStateList.valueOf(getResources().getColor(R.color.primary)));
         }
     }
 
@@ -88,7 +109,7 @@ public class ProfileFragment extends BaseFragment {
             @Override
             public void onSuccess(Address[] result) {
                 if (result != null) {
-                    requireActivity().runOnUiThread(() -> 
+                    requireActivity().runOnUiThread(() ->
                         binding.tvAddressCount.setText(String.valueOf(result.length))
                     );
                 }
@@ -97,7 +118,7 @@ public class ProfileFragment extends BaseFragment {
             @Override
             public void onError(String error) {
                 Log.e(TAG, "Failed to load addresses: " + error);
-                requireActivity().runOnUiThread(() -> 
+                requireActivity().runOnUiThread(() ->
                     binding.tvAddressCount.setText("0")
                 );
             }
@@ -106,44 +127,66 @@ public class ProfileFragment extends BaseFragment {
 
     private void setupClickListeners() {
         binding.layoutProfileHeader.setOnClickListener(v -> {
-            startActivity(new Intent(requireContext(), EditProfileActivity.class));
+            if (sessionManager.isLoggedIn()) {
+                startActivity(new Intent(requireContext(), EditProfileActivity.class));
+            } else {
+                startActivity(new Intent(requireContext(), LoginActivity.class));
+            }
         });
 
         binding.ivAvatar.setOnClickListener(v -> {
-            startActivity(new Intent(requireContext(), EditProfileActivity.class));
+            if (sessionManager.isLoggedIn()) {
+                startActivity(new Intent(requireContext(), EditProfileActivity.class));
+            } else {
+                startActivity(new Intent(requireContext(), LoginActivity.class));
+            }
         });
 
         binding.btnManageAddresses.setOnClickListener(v -> {
-            startActivity(new Intent(requireContext(), AddressListActivity.class));
+            if (sessionManager.isLoggedIn()) {
+                startActivity(new Intent(requireContext(), AddressListActivity.class));
+            } else {
+                ToastBanner.showWarning("Vui lòng đăng nhập để quản lý địa chỉ");
+                startActivity(new Intent(requireContext(), LoginActivity.class));
+            }
         });
 
         binding.btnNotifications.setOnClickListener(v -> {
-            ToastBanner.showSuccess(getString(R.string.notifications_title));
+            if (sessionManager.isLoggedIn()) {
+                ToastBanner.showSuccess(getString(R.string.notifications_title));
+            } else {
+                ToastBanner.showWarning("Vui lòng đăng nhập để xem thông báo");
+                startActivity(new Intent(requireContext(), LoginActivity.class));
+            }
         });
     }
 
     private void setupLogoutButton() {
         binding.btnLogout.setOnClickListener(v -> {
-            AuthClient.getInstance().signOut(new AuthClient.ApiCallback<Void>() {
-                @Override
-                public void onSuccess(Void result) {
-                    sessionManager.clearSession();
-                    requireActivity().runOnUiThread(() -> {
-                        ToastBanner.showSuccess(getString(R.string.auth_login_success));
-                        startActivity(new Intent(requireContext(), LoginActivity.class));
-                        requireActivity().finish();
-                    });
-                }
+            if (sessionManager.isLoggedIn()) {
+                AuthClient.getInstance().signOut(new AuthClient.ApiCallback<Void>() {
+                    @Override
+                    public void onSuccess(Void result) {
+                        sessionManager.clearSession();
+                        SessionStore.clearSession(requireContext());
+                        requireActivity().runOnUiThread(() -> {
+                            ToastBanner.showSuccess("Đã đăng xuất");
+                            loadUserInfo(); // Refresh UI to guest state
+                        });
+                    }
 
-                @Override
-                public void onError(String error) {
-                    sessionManager.clearSession();
-                    requireActivity().runOnUiThread(() -> {
-                        startActivity(new Intent(requireContext(), LoginActivity.class));
-                        requireActivity().finish();
-                    });
-                }
-            });
+                    @Override
+                    public void onError(String error) {
+                        sessionManager.clearSession();
+                        SessionStore.clearSession(requireContext());
+                        requireActivity().runOnUiThread(() -> {
+                            loadUserInfo();
+                        });
+                    }
+                });
+            } else {
+                startActivity(new Intent(requireContext(), LoginActivity.class));
+            }
         });
     }
 

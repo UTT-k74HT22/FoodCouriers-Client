@@ -44,6 +44,21 @@
                 android:textSize="@dimen/text_caption"
                 android:textStyle="bold"
                 tools:text="4 items" />
+
+            <View
+                android:layout_width="0dp"
+                android:layout_height="0dp"
+                android:layout_weight="1" />
+
+            <Button
+                android:id="@+id/btn_remove_selected"
+                style="@style/Widget.MaterialComponents.Button.TextButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/cart_remove_selected"
+                android:textColor="@color/error"
+                android:textSize="@dimen/text_caption"
+                android:visibility="gone" />
         </LinearLayout>
     </LinearLayout>
 

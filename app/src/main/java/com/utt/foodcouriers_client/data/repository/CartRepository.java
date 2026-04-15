@@ -292,17 +292,22 @@ public class CartRepository {
     }
 
     public void removeItem(Context context, String cartItemId, RepositoryCallback<CartState> callback) {
+        removeItems(context, java.util.Collections.singletonList(cartItemId), callback);
+    }
+
+    public void removeItems(Context context, List<String> cartItemIds, RepositoryCallback<CartState> callback) {
         SessionManager sessionManager = SessionManager.getInstance(context);
         if (!sessionManager.isLoggedIn()) {
             postError(callback, "AUTH_REQUIRED");
             return;
         }
-        if (cartItemId == null || cartItemId.trim().isEmpty()) {
-            postError(callback, "Invalid cart item.");
+        if (cartItemIds == null || cartItemIds.isEmpty()) {
+            postError(callback, "Invalid cart item list.");
             return;
         }
 
-        String url = SupabaseConfig.REST_URL + "/cart_items?id=eq." + cartItemId;
+        String idsParam = String.join(",", cartItemIds);
+        String url = SupabaseConfig.REST_URL + "/cart_items?id=in.(" + idsParam + ")";
         Request request = authorizedBuilder(sessionManager, url)
                 .delete()
                 .build();
@@ -310,14 +315,14 @@ public class CartRepository {
         client.newCall(request).enqueue(new Callback() {
             @Override
             public void onFailure(@NonNull Call call, @NonNull IOException e) {
-                postError(callback, "Failed to remove cart item: " + e.getMessage());
+                postError(callback, "Failed to remove cart items: " + e.getMessage());
             }
 
             @Override
             public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
                 String responseBody = readBody(response);
                 if (!response.isSuccessful()) {
-                    postError(callback, "Failed to remove cart item (" + response.code() + ")");
+                    postError(callback, "Failed to remove cart items (" + response.code() + ")");
                     return;
                 }
                 fetchCartState(context, callback);
@@ -517,6 +522,7 @@ public class CartRepository {
     private void getCurrentCart(Context context, RepositoryCallback<CartMeta> callback) {
         SessionManager sessionManager = SessionManager.getInstance(context);
         String userId = sessionManager.getUserId();
+        String authUserId = sessionManager.getAuthUserId();
         if (userId == null || userId.trim().isEmpty()) {
             postError(callback, "AUTH_REQUIRED");
             return;
@@ -524,53 +530,41 @@ public class CartRepository {
 
         String cachedCartId = sessionManager.getCartId();
         if (cachedCartId != null && !cachedCartId.isEmpty()) {
-            postSuccess(callback, new CartMeta(cachedCartId));
+            String cachedCartUrl = SupabaseConfig.REST_URL
+                    + "/carts?id=eq."
+                    + cachedCartId
+                    + "&select=id&limit=1";
+            fetchCartMeta(context, sessionManager, cachedCartUrl, new RepositoryCallback<CartMeta>() {
+                @Override
+                public void onSuccess(CartMeta result) {
+                    if (result != null) {
+                        postSuccess(callback, result);
+                        return;
+                    }
+                    sessionManager.setCartId(null);
+                    fetchOwnedCart(context, sessionManager, userId, authUserId, callback);
+                }
+
+                @Override
+                public void onError(String error) {
+                    postError(callback, error);
+                }
+            });
             return;
         }
 
-        String url = SupabaseConfig.REST_URL
-                + "/carts?user_id=eq."
-                + userId
-                + "&select=id&limit=1";
-
-        Request request = authorizedBuilder(sessionManager, url)
-                .get()
-                .build();
-
-        client.newCall(request).enqueue(new Callback() {
-            @Override
-            public void onFailure(@NonNull Call call, @NonNull IOException e) {
-                postError(callback, "Failed to load cart: " + e.getMessage());
-            }
-
-            @Override
-            public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
-                String body = readBody(response);
-                if (!response.isSuccessful()) {
-                    postError(callback, "Failed to load cart (" + response.code() + ")");
-                    return;
-                }
-
-                JsonArray array = JsonParser.parseString(body).getAsJsonArray();
-                if (array.size() == 0) {
-                    postSuccess(callback, null);
-                    return;
-                }
-
-                JsonObject cart = array.get(0).getAsJsonObject();
-                String cartId = getAsString(cart, "id");
-                if (cartId != null) {
-                    SessionManager.getInstance(context).setCartId(cartId);
-                }
-                postSuccess(callback, new CartMeta(cartId));
-            }
-        });
+        fetchOwnedCart(context, sessionManager, userId, authUserId, callback);
     }
 
     private void createCart(Context context, RepositoryCallback<CartMeta> callback) {
         SessionManager sessionManager = SessionManager.getInstance(context);
         String userId = sessionManager.getUserId();
+        String authUserId = sessionManager.getAuthUserId();
         if (userId == null || userId.trim().isEmpty()) {
+            postError(callback, "AUTH_REQUIRED");
+            return;
+        }
+        if (authUserId == null || authUserId.trim().isEmpty()) {
             postError(callback, "AUTH_REQUIRED");
             return;
         }
@@ -578,6 +572,7 @@ public class CartRepository {
         String url = SupabaseConfig.REST_URL + "/carts";
         JsonObject body = new JsonObject();
         body.addProperty("user_id", userId);
+        body.addProperty("user_auth_id", authUserId);
 
         Request request = authorizedBuilder(sessionManager, url)
                 .addHeader(SupabaseConfig.HEADER_PREFER, SupabaseConfig.PREF_RETURN_REPRESENTATION)
@@ -674,6 +669,67 @@ public class CartRepository {
                 .addHeader("apikey", SupabaseConfig.SUPABASE_ANON_KEY)
                 .addHeader("Authorization", "Bearer " + sessionManager.getAccessToken())
                 .addHeader(SupabaseConfig.HEADER_CONTENT_TYPE, SupabaseConfig.CONTENT_TYPE_JSON);
+    }
+
+    private String buildCartLookupQuery(String userId, String authUserId) {
+        if (authUserId != null && !authUserId.trim().isEmpty()) {
+            return "user_auth_id=eq." + authUserId;
+        }
+        return "user_id=eq." + userId;
+    }
+
+    private void fetchOwnedCart(
+            Context context,
+            SessionManager sessionManager,
+            String userId,
+            String authUserId,
+            RepositoryCallback<CartMeta> callback
+    ) {
+        String url = SupabaseConfig.REST_URL
+                + "/carts?"
+                + buildCartLookupQuery(userId, authUserId)
+                + "&select=id&limit=1";
+        fetchCartMeta(context, sessionManager, url, callback);
+    }
+
+    private void fetchCartMeta(
+            Context context,
+            SessionManager sessionManager,
+            String url,
+            RepositoryCallback<CartMeta> callback
+    ) {
+        Request request = authorizedBuilder(sessionManager, url)
+                .get()
+                .build();
+
+        client.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(@NonNull Call call, @NonNull IOException e) {
+                postError(callback, "Failed to load cart: " + e.getMessage());
+            }
+
+            @Override
+            public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
+                String body = readBody(response);
+                if (!response.isSuccessful()) {
+                    postError(callback, "Failed to load cart (" + response.code() + ")");
+                    return;
+                }
+
+                JsonArray array = JsonParser.parseString(body).getAsJsonArray();
+                if (array.size() == 0) {
+                    postSuccess(callback, null);
+                    return;
+                }
+
+                JsonObject cart = array.get(0).getAsJsonObject();
+                String cartId = getAsString(cart, "id");
+                if (cartId != null && !cartId.isEmpty()) {
+                    sessionManager.setCartId(cartId);
+                }
+                postSuccess(callback, new CartMeta(cartId));
+            }
+        });
     }
 
     private void postSuccess(RepositoryCallback<?> callback, Object result) {

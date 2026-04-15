@@ -85,13 +85,21 @@ public class OrderHistoryAdapter extends RecyclerView.Adapter<OrderHistoryAdapte
         }
 
         private int resolveBadge(OrderStatus status) {
-            if (status == OrderStatus.DELIVERED) {
-                return R.drawable.bg_auth_chip_mint;
+            switch (status) {
+                case DELIVERED:
+                    return R.drawable.badge_success;
+                case CANCELLED:
+                    return R.drawable.badge_error;
+                case PENDING:
+                    return R.drawable.badge_warning;
+                case DELIVERING:
+                    return R.drawable.badge_info;
+                case CONFIRMED:
+                case PREPARING:
+                case READY_FOR_PICKUP:
+                default:
+                    return R.drawable.badge_primary;
             }
-            if (status == OrderStatus.CANCELLED) {
-                return R.drawable.bg_auth_chip_warm;
-            }
-            return R.drawable.badge_featured;
         }
 
         private String formatCurrency(int amount) {
