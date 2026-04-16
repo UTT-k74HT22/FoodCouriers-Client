@@ -12,6 +12,7 @@ import androidx.viewpager2.widget.ViewPager2;
 
 import com.google.android.material.card.MaterialCardView;
 import com.utt.foodcouriers_client.R;
+import com.utt.foodcouriers_client.data.remote.AuthClient;
 import com.utt.foodcouriers_client.ui.common.BaseActivity;
 import com.utt.foodcouriers_client.ui.main.MainActivity;
 import com.utt.foodcouriers_client.utils.SessionManager;
@@ -36,10 +37,16 @@ public class OnboardingActivity extends BaseActivity {
         super.onCreate(savedInstanceState);
 
         SessionManager sessionManager = SessionManager.getInstance(this);
-        if (sessionManager.isLoggedIn() && !sessionManager.isTokenExpired()) {
-            startActivity(new Intent(this, MainActivity.class));
-            finish();
-            return;
+        if (sessionManager.isLoggedIn()) {
+            if (!sessionManager.isTokenExpired()) {
+                startActivity(new Intent(this, MainActivity.class));
+                finish();
+                return;
+            }
+            if (!sessionManager.hasRefreshToken()) {
+                sessionManager.clearSession();
+                AuthClient.getInstance().clearSession();
+            }
         }
 
         if (hasSeenOnboarding()) {
