@@ -249,7 +249,7 @@ sessionManager = SessionManager.getInstance(this);
         if (!TextUtils.isEmpty(city)) {
             sb.append(", ").append(city);
         } else {
-            sb.append(", HCM");
+            sb.append(", Hà Nội");
         }
         
         sb.append(", Việt Nam");
@@ -500,7 +500,7 @@ sessionManager = SessionManager.getInstance(this);
         }
 
         if (TextUtils.isEmpty(city)) {
-            city = "HCM";
+            city = "Hà Nội";
         }
 
         showLoading(true);
