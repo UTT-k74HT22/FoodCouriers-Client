@@ -161,6 +161,7 @@
     <string name="error_account_disabled">Tài khoản của bạn đã bị vô hiệu hóa.</string>
     <string name="login_success">Đăng nhập thành công!</string>
     <string name="register_success">Đăng ký thành công!</string>
+    <string name="register_success_confirm_email">Đăng ký thành công! Vui lòng kiểm tra email để xác nhận tài khoản.</string>
     <string name="cart_title">Giỏ hàng của bạn</string>
     <string name="cart_total_label">Tổng cộng</string>
     <string name="cart_total_placeholder">0 ₫</string>

@@ -479,7 +479,8 @@ public class CartRepository {
                     restaurantGroups.add(new CartRestaurantGroup(
                             group.restaurantId, 
                             group.restaurantName, 
-                            group.deliveryFee, 
+                            group.deliveryFee,
+                            0,
                             group.items,
                             group.restaurantLatitude,
                             group.restaurantLongitude

@@ -127,24 +127,28 @@ public class AuthClient extends BaseSupabaseClient {
                     }
 
                     AuthResponse authResponse = gson.fromJson(json, AuthResponse.class);
-                    if (authResponse == null || authResponse.getAccessToken() == null || authResponse.getUser() == null) {
+                    if (authResponse == null || authResponse.getUser() == null) {
                         postError(callback, "Invalid response from server");
                         return;
                     }
 
-                    setSession(authResponse.getAccessToken(), authResponse.getRefreshToken());
-                    String authUserId = authResponse.getUser().getId();
-                    fetchUserProfile(authUserId, new ApiCallback<UserProfile>() {
-                        @Override
+if (authResponse.getAccessToken() != null) {
+                        setSession(authResponse.getAccessToken(), authResponse.getRefreshToken());
+                        String authUserId = authResponse.getUser().getId();
+                        fetchUserProfile(authUserId, new ApiCallback<UserProfile>() {
+                            @Override
                             public void onSuccess(UserProfile result) {
                             postSuccess(callback, result);
                         }
 
-                        @Override
-                        public void onError(String error) {
-                            createUserProfile(authUserId, fullName, phone, email, null, callback);
-                        }
-                    });
+                            @Override
+                            public void onError(String error) {
+                                createUserProfile(authUserId, fullName, phone, email, null, callback);
+                            }
+                        });
+                    } else {
+                        postError(callback, "EMAIL_CONFIRM_REQUIRED");
+                    }
                 }
             }
         });

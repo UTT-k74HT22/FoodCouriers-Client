@@ -32,6 +32,7 @@ import com.utt.foodcouriers_client.ui.home.adapter.BannerAdapter;
 import com.utt.foodcouriers_client.ui.home.adapter.CategoryAdapter;
 import com.utt.foodcouriers_client.ui.home.adapter.MenuItemAdapter;
 import com.utt.foodcouriers_client.ui.home.adapter.NearbyRestaurantAdapter;
+import com.utt.foodcouriers_client.ui.restaurant.FoodDetailActivity;
 import com.utt.foodcouriers_client.ui.restaurant.RestaurantDetailActivity;
 import com.utt.foodcouriers_client.utils.LocationHelper;
 import com.utt.foodcouriers_client.viewmodel.HomeViewModel;
@@ -369,11 +370,10 @@ public class HomeFragment extends BaseFragment {
     }
 
     private void openRestaurantDetailWithMenuItem(MenuItem menuItem) {
-        if (menuItem == null || menuItem.getRestaurantId() == null) return;
+        if (menuItem == null) return;
         
-        Intent intent = new Intent(requireContext(), RestaurantDetailActivity.class);
-        intent.putExtra("restaurant_id", menuItem.getRestaurantId());
-        intent.putExtra("menu_item_id", menuItem.getId());
+        Intent intent = new Intent(requireContext(), FoodDetailActivity.class);
+        intent.putExtra(FoodDetailActivity.EXTRA_MENU_ITEM, menuItem);
         startActivity(intent);
     }
 

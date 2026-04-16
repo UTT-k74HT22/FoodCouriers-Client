@@ -86,13 +86,20 @@ public class CheckoutViewModel extends BaseViewModel {
                     }
 
                     if (!selectedInGroup.isEmpty()) {
-                        Double restLat = group.getRestaurantLatitude();
-                        Double restLon = group.getRestaurantLongitude();
-                        int calculatedDeliveryFee = group.getDeliveryFee();
+                        Double restLat = group.getRestaurantLatitude();//tọa độ nhà hàng
+                        Double restLon = group.getRestaurantLongitude();//kinh độ nhà hàng
+                        int pricePerKm = group.getDeliveryFee(); // giá trên mỗi km
+
+                        int calculatedDeliveryFee = 0; // khởi tạo phí giao hàng mặc định
+                        if (restLat != null && restLon != null && deliveryLat != 0 && deliveryLon != 0) { // chỉ tính phí giao hàng nếu có tọa độ hợp lệ
+                            double distanceKm = DistanceUtils.calculateDistanceKm(restLat, restLon, deliveryLat, deliveryLon); // gọi hàm tính khoảng cách
+                            calculatedDeliveryFee = (int) (distanceKm * pricePerKm); // tính phí giao hàng dựa trên khoảng cách và giá trên mỗi km
+                        }
 
                         filteredGroups.add(new CartRestaurantGroup(
                                 group.getRestaurantId(),
                                 group.getRestaurantName(),
+                                group.getDeliveryFee(),
                                 calculatedDeliveryFee,
                                 selectedInGroup,
                                 restLat,
@@ -237,6 +244,8 @@ public class CheckoutViewModel extends BaseViewModel {
             items.add(obj);
         }
 
+        int deliveryFee = group.getCalculatedDeliveryFee();
+
         OrderRepository.getInstance().createOrder(
                 context,
                 group.getRestaurantId(),
@@ -247,6 +256,7 @@ public class CheckoutViewModel extends BaseViewModel {
                 paymentMethod,
                 promoCode,
                 items,
+                deliveryFee,
                 new RepositoryCallback<OrderSummary>() {
                     @Override
                     public void onSuccess(OrderSummary order) {

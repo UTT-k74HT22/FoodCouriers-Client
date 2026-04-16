@@ -199,7 +199,12 @@ public class RestaurantDetailActivity extends BaseActivity {
     }
 
     private void handleMenuItemClick(MenuItem menuItem) {
-        showToast(menuItem.getName());
+        Intent intent = new Intent(this, FoodDetailActivity.class);
+        intent.putExtra(FoodDetailActivity.EXTRA_MENU_ITEM, menuItem);
+        if (currentRestaurant != null) {
+            intent.putExtra(FoodDetailActivity.EXTRA_RESTAURANT, currentRestaurant);
+        }
+        startActivity(intent);
     }
 
     private void handleQuantityChange(MenuItem menuItem, int newQuantity) {
