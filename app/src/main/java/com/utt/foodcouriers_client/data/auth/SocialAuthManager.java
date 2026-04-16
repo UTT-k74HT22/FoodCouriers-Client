@@ -10,6 +10,7 @@ import android.util.Log;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import com.utt.foodcouriers_client.FoodCouriersClientApp;
 import com.utt.foodcouriers_client.R;
 import com.utt.foodcouriers_client.data.common.RepositoryCallback;
 import com.utt.foodcouriers_client.data.model.UserProfile;
@@ -277,6 +278,7 @@ public class SocialAuthManager {
                                 userProfile,
                                 resolveExpiryMillis(result)
                         );
+                        FoodCouriersClientApp.initializeRealtime(result.getAccessToken());
                         logStep(
                                 6,
                                 "Bootstrap completed and session saved",

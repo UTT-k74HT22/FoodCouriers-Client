@@ -29,8 +29,16 @@ public class RealtimeChannel {
         listeners.remove(listener);
     }
 
+    public void removeListeners(List<RealtimeListener> listenersToRemove) {
+        listeners.removeAll(listenersToRemove);
+    }
+
     public void removeAllListeners() {
         listeners.clear();
+    }
+
+    public List<RealtimeListener> getListenersSnapshot() {
+        return new ArrayList<>(listeners);
     }
 
     public int getListenerCount() {

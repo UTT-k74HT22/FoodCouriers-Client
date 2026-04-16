@@ -122,6 +122,7 @@ public class SupabaseRealtimeClient {
     public void initialize(String accessToken) {
         this.accessToken = accessToken;
         this.apikey = SupabaseConfig.SUPABASE_ANON_KEY;
+        this.shouldReconnect = true;
     }
 
     /**
@@ -151,6 +152,9 @@ public class SupabaseRealtimeClient {
      */
     public void setAccessToken(String accessToken) {
         this.accessToken = accessToken;
+        if (isConnected && webSocket != null) {
+            sendAccessToken();
+        }
     }
 
     /**
@@ -162,6 +166,7 @@ public class SupabaseRealtimeClient {
             Log.d(TAG, "Already connected");
             return;
         }
+        shouldReconnect = true;
 
         String url = getRealtimeWebsocketUrl();
         if (url.isEmpty()) {
@@ -243,6 +248,8 @@ public class SupabaseRealtimeClient {
      */
     public RealtimeChannel subscribe(String table, String schema, String filter, RealtimeListener listener) {
         String channelId = schema + ":" + table + (filter != null ? ":" + filter : "");
+        RealtimeChannel subscription = new RealtimeChannel(channelId);
+        subscription.addListener(listener);
         
         RealtimeChannel channel;
         if (channels.containsKey(channelId)) {
@@ -260,7 +267,7 @@ public class SupabaseRealtimeClient {
             }
         }
         
-        return channel;
+        return subscription;
     }
 
     /**
@@ -292,12 +299,15 @@ public class SupabaseRealtimeClient {
         RealtimeChannel existingChannel = channels.get(channelId);
         
         if (existingChannel != null) {
-            existingChannel.removeAllListeners();
-            channels.remove(channelId);
-            
-            String topic = channelTopics.remove(channelId);
-            if (topic != null && isConnected) {
-                sendLeave(topic);
+            existingChannel.removeListeners(channel.getListenersSnapshot());
+
+            if (existingChannel.getListenerCount() == 0) {
+                channels.remove(channelId);
+
+                String topic = channelTopics.remove(channelId);
+                if (topic != null && isConnected) {
+                    sendLeave(topic);
+                }
             }
         }
     }
@@ -405,6 +415,7 @@ public class SupabaseRealtimeClient {
         msg.addProperty("ref", String.valueOf(ref));
         
         if (webSocket != null) {
+            Log.d(TAG, "Joining realtime topic=" + topic + ", table=" + schema + "." + table + ", filter=" + filter);
             webSocket.send(msg.toString());
         }
     }
@@ -419,6 +430,24 @@ public class SupabaseRealtimeClient {
         msg.addProperty("ref", String.valueOf(ref));
         
         if (webSocket != null) {
+            webSocket.send(msg.toString());
+        }
+    }
+
+    private void sendAccessToken() {
+        for (String topic : new java.util.HashSet<>(channelTopics.values())) {
+            int ref = refCounter.incrementAndGet();
+
+            JsonObject payload = new JsonObject();
+            payload.addProperty("access_token", accessToken);
+
+            JsonObject msg = new JsonObject();
+            msg.addProperty("topic", topic);
+            msg.addProperty("event", "access_token");
+            msg.add("payload", payload);
+            msg.addProperty("join_ref", String.valueOf(ref));
+            msg.addProperty("ref", String.valueOf(ref));
+
             webSocket.send(msg.toString());
         }
     }
@@ -456,7 +485,12 @@ public class SupabaseRealtimeClient {
                     break;
                     
                 case "postgres_changes":
+                    Log.d(TAG, "Postgres change received on topic=" + topic);
                     handlePostgresChanges(payload, topic);
+                    break;
+
+                case "system":
+                    Log.d(TAG, "Realtime system message on topic=" + topic + ": " + payload);
                     break;
                     
                 default:
@@ -483,47 +517,128 @@ public class SupabaseRealtimeClient {
     private void handlePostgresChanges(JsonObject payload, String topic) {
         JsonObject data = payload.has("data") ? payload.getAsJsonObject("data") : null;
         if (data == null) return;
-        
-        String commitType = data.has("commit_type") ? data.get("commit_type").getAsString() : "";
-        JsonArray changes = data.has("changes") ? data.getAsJsonArray("changes") : null;
-        
-        if (changes == null || changes.size() == 0) return;
-        
+
+        if (data.has("changes") && data.get("changes").isJsonArray()) {
+            handleLegacyPostgresChanges(data, topic);
+            return;
+        }
+
+        String schema = getStringOrDefault(data, "schema", extractSchemaFromTopic(topic));
+        String table = getStringOrDefault(data, "table", extractTableFromTopic(topic));
+        String type = getStringOrDefault(data, "type", "").toLowerCase();
+        JsonObject newRecord = data.has("record") && data.get("record").isJsonObject()
+                ? data.getAsJsonObject("record")
+                : null;
+        JsonObject oldRecord = data.has("old_record") && data.get("old_record").isJsonObject()
+                ? data.getAsJsonObject("old_record")
+                : null;
+
+        dispatchDatabaseChange(schema, table, type, newRecord, oldRecord);
+    }
+
+    private void handleLegacyPostgresChanges(JsonObject data, String topic) {
+        String commitType = getStringOrDefault(data, "commit_type", "").toLowerCase();
+        JsonArray changes = data.getAsJsonArray("changes");
+        if (changes.size() == 0) return;
+
         String schema = extractSchemaFromTopic(topic);
         String table = extractTableFromTopic(topic);
-        String channelId = schema + ":" + table;
-        
-        RealtimeChannel channel = channels.get(channelId);
-        if (channel == null) return;
-        
+
         for (JsonElement changeElem : changes) {
             JsonObject change = changeElem.getAsJsonObject();
-            JsonObject newRecord = change.has("new") ? change.getAsJsonObject("new") : null;
-            JsonObject oldRecord = change.has("old") ? change.getAsJsonObject("old") : null;
-            
-            switch (commitType) {
+            JsonObject newRecord = change.has("new") && change.get("new").isJsonObject()
+                    ? change.getAsJsonObject("new")
+                    : null;
+            JsonObject oldRecord = change.has("old") && change.get("old").isJsonObject()
+                    ? change.getAsJsonObject("old")
+                    : null;
+
+            dispatchDatabaseChange(schema, table, commitType, newRecord, oldRecord);
+        }
+    }
+
+    private void dispatchDatabaseChange(
+            String schema,
+            String table,
+            String type,
+            JsonObject newRecord,
+            JsonObject oldRecord
+    ) {
+        for (Map.Entry<String, RealtimeChannel> entry : channels.entrySet()) {
+            String channelId = entry.getKey();
+            if (!isMatchingChannel(channelId, schema, table, newRecord, oldRecord)) {
+                continue;
+            }
+
+            RealtimeChannel channel = entry.getValue();
+            switch (type) {
                 case "insert":
                     if (newRecord != null) {
                         notifyChannel(channel, c -> c.notifyInsert(newRecord));
                     }
                     break;
-                    
+
                 case "update":
                     if (newRecord != null) {
                         notifyChannel(channel, c -> c.notifyUpdate(newRecord, oldRecord));
                     }
                     break;
-                    
+
                 case "delete":
                     if (oldRecord != null) {
                         notifyChannel(channel, c -> c.notifyDelete(oldRecord));
                     }
                     break;
-                    
+
                 default:
                     break;
             }
         }
+    }
+
+    private boolean isMatchingChannel(String channelId, String schema, String table, JsonObject newRecord, JsonObject oldRecord) {
+        String[] parts = channelId.split(":", 3);
+        if (parts.length < 2) {
+            return false;
+        }
+
+        boolean sameTable = parts[0].equals(schema) && parts[1].equals(table);
+        if (!sameTable) {
+            return false;
+        }
+
+        if (parts.length < 3 || parts[2] == null || parts[2].isEmpty()) {
+            return true;
+        }
+
+        JsonObject record = newRecord != null ? newRecord : oldRecord;
+        return matchesFilter(record, parts[2]);
+    }
+
+    private boolean matchesFilter(JsonObject record, String filter) {
+        if (record == null || filter == null || filter.isEmpty()) {
+            return true;
+        }
+
+        int operatorIndex = filter.indexOf("=eq.");
+        if (operatorIndex <= 0) {
+            return true;
+        }
+
+        String column = filter.substring(0, operatorIndex);
+        String expectedValue = filter.substring(operatorIndex + 4);
+        if (!record.has(column) || record.get(column).isJsonNull()) {
+            return false;
+        }
+
+        return expectedValue.equals(record.get(column).getAsString());
+    }
+
+    private String getStringOrDefault(JsonObject object, String key, String fallback) {
+        if (object.has(key) && !object.get(key).isJsonNull()) {
+            return object.get(key).getAsString();
+        }
+        return fallback;
     }
 
     private String extractSchemaFromTopic(String topic) {
