@@ -226,14 +226,8 @@ public class OrderRepository {
                     postError(callback, "Failed to create order (" + response.code() + "): " + body);
                     return;
                 }
-
-                // RPC returns the created order object or ID. Let's assume it returns the order object or at least ID.
-                // Based on migration, it returns JSONB (the order object after insertion)
                 try {
                     JsonObject result = JsonParser.parseString(body).getAsJsonObject();
-                    // If result only contains ID, we might need to fetch it again, 
-                    // but usually RPC returns what we need.
-                    // Let's reload to be sure we have all joins.
                     String orderId = getAsString(result, "id");
                     if (orderId.isEmpty()) {
                         postError(callback, "Created order has no ID.");
