@@ -18,6 +18,8 @@ import com.utt.foodcouriers_client.data.model.PromotionValidationResult;
 import com.utt.foodcouriers_client.data.repository.CartRepository;
 import com.utt.foodcouriers_client.data.repository.OrderRepository;
 import com.utt.foodcouriers_client.data.repository.PaymentRepository;
+import com.utt.foodcouriers_client.utils.CartDTO.CartState;
+import com.utt.foodcouriers_client.utils.CartDTO.CartSummary;
 import com.utt.foodcouriers_client.utils.DistanceUtils;
 import com.utt.foodcouriers_client.utils.payment.PaymentMethodEnum;
 
@@ -28,7 +30,7 @@ public class CheckoutViewModel extends BaseViewModel {
     private static final String TAG = "CheckoutFlow";
 
     private final MutableLiveData<List<CartRestaurantGroup>> restaurantGroups = new MutableLiveData<>();
-    private final MutableLiveData<CartRepository.CartSummary> checkoutSummary = new MutableLiveData<>();
+    private final MutableLiveData<CartSummary> checkoutSummary = new MutableLiveData<>();
     private final MutableLiveData<List<OrderSummary>> createdOrders = new MutableLiveData<>();
     private final MutableLiveData<Boolean> isOrderSuccess = new MutableLiveData<>(false);
     private final MutableLiveData<PromotionValidationResult> appliedPromotion = new MutableLiveData<>();
@@ -41,7 +43,7 @@ public class CheckoutViewModel extends BaseViewModel {
         return restaurantGroups;
     }
 
-    public LiveData<CartRepository.CartSummary> getCheckoutSummary() {
+    public LiveData<CartSummary> getCheckoutSummary() {
         return checkoutSummary;
     }
 
@@ -67,9 +69,9 @@ public class CheckoutViewModel extends BaseViewModel {
 
     public void loadCheckoutData(Context context, List<String> selectedIds, double deliveryLat, double deliveryLon) {
         setLoading(true);
-        CartRepository.getInstance().getCart(context, new RepositoryCallback<CartRepository.CartState>() {
+        CartRepository.getInstance().getCart(context, new RepositoryCallback<CartState>() {
             @Override
-            public void onSuccess(CartRepository.CartState state) {
+            public void onSuccess(CartState state) {
                 List<CartRestaurantGroup> filteredGroups = new ArrayList<>();
                 int subtotal = 0;
                 int deliveryFee = 0;
@@ -141,7 +143,7 @@ public class CheckoutViewModel extends BaseViewModel {
     }
 
     private void updateSummary(int itemCount, int subtotal, int deliveryFee, int discount) {
-        checkoutSummary.setValue(new CartRepository.CartSummary(
+        checkoutSummary.setValue(new CartSummary(
                 itemCount,
                 subtotal,
                 deliveryFee,
@@ -156,14 +158,14 @@ public class CheckoutViewModel extends BaseViewModel {
         if (code == null || code.isBlank()) {
             appliedPromotion.setValue(null);
             appliedPromoCode = null;
-            CartRepository.CartSummary current = checkoutSummary.getValue();
+            CartSummary current = checkoutSummary.getValue();
             if (current != null) {
                 updateSummary(current.getItemCount(), current.getSubtotal(), current.getDeliveryFee(), 0);
             }
             return;
         }
 
-        CartRepository.CartSummary current = checkoutSummary.getValue();
+        CartSummary current = checkoutSummary.getValue();
         if (current == null) {
             return;
         }

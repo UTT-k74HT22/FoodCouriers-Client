@@ -16,6 +16,10 @@ import com.utt.foodcouriers_client.data.model.CartRestaurantGroup;
 import com.utt.foodcouriers_client.data.model.MenuItem;
 import com.utt.foodcouriers_client.data.model.Restaurant;
 import com.utt.foodcouriers_client.data.remote.SupabaseConfig;
+import com.utt.foodcouriers_client.utils.CartDTO.CartMeta;
+import com.utt.foodcouriers_client.utils.CartDTO.CartState;
+import com.utt.foodcouriers_client.utils.CartDTO.CartSummary;
+import com.utt.foodcouriers_client.utils.CartDTO.MutableRestaurantGroup;
 import com.utt.foodcouriers_client.utils.SessionManager;
 
 import java.io.IOException;
@@ -32,6 +36,19 @@ import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
 
+/**
+ * Repository xử lý toàn bộ nghiệp vụ dữ liệu của giỏ hàng.
+ *
+ * <p>Trách nhiệm chính:
+ * <ul>
+ *     <li>Kiểm tra trạng thái đăng nhập.</li>
+ *     <li>Tìm cart hiện tại hoặc tạo cart mới nếu cần.</li>
+ *     <li>Thêm, cập nhật, xóa cart item qua Supabase REST API.</li>
+ *     <li>Lấy danh sách cart item và chuyển đổi JSON thành model Java.</li>
+ *     <li>Tính toán summary cart và gom item theo nhà hàng.</li>
+ *     <li>Trả callback về main thread để tầng UI có thể cập nhật an toàn.</li>
+ * </ul>
+ */
 public class CartRepository {
 
     private static final MediaType JSON = MediaType.parse(SupabaseConfig.CONTENT_TYPE_JSON);
@@ -40,6 +57,11 @@ public class CartRepository {
     private final OkHttpClient client = new OkHttpClient();
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
 
+    /**
+     * Trả về singleton instance của {@code CartRepository}.
+     *
+     * @return instance dùng chung của repository
+     */
     public static synchronized CartRepository getInstance() {
         if (instance == null) {
             instance = new CartRepository();
@@ -47,10 +69,25 @@ public class CartRepository {
         return instance;
     }
 
+    /**
+     * Kiểm tra người dùng hiện tại đã đăng nhập hay chưa.
+     *
+     * @param context context dùng để truy cập SessionManager
+     * @return true nếu đã đăng nhập, ngược lại là false
+     */
     public boolean isLoggedIn(Context context) {
         return SessionManager.getInstance(context).isLoggedIn();
     }
 
+    /**
+     * Lấy trạng thái cart hiện tại của người dùng.
+     *
+     * <p>Nếu chưa đăng nhập thì callback lỗi {@code AUTH_REQUIRED}.
+     * Nếu đã đăng nhập thì repository sẽ tìm cart hiện tại và tải toàn bộ dữ liệu cart.
+     *
+     * @param context context hiện tại
+     * @param callback callback nhận kết quả {@code CartState}
+     */
     public void getCart(Context context, RepositoryCallback<CartState> callback) {
         SessionManager sessionManager = SessionManager.getInstance(context);
         if (!sessionManager.isLoggedIn()) {
@@ -61,6 +98,26 @@ public class CartRepository {
         fetchCartState(context, callback);
     }
 
+    /**
+     * Thêm một menu item vào cart theo cơ chế cộng dồn số lượng.
+     *
+     * <p>Luồng xử lý:
+     * <ol>
+     *     <li>Kiểm tra đăng nhập và validate dữ liệu đầu vào.</li>
+     *     <li>Tìm cart hiện tại hoặc tạo cart mới.</li>
+     *     <li>Load state hiện tại để kiểm tra món này đã tồn tại trong cart chưa.</li>
+     *     <li>Nếu đã tồn tại thì tăng quantity của cart item hiện có.</li>
+     *     <li>Nếu chưa tồn tại thì upsert item mới vào cart.</li>
+     *     <li>Load lại toàn bộ cart state sau khi xử lý xong.</li>
+     * </ol>
+     *
+     * @param context context hiện tại
+     * @param menuItem món cần thêm
+     * @param restaurant nhà hàng của món; hiện chưa được dùng trong logic
+     * @param quantity số lượng muốn cộng thêm
+     * @param note ghi chú cho item
+     * @param callback callback nhận trạng thái cart mới nhất
+     */
     public void addToCart(
             Context context,
             MenuItem menuItem,
@@ -117,6 +174,19 @@ public class CartRepository {
         });
     }
 
+    /**
+     * Đặt số lượng cuối cùng cho một menu item trong cart.
+     *
+     * <p>Khác với {@link #addToCart}, hàm này mang ý nghĩa "set exact quantity".
+     * Nếu quantity <= 0 thì item sẽ bị xóa khỏi cart.
+     *
+     * @param context context hiện tại
+     * @param menuItem món cần cập nhật
+     * @param restaurant nhà hàng của món; hiện chưa được dùng trong logic
+     * @param quantity số lượng cuối cùng cần đặt
+     * @param note ghi chú của item
+     * @param callback callback nhận trạng thái cart mới nhất
+     */
     public void setMenuItemQuantity(
             Context context,
             MenuItem menuItem,
@@ -157,6 +227,18 @@ public class CartRepository {
         }
     }
 
+    /**
+     * Thực hiện upsert item rồi load lại cart state.
+     *
+     * <p>Nếu quantity <= 0 thì chuyển sang nhánh xóa item khỏi cart.
+     *
+     * @param context context hiện tại
+     * @param cartId id cart đang thao tác
+     * @param menuItemId id món ăn
+     * @param quantity số lượng cần set
+     * @param note ghi chú item
+     * @param callback callback nhận cart state mới nhất
+     */
     private void performUpsertAndFetchState(
             Context context,
             String cartId,
@@ -183,6 +265,15 @@ public class CartRepository {
         });
     }
 
+    /**
+     * Load cart state hiện tại rồi tìm item theo menuItemId để xóa.
+     *
+     * <p>Nhánh này được dùng khi muốn set quantity về 0 hoặc nhỏ hơn.
+     *
+     * @param context context hiện tại
+     * @param menuItemId id món ăn cần xóa khỏi cart
+     * @param callback callback nhận trạng thái cart sau khi xóa
+     */
     private void fetchCartStateForDelete(Context context, String menuItemId, RepositoryCallback<CartState> callback) {
         fetchCartState(context, new RepositoryCallback<CartState>() {
             @Override
@@ -202,6 +293,18 @@ public class CartRepository {
         });
     }
 
+    /**
+     * Upsert một cart item theo cặp khóa {@code cart_id + menu_item_id}.
+     *
+     * <p>Supabase sẽ merge nếu item đã tồn tại thay vì tạo bản ghi trùng.
+     *
+     * @param context context hiện tại
+     * @param cartId id cart
+     * @param menuItemId id món ăn
+     * @param quantity số lượng cần lưu
+     * @param note ghi chú item
+     * @param callback callback báo thành công/thất bại
+     */
     private void upsertCartItemOptimized(
             Context context,
             String cartId,
@@ -244,6 +347,16 @@ public class CartRepository {
         });
     }
 
+    /**
+     * Cập nhật quantity của một cart item đã tồn tại theo {@code cartItemId}.
+     *
+     * <p>Nếu quantity <= 0 thì item sẽ bị xóa khỏi cart.
+     *
+     * @param context context hiện tại
+     * @param cartItemId id của bản ghi cart item
+     * @param quantity số lượng mới
+     * @param callback callback nhận trạng thái cart mới nhất
+     */
     public void updateCartItemQuantity(
             Context context,
             String cartItemId,
@@ -295,6 +408,13 @@ public class CartRepository {
         removeItems(context, java.util.Collections.singletonList(cartItemId), callback);
     }
 
+    /**
+     * Xóa nhiều cart item khỏi cart trong một request.
+     *
+     * @param context context hiện tại
+     * @param cartItemIds danh sách id cart item cần xóa
+     * @param callback callback nhận trạng thái cart sau khi xóa
+     */
     public void removeItems(Context context, List<String> cartItemIds, RepositoryCallback<CartState> callback) {
         SessionManager sessionManager = SessionManager.getInstance(context);
         if (!sessionManager.isLoggedIn()) {
@@ -330,6 +450,14 @@ public class CartRepository {
         });
     }
 
+    /**
+     * Xóa toàn bộ item thuộc cart hiện tại của người dùng.
+     *
+     * <p>Nếu người dùng chưa có cart thì coi như clear thành công.
+     *
+     * @param context context hiện tại
+     * @param callback callback nhận true nếu xử lý xong
+     */
     public void clearCart(Context context, RepositoryCallback<Boolean> callback) {
         SessionManager sessionManager = SessionManager.getInstance(context);
         if (!sessionManager.isLoggedIn()) {
@@ -375,6 +503,15 @@ public class CartRepository {
         });
     }
 
+    /**
+     * Tải trạng thái cart tổng quát của người dùng.
+     *
+     * <p>Nếu không tìm thấy cart thì trả về {@code CartState.empty()}.
+     * Nếu có cart thì tiếp tục lấy toàn bộ cart item và summary.
+     *
+     * @param context context hiện tại
+     * @param callback callback nhận cart state
+     */
     private void fetchCartState(Context context, RepositoryCallback<CartState> callback) {
         getCurrentCart(context, new RepositoryCallback<CartMeta>() {
             @Override
@@ -394,6 +531,20 @@ public class CartRepository {
         });
     }
 
+    /**
+     * Tải toàn bộ item của cart hiện tại và chuyển đổi dữ liệu JSON thành model Java.
+     *
+     * <p>Hàm này đồng thời:
+     * <ul>
+     *     <li>Gom item theo restaurant.</li>
+     *     <li>Tính itemCount, subtotal, deliveryFee và total.</li>
+     *     <li>Tạo {@code CartSummary} và {@code CartState} hoàn chỉnh cho tầng UI.</li>
+     * </ul>
+     *
+     * @param context context hiện tại
+     * @param cartMeta thông tin cart đang cần tải dữ liệu
+     * @param callback callback nhận cart state hoàn chỉnh
+     */
     private void fetchCartItems(Context context, CartMeta cartMeta, RepositoryCallback<CartState> callback) {
         SessionManager sessionManager = SessionManager.getInstance(context);
         String url = SupabaseConfig.REST_URL
@@ -463,11 +614,11 @@ public class CartRepository {
                     MutableRestaurantGroup group = groups.get(restaurantId);
                     if (group == null) {
                         group = new MutableRestaurantGroup(restaurantId, restaurantName, deliveryFee);
-                        group.restaurantLatitude = restaurantLat;
-                        group.restaurantLongitude = restaurantLon;
+                        group.setRestaurantLatitude(restaurantLat);
+                        group.setRestaurantLongitude(restaurantLon);
                         groups.put(restaurantId, group);
                     }
-                    group.items.add(item);
+                    group.getItems().add(item);
                     itemCount += item.getQuantity();
                     subtotal += item.getQuantity() * item.getPrice();
                     menuQuantities.put(item.getMenuItemId(), item.getQuantity());
@@ -477,15 +628,15 @@ public class CartRepository {
                 List<CartRestaurantGroup> restaurantGroups = new ArrayList<>();
                 for (MutableRestaurantGroup group : groups.values()) {
                     restaurantGroups.add(new CartRestaurantGroup(
-                            group.restaurantId, 
-                            group.restaurantName, 
-                            group.deliveryFee,
+                            group.getRestaurantId(),
+                            group.getRestaurantName(),
+                            group.getDeliveryFee(),
                             0,
-                            group.items,
-                            group.restaurantLatitude,
-                            group.restaurantLongitude
+                            group.getItems(),
+                            group.getRestaurantLatitude(),
+                            group.getRestaurantLongitude()
                     ));
-                    deliveryFee += group.items.isEmpty() ? 0 : group.deliveryFee;
+                    deliveryFee += group.getItems().isEmpty() ? 0 : group.getDeliveryFee();
                 }
                 int total = subtotal + deliveryFee;
                 CartSummary summary = new CartSummary(
@@ -502,6 +653,12 @@ public class CartRepository {
         });
     }
 
+    /**
+     * Tìm cart hiện tại; nếu chưa có thì tạo cart mới.
+     *
+     * @param context context hiện tại
+     * @param callback callback nhận metadata của cart
+     */
     private void getOrCreateCart(Context context, RepositoryCallback<CartMeta> callback) {
         getCurrentCart(context, new RepositoryCallback<CartMeta>() {
             @Override
@@ -520,6 +677,15 @@ public class CartRepository {
         });
     }
 
+    /**
+     * Lấy cart hiện tại của người dùng.
+     *
+     * <p>Ưu tiên dùng {@code cartId} đã cache trong session.
+     * Nếu cache không hợp lệ thì fallback sang tìm cart theo user hiện tại.
+     *
+     * @param context context hiện tại
+     * @param callback callback nhận metadata của cart, hoặc null nếu chưa có cart
+     */
     private void getCurrentCart(Context context, RepositoryCallback<CartMeta> callback) {
         SessionManager sessionManager = SessionManager.getInstance(context);
         String userId = sessionManager.getUserId();
@@ -557,6 +723,14 @@ public class CartRepository {
         fetchOwnedCart(context, sessionManager, userId, authUserId, callback);
     }
 
+    /**
+     * Tạo cart mới cho người dùng hiện tại trên Supabase.
+     *
+     * <p>Sau khi tạo thành công, {@code cartId} sẽ được cache vào {@code SessionManager}.
+     *
+     * @param context context hiện tại
+     * @param callback callback nhận metadata của cart mới tạo
+     */
     private void createCart(Context context, RepositoryCallback<CartMeta> callback) {
         SessionManager sessionManager = SessionManager.getInstance(context);
         String userId = sessionManager.getUserId();
@@ -610,6 +784,18 @@ public class CartRepository {
         });
     }
 
+    /**
+     * Upsert cart item theo cặp khóa {@code cart_id + menu_item_id}.
+     *
+     * <p>Hàm này được dùng trong flow addToCart truyền thống.
+     *
+     * @param context context hiện tại
+     * @param cartId id cart
+     * @param menuItemId id món ăn
+     * @param quantity số lượng cần thêm/cập nhật
+     * @param note ghi chú item
+     * @param callback callback báo kết quả thao tác
+     */
     private void upsertCartItem(
             Context context,
             String cartId,
@@ -652,6 +838,13 @@ public class CartRepository {
         });
     }
 
+    /**
+     * Tìm cart item trong danh sách item theo {@code menuItemId}.
+     *
+     * @param items danh sách cart item hiện tại
+     * @param menuItemId id món ăn cần tìm
+     * @return cart item tương ứng; trả về null nếu không tìm thấy
+     */
     private CartItem findCartItemByMenuItemId(List<CartItem> items, String menuItemId) {
         if (items == null || menuItemId == null) {
             return null;
@@ -664,6 +857,13 @@ public class CartRepository {
         return null;
     }
 
+    /**
+     * Tạo request builder đã gắn sẵn các header xác thực cho Supabase.
+     *
+     * @param sessionManager session hiện tại chứa access token
+     * @param url endpoint cần gọi
+     * @return builder đã có apikey, authorization và content-type
+     */
     private Request.Builder authorizedBuilder(SessionManager sessionManager, String url) {
         return new Request.Builder()
                 .url(url)
@@ -672,6 +872,15 @@ public class CartRepository {
                 .addHeader(SupabaseConfig.HEADER_CONTENT_TYPE, SupabaseConfig.CONTENT_TYPE_JSON);
     }
 
+    /**
+     * Tạo query string dùng để tra cứu cart của người dùng hiện tại.
+     *
+     * <p>Ưu tiên tra theo {@code user_auth_id}. Nếu không có thì fallback sang {@code user_id}.
+     *
+     * @param userId id user nội bộ
+     * @param authUserId id user xác thực
+     * @return query string dùng cho endpoint carts
+     */
     private String buildCartLookupQuery(String userId, String authUserId) {
         if (authUserId != null && !authUserId.trim().isEmpty()) {
             return "user_auth_id=eq." + authUserId;
@@ -679,6 +888,15 @@ public class CartRepository {
         return "user_id=eq." + userId;
     }
 
+    /**
+     * Tải cart thuộc sở hữu của user hiện tại từ Supabase.
+     *
+     * @param context context hiện tại
+     * @param sessionManager session hiện tại
+     * @param userId id user nội bộ
+     * @param authUserId id user xác thực
+     * @param callback callback nhận metadata của cart
+     */
     private void fetchOwnedCart(
             Context context,
             SessionManager sessionManager,
@@ -693,6 +911,14 @@ public class CartRepository {
         fetchCartMeta(context, sessionManager, url, callback);
     }
 
+    /**
+     * Gọi endpoint carts và parse metadata cart.
+     *
+     * @param context context hiện tại
+     * @param sessionManager session hiện tại
+     * @param url endpoint truy vấn cart
+     * @param callback callback nhận metadata của cart hoặc null nếu không có cart
+     */
     private void fetchCartMeta(
             Context context,
             SessionManager sessionManager,
@@ -733,6 +959,12 @@ public class CartRepository {
         });
     }
 
+    /**
+     * Đảm bảo callback success luôn được trả về main thread.
+     *
+     * @param callback callback đích
+     * @param result dữ liệu kết quả
+     */
     private void postSuccess(RepositoryCallback<?> callback, Object result) {
         mainHandler.post(() -> {
             @SuppressWarnings("unchecked")
@@ -741,14 +973,34 @@ public class CartRepository {
         });
     }
 
+    /**
+     * Đảm bảo callback error luôn được trả về main thread.
+     *
+     * @param callback callback đích
+     * @param error thông điệp lỗi
+     */
     private void postError(RepositoryCallback<?> callback, String error) {
         mainHandler.post(() -> callback.onError(error));
     }
 
+    /**
+     * Đọc toàn bộ response body thành chuỗi.
+     *
+     * @param response response từ network
+     * @return nội dung body; trả về chuỗi rỗng nếu body null
+     * @throws IOException khi đọc body thất bại
+     */
     private String readBody(Response response) throws IOException {
         return response.body() == null ? "" : response.body().string();
     }
 
+    /**
+     * Đọc một giá trị String từ JsonObject một cách an toàn.
+     *
+     * @param object object nguồn
+     * @param key key cần đọc
+     * @return giá trị String; trả về chuỗi rỗng nếu key không tồn tại hoặc null
+     */
     private String getAsString(JsonObject object, String key) {
         if (object == null || !object.has(key) || object.get(key).isJsonNull()) {
             return "";
@@ -756,6 +1008,13 @@ public class CartRepository {
         return object.get(key).getAsString();
     }
 
+    /**
+     * Đọc một giá trị int từ JsonObject một cách an toàn.
+     *
+     * @param object object nguồn
+     * @param key key cần đọc
+     * @return giá trị int; trả về 0 nếu key không tồn tại hoặc null
+     */
     private int getAsInt(JsonObject object, String key) {
         if (object == null || !object.has(key) || object.get(key).isJsonNull()) {
             return 0;
@@ -763,125 +1022,17 @@ public class CartRepository {
         return object.get(key).getAsInt();
     }
 
+    /**
+     * Đọc một giá trị Double từ JsonObject một cách an toàn.
+     *
+     * @param object object nguồn
+     * @param key key cần đọc
+     * @return giá trị Double; trả về null nếu key không tồn tại hoặc null
+     */
     private Double getAsDouble(JsonObject object, String key) {
         if (object == null || !object.has(key) || object.get(key).isJsonNull()) {
             return null;
         }
         return object.get(key).getAsDouble();
-    }
-
-    public static class CartSummary {
-        private final int itemCount;
-        private final int subtotal;
-        private final int deliveryFee;
-        private final int serviceFee;
-        private final int savings;
-        private final int total;
-        private final String restaurantName;
-
-        public CartSummary(int itemCount, int subtotal, int deliveryFee, int serviceFee, int savings, int total, String restaurantName) {
-            this.itemCount = itemCount;
-            this.subtotal = subtotal;
-            this.deliveryFee = deliveryFee;
-            this.serviceFee = serviceFee;
-            this.savings = savings;
-            this.total = total;
-            this.restaurantName = restaurantName;
-        }
-
-        public int getItemCount() {
-            return itemCount;
-        }
-
-        public int getSubtotal() {
-            return subtotal;
-        }
-
-        public int getDeliveryFee() {
-            return deliveryFee;
-        }
-
-        public int getServiceFee() {
-            return serviceFee;
-        }
-
-        public int getSavings() {
-            return savings;
-        }
-
-        public int getTotal() {
-            return total;
-        }
-
-        public String getRestaurantName() {
-            return restaurantName;
-        }
-    }
-
-    public static class CartState {
-        private final String cartId;
-        private final List<CartItem> items;
-        private final List<CartRestaurantGroup> restaurantGroups;
-        private final CartSummary summary;
-        private final Map<String, Integer> menuItemQuantities;
-
-        public CartState(String cartId, List<CartItem> items, List<CartRestaurantGroup> restaurantGroups, CartSummary summary, Map<String, Integer> menuItemQuantities) {
-            this.cartId = cartId;
-            this.items = items;
-            this.restaurantGroups = restaurantGroups;
-            this.summary = summary;
-            this.menuItemQuantities = menuItemQuantities;
-        }
-
-        public static CartState empty() {
-            return new CartState("", new ArrayList<>(), new ArrayList<>(), new CartSummary(0, 0, 0, 0, 0, 0, ""), new LinkedHashMap<>());
-        }
-
-        public String getCartId() {
-            return cartId;
-        }
-
-        public List<CartItem> getItems() {
-            return items;
-        }
-
-        public List<CartRestaurantGroup> getRestaurantGroups() {
-            return restaurantGroups;
-        }
-
-        public CartSummary getSummary() {
-            return summary;
-        }
-
-        public Map<String, Integer> getMenuItemQuantities() {
-            return menuItemQuantities;
-        }
-    }
-
-    public static class CartMeta {
-        private final String cartId;
-
-        public CartMeta(String cartId) {
-            this.cartId = cartId;
-        }
-
-        public String getCartId() {
-            return cartId;
-        }
-    }
-
-    private static class MutableRestaurantGroup {
-        private final String restaurantId;
-        private final String restaurantName;
-        private final int deliveryFee;
-        private final List<CartItem> items = new ArrayList<>();
-        private Double restaurantLatitude;
-        private Double restaurantLongitude;
-
-        private MutableRestaurantGroup(String restaurantId, String restaurantName, int deliveryFee) {
-            this.restaurantId = restaurantId;
-            this.restaurantName = restaurantName;
-            this.deliveryFee = deliveryFee;
-        }
     }
 }

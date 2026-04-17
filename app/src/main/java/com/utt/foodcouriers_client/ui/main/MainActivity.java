@@ -18,6 +18,7 @@ import com.utt.foodcouriers_client.ui.home.HomeFragment;
 import com.utt.foodcouriers_client.ui.notification.NotificationsFragment;
 import com.utt.foodcouriers_client.ui.order.OrdersFragment;
 import com.utt.foodcouriers_client.ui.profile.ProfileFragment;
+import com.utt.foodcouriers_client.utils.CartDTO.CartState;
 import com.utt.foodcouriers_client.utils.SessionManager;
 
 public class MainActivity extends BaseActivity {
@@ -100,9 +101,9 @@ public class MainActivity extends BaseActivity {
             binding.tvCartBadge.setVisibility(View.GONE);
             return;
         }
-        CartRepository.getInstance().getCart(this, new RepositoryCallback<CartRepository.CartState>() {
+        CartRepository.getInstance().getCart(this, new RepositoryCallback<CartState>() {
             @Override
-            public void onSuccess(CartRepository.CartState result) {
+            public void onSuccess(CartState result) {
                 updateCartBadge(result.getSummary().getItemCount());
             }
 
