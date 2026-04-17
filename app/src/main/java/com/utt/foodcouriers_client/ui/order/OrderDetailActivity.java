@@ -130,7 +130,7 @@ public class OrderDetailActivity extends BaseActivity {
         Button btnReview = findViewById(R.id.btn_review);
         Button btnReorder = findViewById(R.id.btn_reorder);
         
-        // Link to tracking if order is active
+        // Dẫn tới OrderTrackingActivity khi click vào status
         findViewById(R.id.tv_status).setOnClickListener(v -> {
             android.content.Intent intent = new android.content.Intent(this, OrderTrackingActivity.class);
             intent.putExtra(OrderTrackingActivity.EXTRA_ORDER_ID, order.getId());

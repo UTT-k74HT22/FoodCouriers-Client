@@ -255,7 +255,7 @@ public class CartItemAdapter extends RecyclerView.Adapter<CartItemAdapter.GroupV
 
             tvRestaurantName.setText(group.getRestaurantName());
             tvRestaurantMeta.setText(
-                    group.getItems().size() + " mon • Phi giao " + currencyFormatter.format(group.getDeliveryFee())
+                    group.getItems().size() + " món • Phí giao " + currencyFormatter.format(group.getDeliveryFee()) + " / 1km"
             );
 
             int selectionState = getRestaurantSelectionState(group);

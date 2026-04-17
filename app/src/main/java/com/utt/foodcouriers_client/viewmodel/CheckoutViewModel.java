@@ -26,12 +26,13 @@ import java.util.List;
 
 public class CheckoutViewModel extends BaseViewModel {
     private static final String TAG = "CheckoutFlow";
-
     private final MutableLiveData<List<CartRestaurantGroup>> restaurantGroups = new MutableLiveData<>();
     private final MutableLiveData<CartRepository.CartSummary> checkoutSummary = new MutableLiveData<>();
     private final MutableLiveData<List<OrderSummary>> createdOrders = new MutableLiveData<>();
     private final MutableLiveData<Boolean> isOrderSuccess = new MutableLiveData<>(false);
+    // Kết quả xác thực mã khuyến mãi
     private final MutableLiveData<PromotionValidationResult> appliedPromotion = new MutableLiveData<>();
+    // Chuỗi hiển thị khoảng cách giao hàng
     private final MutableLiveData<String> deliveryDistance = new MutableLiveData<>();
     private final MutableLiveData<PaymentInitResult> vnpayPaymentResult = new MutableLiveData<>();
 
@@ -65,6 +66,9 @@ public class CheckoutViewModel extends BaseViewModel {
         return vnpayPaymentResult;
     }
 
+    /**
+     * Tải dữ liệu thanh toán dựa trên các món đã chọn trong giỏ hàng
+     */
     public void loadCheckoutData(Context context, List<String> selectedIds, double deliveryLat, double deliveryLon) {
         setLoading(true);
         CartRepository.getInstance().getCart(context, new RepositoryCallback<CartRepository.CartState>() {
@@ -74,26 +78,37 @@ public class CheckoutViewModel extends BaseViewModel {
                 int subtotal = 0;
                 int deliveryFee = 0;
                 int itemCount = 0;
+                double totalDistance = 0d;
 
                 for (CartRestaurantGroup group : state.getRestaurantGroups()) {
                     List<CartItem> selectedInGroup = new ArrayList<>();
                     for (CartItem item : group.getItems()) {
                         if (selectedIds.contains(item.getId())) {
                             selectedInGroup.add(item);
-                            subtotal += item.getPrice() * item.getQuantity();
-                            itemCount += item.getQuantity();
                         }
                     }
 
-                    if (!selectedInGroup.isEmpty()) {
-                        Double restLat = group.getRestaurantLatitude();//tọa độ nhà hàng
-                        Double restLon = group.getRestaurantLongitude();//kinh độ nhà hàng
-                        int pricePerKm = group.getDeliveryFee(); // giá trên mỗi km
+                    // Chỉ xử lý nhà hàng đầu tiên có món được chọn (Giới hạn đơn hàng đơn shop)
+                    if (!selectedInGroup.isEmpty() && filteredGroups.isEmpty()) {
+                        subtotal = 0;
+                        itemCount = 0;
 
-                        int calculatedDeliveryFee = 0; // khởi tạo phí giao hàng mặc định
-                        if (restLat != null && restLon != null && deliveryLat != 0 && deliveryLon != 0) { // chỉ tính phí giao hàng nếu có tọa độ hợp lệ
-                            double distanceKm = DistanceUtils.calculateDistanceKm(restLat, restLon, deliveryLat, deliveryLon); // gọi hàm tính khoảng cách
-                            calculatedDeliveryFee = (int) (distanceKm * pricePerKm); // tính phí giao hàng dựa trên khoảng cách và giá trên mỗi km
+                        for (CartItem item : selectedInGroup) {
+                            subtotal += item.getPrice() * item.getQuantity();
+                            itemCount += item.getQuantity();
+                        }
+
+                        Double restLat = group.getRestaurantLatitude();
+                        Double restLon = group.getRestaurantLongitude();
+                        int pricePerKm = group.getDeliveryFee();
+
+                        int calculatedDeliveryFee = 0;
+                        if (restLat != null && restLon != null && deliveryLat != 0 && deliveryLon != 0) {
+                            // Tính khoảng cách
+                            double distanceKm = DistanceUtils.calculateDistanceKm(restLat, restLon, deliveryLat, deliveryLon);
+                            // Tính phí ship
+                            calculatedDeliveryFee = (int) (distanceKm * pricePerKm);
+                            totalDistance = distanceKm;
                         }
 
                         filteredGroups.add(new CartRestaurantGroup(
@@ -106,12 +121,17 @@ public class CheckoutViewModel extends BaseViewModel {
                                 restLon
                         ));
                         deliveryFee += calculatedDeliveryFee;
+
+                        restaurantGroups.setValue(filteredGroups);
+                        deliveryDistance.setValue(totalDistance > 0 ? DistanceUtils.formatDistance(totalDistance) : "");
+                        updateSummary(itemCount, subtotal, deliveryFee, pricePerKm, 0);
+                        setLoading(false);
+                        return; // Chỉ xử lý shop đầu tiên
                     }
                 }
 
                 restaurantGroups.setValue(filteredGroups);
-                deliveryDistance.setValue(calculateTotalDistance(filteredGroups, deliveryLat, deliveryLon));
-                updateSummary(itemCount, subtotal, deliveryFee, 0);
+                updateSummary(itemCount, subtotal, deliveryFee, 0, 0);
                 setLoading(false);
             }
 
@@ -123,42 +143,31 @@ public class CheckoutViewModel extends BaseViewModel {
         });
     }
 
-    private String calculateTotalDistance(List<CartRestaurantGroup> groups, double deliveryLat, double deliveryLon) {
-        if (groups == null || groups.isEmpty() || deliveryLat == 0d || deliveryLon == 0d) {
-            return "";
-        }
-
-        double totalDistance = 0d;
-        for (CartRestaurantGroup group : groups) {
-            Double restLat = group.getRestaurantLatitude();
-            Double restLon = group.getRestaurantLongitude();
-            if (restLat != null && restLon != null) {
-                totalDistance += DistanceUtils.calculateDistanceKm(restLat, restLon, deliveryLat, deliveryLon);
-            }
-        }
-
-        return totalDistance > 0d ? DistanceUtils.formatDistance(totalDistance) : "";
-    }
-
-    private void updateSummary(int itemCount, int subtotal, int deliveryFee, int discount) {
+    /**
+     * Cập nhật tóm tắt chi phí đơn hàng
+     */
+    private void updateSummary(int itemCount, int subtotal, int deliveryFee, int deliveryFeePerKm, int discount) {
         checkoutSummary.setValue(new CartRepository.CartSummary(
                 itemCount,
                 subtotal,
                 deliveryFee,
-                0,
+                deliveryFeePerKm,
                 discount,
-                subtotal + deliveryFee - discount,
+                subtotal + deliveryFee - discount, // total
                 ""
         ));
     }
 
+    /**
+     * Kiểm tra và áp dụng mã giảm giá
+     */
     public void validatePromotion(Context context, String code) {
         if (code == null || code.isBlank()) {
             appliedPromotion.setValue(null);
             appliedPromoCode = null;
             CartRepository.CartSummary current = checkoutSummary.getValue();
             if (current != null) {
-                updateSummary(current.getItemCount(), current.getSubtotal(), current.getDeliveryFee(), 0);
+                updateSummary(current.getItemCount(), current.getSubtotal(), current.getDeliveryFee(), current.getServiceFee(), 0);
             }
             return;
         }
@@ -176,11 +185,11 @@ public class CheckoutViewModel extends BaseViewModel {
                 if (result.isValid()) {
                     appliedPromotion.setValue(result);
                     appliedPromoCode = code;
-                    updateSummary(current.getItemCount(), current.getSubtotal(), current.getDeliveryFee(), result.getDiscount());
+                    updateSummary(current.getItemCount(), current.getSubtotal(), current.getDeliveryFee(), current.getServiceFee(), result.getDiscount());
                 } else {
                     appliedPromotion.setValue(result);
                     appliedPromoCode = null;
-                    updateSummary(current.getItemCount(), current.getSubtotal(), current.getDeliveryFee(), 0);
+                    updateSummary(current.getItemCount(), current.getSubtotal(), current.getDeliveryFee(), current.getServiceFee(), 0);
                 }
             }
 
@@ -192,6 +201,9 @@ public class CheckoutViewModel extends BaseViewModel {
         });
     }
 
+    /**
+     * Bắt đầu quy trình đặt hàng
+     */
     public void placeOrders(Context context, String address, double latitude, double longitude, String note, String paymentMethod) {
         List<CartRestaurantGroup> groups = restaurantGroups.getValue();
         if (groups == null || groups.isEmpty()) {
@@ -199,6 +211,7 @@ public class CheckoutViewModel extends BaseViewModel {
             return;
         }
 
+        // Chặn đặt đơn đa shop nếu dùng VNPay (Hệ thống hiện tại ưu tiên xử lý đơn lẻ)
         if (PaymentMethodEnum.VNPAY.getValue().equals(paymentMethod) && groups.size() > 1) {
             postError(context.getString(R.string.checkout_payment_multi_restaurant_error));
             return;
@@ -210,6 +223,9 @@ public class CheckoutViewModel extends BaseViewModel {
         placeOrderSequentially(context, groups, 0, address, latitude, longitude, note, paymentMethod, appliedPromoCode, results);
     }
 
+    /**
+     * Tạo đơn hàng tuần tự cho từng nhà hàng
+     */
     private void placeOrderSequentially(Context context,
                                         List<CartRestaurantGroup> groups,
                                         int index,
@@ -221,14 +237,31 @@ public class CheckoutViewModel extends BaseViewModel {
                                         String promoCode,
                                         List<OrderSummary> results) {
         if (index >= groups.size()) {
-            createdOrders.setValue(results);
-            if (PaymentMethodEnum.VNPAY.getValue().equals(paymentMethod)) {
-                String orderId = results.get(0).getId();
-                Log.d(TAG, "Step 4: Requesting VNPAY payment URL for orderId=" + orderId);
-                fetchVnpayPaymentUrl(context, orderId);
+            // Tất cả đơn hàng đã tạo thành công, tiến hành xóa món khỏi giỏ hàng
+            List<String> cartItemIdsToRemove = new ArrayList<>();
+            for (CartRestaurantGroup group : groups) {
+                for (CartItem item : group.getItems()) {
+                    cartItemIdsToRemove.add(item.getId());
+                }
+            }
+
+            if (!cartItemIdsToRemove.isEmpty()) {
+                CartRepository.getInstance().removeItems(context, cartItemIdsToRemove, new RepositoryCallback<CartRepository.CartState>() {
+                    @Override
+                    public void onSuccess(CartRepository.CartState result) {
+                        Log.d(TAG, "Các món đã đặt đã được xóa khỏi giỏ hàng");
+                        completeCheckout(context, paymentMethod, results);
+                    }
+
+                    @Override
+                    public void onError(String error) {
+                        Log.e(TAG, "Lỗi khi xóa món khỏi giỏ hàng sau khi đặt: " + error);
+                        // Vẫn tiếp tục quy trình hoàn tất thanh toán dù xóa giỏ hàng lỗi
+                        completeCheckout(context, paymentMethod, results);
+                    }
+                });
             } else {
-                isOrderSuccess.setValue(true);
-                setLoading(false);
+                completeCheckout(context, paymentMethod, results);
             }
             return;
         }
@@ -276,6 +309,21 @@ public class CheckoutViewModel extends BaseViewModel {
                     }
                 }
         );
+    }
+
+    /**
+     * Hoàn tất quy trình thanh toán: hiển thị thành công hoặc chuyển sang VNPay
+     */
+    private void completeCheckout(Context context, String paymentMethod, List<OrderSummary> results) {
+        createdOrders.setValue(results);
+        if (PaymentMethodEnum.VNPAY.getValue().equals(paymentMethod)) {
+            String orderId = results.get(0).getId();
+            Log.d(TAG, "Bước 4: Đang yêu cầu URL thanh toán VNPay cho đơn hàng=" + orderId);
+            fetchVnpayPaymentUrl(context, orderId);
+        } else {
+            isOrderSuccess.setValue(true);
+            setLoading(false);
+        }
     }
 
     private void fetchVnpayPaymentUrl(Context context, String orderId) {

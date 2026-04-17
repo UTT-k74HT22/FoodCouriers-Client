@@ -89,6 +89,6 @@ public class Restaurant implements Serializable {
     }
 
     public String getFormattedDeliveryFee() {
-        return deliveryFee == 0 ? "Free" : deliveryFee + "k";
+        return deliveryFee == 0 ? "Miễn phí" : deliveryFee + "k / 1km";
     }
 }
