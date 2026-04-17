@@ -14,7 +14,7 @@ import com.utt.foodcouriers_client.data.model.OrderSummary;
 
 import java.util.ArrayList;
 import java.util.List;
-/**  */
+/** Gán giá trị từ mảng thành các object để hiển thị lên RecyclerView  */
 public class OrderHistoryAdapter extends RecyclerView.Adapter<OrderHistoryAdapter.OrderViewHolder> {
 
     public interface OnOrderClickListener {

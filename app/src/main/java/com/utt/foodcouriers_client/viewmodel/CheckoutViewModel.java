@@ -32,7 +32,7 @@ public class CheckoutViewModel extends BaseViewModel {
     private final MutableLiveData<Boolean> isOrderSuccess = new MutableLiveData<>(false);
     // Kết quả xác thực mã khuyến mãi
     private final MutableLiveData<PromotionValidationResult> appliedPromotion = new MutableLiveData<>();
-    // Chuỗi hiển thị khoảng cách giao hàng (ví dụ: "5.2 km")
+    // Chuỗi hiển thị khoảng cách giao hàng
     private final MutableLiveData<String> deliveryDistance = new MutableLiveData<>();
     private final MutableLiveData<PaymentInitResult> vnpayPaymentResult = new MutableLiveData<>();
 
@@ -104,9 +104,9 @@ public class CheckoutViewModel extends BaseViewModel {
 
                         int calculatedDeliveryFee = 0;
                         if (restLat != null && restLon != null && deliveryLat != 0 && deliveryLon != 0) {
-                            // Tính khoảng cách từ nhà hàng đến địa chỉ giao hàng
+                            // Tính khoảng cách
                             double distanceKm = DistanceUtils.calculateDistanceKm(restLat, restLon, deliveryLat, deliveryLon);
-                            // Tính phí ship dựa trên số km và đơn giá mỗi km của nhà hàng
+                            // Tính phí ship
                             calculatedDeliveryFee = (int) (distanceKm * pricePerKm);
                             totalDistance = distanceKm;
                         }
@@ -122,7 +122,6 @@ public class CheckoutViewModel extends BaseViewModel {
                         ));
                         deliveryFee += calculatedDeliveryFee;
 
-                        // Cập nhật UI ngay khi tìm thấy shop đầu tiên
                         restaurantGroups.setValue(filteredGroups);
                         deliveryDistance.setValue(totalDistance > 0 ? DistanceUtils.formatDistance(totalDistance) : "");
                         updateSummary(itemCount, subtotal, deliveryFee, pricePerKm, 0);
@@ -152,10 +151,10 @@ public class CheckoutViewModel extends BaseViewModel {
                 itemCount,
                 subtotal,
                 deliveryFee,
-                deliveryFeePerKm, // Sử dụng làm serviceFee trong CartSummary
-                discount,         // savings
+                deliveryFeePerKm,
+                discount,
                 subtotal + deliveryFee - discount, // total
-                ""                // restaurantName
+                ""
         ));
     }
 
@@ -225,7 +224,7 @@ public class CheckoutViewModel extends BaseViewModel {
     }
 
     /**
-     * Tạo đơn hàng tuần tự cho từng nhà hàng (mặc dù hiện tại đã giới hạn 1 nhà hàng)
+     * Tạo đơn hàng tuần tự cho từng nhà hàng
      */
     private void placeOrderSequentially(Context context,
                                         List<CartRestaurantGroup> groups,

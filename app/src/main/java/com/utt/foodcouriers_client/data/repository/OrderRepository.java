@@ -50,7 +50,7 @@ public class OrderRepository {
         }
         return instance;
     }
-
+    /** Lấy toàn bộ đơn hàng  */
     public void getOrders(Context context, OrderFilter filter, RepositoryCallback<List<OrderSummary>> callback) {
         SessionManager sessionManager = SessionManager.getInstance(context);
         if (!sessionManager.isLoggedIn()) {
@@ -240,7 +240,7 @@ public class OrderRepository {
             }
         });
     }
-
+    // Hàm phụ để chuyển đổi JsonObject thành OrderSummary
     private OrderSummary parseOrderSummary(JsonObject obj) {
         String id = getAsString(obj, "id");
         String code = getAsString(obj, "order_code");
