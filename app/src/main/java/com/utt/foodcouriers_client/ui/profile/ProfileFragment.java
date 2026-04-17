@@ -17,12 +17,17 @@ import com.utt.foodcouriers_client.R;
 import com.utt.foodcouriers_client.data.model.Address;
 import com.utt.foodcouriers_client.data.remote.AddressClient;
 import com.utt.foodcouriers_client.data.remote.AuthClient;
+import com.utt.foodcouriers_client.data.repository.OrderRepository;
+import com.utt.foodcouriers_client.data.model.OrderSummary;
+import com.utt.foodcouriers_client.data.common.RepositoryCallback;
 import com.utt.foodcouriers_client.databinding.FragmentProfileBinding;
 import com.utt.foodcouriers_client.ui.auth.LoginActivity;
 import com.utt.foodcouriers_client.ui.common.BaseFragment;
 import com.utt.foodcouriers_client.utils.SessionManager;
 import com.utt.foodcouriers_client.utils.ToastBanner;
 import com.utt.foodcouriers_client.utils.SessionStore;
+
+import java.util.List;
 
 public class ProfileFragment extends BaseFragment {
 
@@ -44,6 +49,7 @@ public class ProfileFragment extends BaseFragment {
         sessionManager = SessionManager.getInstance(requireContext());
         
         loadUserInfo();
+        loadOrderCount();
         loadAddressCount();
         setupClickListeners();
         setupLogoutButton();
@@ -126,6 +132,30 @@ public class ProfileFragment extends BaseFragment {
         });
     }
 
+    private void loadOrderCount() {
+        if (!sessionManager.isLoggedIn()) {
+            binding.tvOrderCount.setText("0");
+            return;
+        }
+
+        OrderRepository.getInstance().getOrders(requireContext(), OrderRepository.OrderFilter.COMPLETED, new RepositoryCallback<List<OrderSummary>>() {
+            public void onSuccess(List<OrderSummary> result) {
+                requireActivity().runOnUiThread(() -> {
+                    if (result != null) {
+                        binding.tvOrderCount.setText(String.valueOf(result.size()));
+                    } else {
+                        binding.tvOrderCount.setText("0");
+                    }
+                });
+            }
+
+            public void onError(String error) {
+                Log.e(TAG, "Failed to load orders: " + error);
+                requireActivity().runOnUiThread(() -> binding.tvOrderCount.setText("0"));
+            }
+        });
+    }
+
     private void setupClickListeners() {
         binding.layoutProfileHeader.setOnClickListener(v -> {
             if (sessionManager.isLoggedIn()) {
@@ -197,6 +227,7 @@ public class ProfileFragment extends BaseFragment {
     public void onResume() {
         super.onResume();
         loadUserInfo();
+        loadOrderCount();
         loadAddressCount();
     }
 

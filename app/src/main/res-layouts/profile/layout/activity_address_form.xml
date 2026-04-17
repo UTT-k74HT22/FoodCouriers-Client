@@ -181,7 +181,7 @@
                 android:background="@drawable/bg_input_field"
                 android:hint="@string/address_city"
                 android:paddingHorizontal="@dimen/spacing_md"
-                android:text="HCM"
+                android:text="Hà Nội"
                 android:textColor="@color/text_primary"
                 android:textColorHint="@color/text_hint"
                 android:textSize="@dimen/text_body" />
