@@ -6,6 +6,7 @@ import android.net.Network;
 import android.net.NetworkCapabilities;
 import android.os.Handler;
 import android.os.Looper;
+import android.util.Base64;
 import android.util.Log;
 
 import com.google.gson.Gson;
@@ -20,7 +21,9 @@ import com.utt.foodcouriers_client.utils.websocket.RealtimeListener;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.net.SocketException;
 import java.net.UnknownHostException;
+import java.nio.charset.StandardCharsets;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
@@ -224,7 +227,12 @@ public class SupabaseRealtimeClient {
 
             @Override
             public void onFailure(WebSocket webSocket, Throwable t, Response response) {
-                Log.e(TAG, "WebSocket failure: " + buildFailureMessage(t, response));
+                String failureMessage = buildFailureMessage(t, response);
+                if (isTransientSocketAbort(t) || !hasUsableNetwork()) {
+                    Log.w(TAG, "WebSocket disconnected: " + failureMessage);
+                } else {
+                    Log.e(TAG, "WebSocket failure: " + failureMessage);
+                }
                 isConnected = false;
                 stopHeartbeat();
                 notifyChannelsError("Connection failed: " + buildUserFacingFailureMessage(t));
@@ -288,7 +296,7 @@ public class SupabaseRealtimeClient {
             channels.put(channelId, channel);
             
             if (isConnected) {
-                String topic = "realtime:" + schema + ":" + table;
+                String topic = buildTopic(channelId, schema, table, filter);
                 channelTopics.put(channelId, topic);
                 sendJoin(topic, schema, table, filter);
             }
@@ -456,10 +464,19 @@ public class SupabaseRealtimeClient {
     }
 
     private String buildUserFacingFailureMessage(Throwable t) {
-        if (t instanceof UnknownHostException || !hasUsableNetwork()) {
+        if (t instanceof UnknownHostException) {
             return "Cannot resolve Supabase host. Check internet, DNS, VPN, or emulator network.";
         }
+        if (isTransientSocketAbort(t) || !hasUsableNetwork()) {
+            return "Realtime connection temporarily unavailable. Reconnecting...";
+        }
         return t != null && t.getMessage() != null ? t.getMessage() : "Realtime connection failed";
+    }
+
+    private boolean isTransientSocketAbort(Throwable t) {
+        return t instanceof SocketException
+                && t.getMessage() != null
+                && t.getMessage().toLowerCase().contains("software caused connection abort");
     }
 
     private void sendJoin(String topic, String schema, String table, String filter) {
@@ -540,11 +557,23 @@ public class SupabaseRealtimeClient {
                 String table = parts[1];
                 String filter = parts.length > 2 ? parts[2] : null;
                 
-                String topic = "realtime:" + schema + ":" + table;
+                String topic = buildTopic(channelId, schema, table, filter);
                 channelTopics.put(channelId, topic);
                 sendJoin(topic, schema, table, filter);
             }
         }
+    }
+
+    private String buildTopic(String channelId, String schema, String table, String filter) {
+        if (filter == null || filter.isEmpty()) {
+            return "realtime:" + schema + ":" + table;
+        }
+
+        String encodedFilter = Base64.encodeToString(
+                filter.getBytes(StandardCharsets.UTF_8),
+                Base64.URL_SAFE | Base64.NO_WRAP | Base64.NO_PADDING
+        );
+        return "realtime:" + schema + ":" + table + ":" + encodedFilter;
     }
 
     private void handleMessage(String rawMessage) {

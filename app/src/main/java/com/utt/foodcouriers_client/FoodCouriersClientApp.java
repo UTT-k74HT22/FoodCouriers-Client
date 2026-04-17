@@ -145,7 +145,11 @@ public class FoodCouriersClientApp extends Application {
 
                     @Override
                     public void onError(String error) {
-                        Log.e(TAG, "App notification realtime error: " + error);
+                        if (error != null && error.contains("temporarily unavailable")) {
+                            Log.w(TAG, "App notification realtime reconnecting: " + error);
+                        } else {
+                            Log.e(TAG, "App notification realtime error: " + error);
+                        }
                     }
                 });
     }

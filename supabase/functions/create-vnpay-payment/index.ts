@@ -204,10 +204,6 @@ serve(async (req) => {
       vnp_ExpireDate: expireDate,
     };
 
-    if (VNPAY_CONFIG.ipnUrl) {
-      txnParams.vnp_IpnUrl = VNPAY_CONFIG.ipnUrl;
-    }
-
     const sortedParams = sortObject(txnParams);
     const secureHash = await signVnpay(sortedParams);
     const paymentUrl = `${VNPAY_CONFIG.paymentUrl}?${buildQueryString(sortedParams)}&vnp_SecureHash=${secureHash}`;

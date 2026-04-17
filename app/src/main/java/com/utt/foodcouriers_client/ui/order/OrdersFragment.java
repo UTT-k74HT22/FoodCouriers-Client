@@ -1,6 +1,7 @@
 package com.utt.foodcouriers_client.ui.order;
 
 import android.os.Bundle;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -10,18 +11,26 @@ import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
 
 import com.google.android.material.tabs.TabLayout;
+import com.google.gson.JsonObject;
 import com.utt.foodcouriers_client.R;
+import com.utt.foodcouriers_client.data.remote.SupabaseRealtimeClient;
 import com.utt.foodcouriers_client.data.repository.OrderRepository;
 import com.utt.foodcouriers_client.databinding.FragmentOrdersBinding;
 import com.utt.foodcouriers_client.ui.common.BaseFragment;
 import com.utt.foodcouriers_client.ui.order.adapter.OrderHistoryAdapter;
+import com.utt.foodcouriers_client.utils.SessionManager;
+import com.utt.foodcouriers_client.utils.websocket.RealtimeChannel;
+import com.utt.foodcouriers_client.utils.websocket.RealtimeListener;
 import com.utt.foodcouriers_client.viewmodel.OrdersViewModel;
 
 public class OrdersFragment extends BaseFragment {
 
+    private static final String TAG_REAL_TIME = "OrdersRealtime";
+
     private FragmentOrdersBinding binding;
     private OrdersViewModel viewModel;
     private OrderHistoryAdapter adapter;
+    private RealtimeChannel ordersChannel;
 
     @Nullable
     @Override
@@ -39,6 +48,18 @@ public class OrdersFragment extends BaseFragment {
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
         viewModel.loadOrders(requireContext(), OrderRepository.OrderFilter.ALL);
+    }
+
+    @Override
+    public void onStart() {
+        super.onStart();
+        subscribeToOrderUpdates();
+    }
+
+    @Override
+    public void onStop() {
+        unsubscribeFromOrderUpdates();
+        super.onStop();
     }
 
     private void setupRecyclerView() {
@@ -98,8 +119,87 @@ public class OrdersFragment extends BaseFragment {
         });
     }
 
+    private void subscribeToOrderUpdates() {
+        if (ordersChannel != null || !isAdded()) {
+            return;
+        }
+
+        SessionManager sessionManager = SessionManager.getInstance(requireContext());
+        String userId = sessionManager.getUserId();
+        if (userId == null || userId.isBlank()) {
+            Log.w(TAG_REAL_TIME, "Skip orders realtime because userId is empty");
+            return;
+        }
+
+        RealtimeListener listener = new RealtimeListener() {
+            @Override
+            public void onInsert(JsonObject record) {
+                Log.d(TAG_REAL_TIME, "Order inserted, refreshing list");
+                refreshOrders();
+            }
+
+            @Override
+            public void onUpdate(JsonObject record, JsonObject oldRecord) {
+                String orderId = record.has("id") && !record.get("id").isJsonNull()
+                        ? record.get("id").getAsString()
+                        : "unknown";
+                String status = record.has("status") && !record.get("status").isJsonNull()
+                        ? record.get("status").getAsString()
+                        : "unknown";
+                Log.d(TAG_REAL_TIME, "Order updated id=" + orderId + ", status=" + status + ", refreshing list");
+                refreshOrders();
+            }
+
+            @Override
+            public void onDelete(JsonObject oldRecord) {
+                Log.d(TAG_REAL_TIME, "Order deleted, refreshing list");
+                refreshOrders();
+            }
+
+            @Override
+            public void onConnected() {
+                Log.d(TAG_REAL_TIME, "Connected to orders realtime for user: " + userId);
+                refreshOrders();
+            }
+
+            @Override
+            public void onDisconnected() {
+                Log.w(TAG_REAL_TIME, "Disconnected from orders realtime");
+            }
+
+            @Override
+            public void onError(String error) {
+                Log.e(TAG_REAL_TIME, "Orders realtime error: " + error);
+            }
+        };
+
+        ordersChannel = SupabaseRealtimeClient.getInstance()
+                .subscribe("public:orders", "user_id=eq." + userId, listener);
+        Log.d(TAG_REAL_TIME, "Subscribed to orders channel: " + (ordersChannel != null ? "success" : "failed"));
+    }
+
+    private void unsubscribeFromOrderUpdates() {
+        if (ordersChannel != null) {
+            SupabaseRealtimeClient.getInstance().unsubscribe(ordersChannel);
+            ordersChannel = null;
+            Log.d(TAG_REAL_TIME, "Unsubscribed from orders realtime");
+        }
+    }
+
+    private void refreshOrders() {
+        if (!isAdded()) {
+            return;
+        }
+        requireActivity().runOnUiThread(() -> {
+            if (binding != null && isAdded()) {
+                viewModel.refresh(requireContext());
+            }
+        });
+    }
+
     @Override
     public void onDestroyView() {
+        unsubscribeFromOrderUpdates();
         super.onDestroyView();
         binding = null;
     }

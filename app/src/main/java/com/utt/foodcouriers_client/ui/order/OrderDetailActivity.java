@@ -247,6 +247,7 @@ public class OrderDetailActivity extends BaseActivity {
             @Override
             public void onConnected() {
                 Log.d(TAG_REAL_TIME, "Connected to realtime for order: " + orderId);
+                refreshOrder();
             }
 
             @Override
