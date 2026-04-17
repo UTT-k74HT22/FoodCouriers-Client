@@ -1,19 +1,32 @@
 package com.utt.foodcouriers_client;
 
 import android.app.Application;
+import android.content.Context;
 import android.util.Log;
 
+import com.google.gson.JsonObject;
 import com.utt.foodcouriers_client.data.remote.AuthClient;
+import com.utt.foodcouriers_client.data.remote.SupabaseRealtimeClient;
 import com.utt.foodcouriers_client.utils.SessionManager;
 import com.utt.foodcouriers_client.utils.ToastBanner;
+import com.utt.foodcouriers_client.utils.websocket.RealtimeChannel;
+import com.utt.foodcouriers_client.utils.websocket.RealtimeListener;
+
+import java.util.Set;
+import java.util.concurrent.CopyOnWriteArraySet;
 
 public class FoodCouriersClientApp extends Application {
 
     private static final String TAG = "FoodCouriersApp";
+    private static Context appContext;
+    private static RealtimeChannel appNotificationChannel;
+    private static String appNotificationUserId;
+    private static final Set<Runnable> notificationRefreshListeners = new CopyOnWriteArraySet<>();
 
     @Override
     public void onCreate() {
         super.onCreate();
+        appContext = getApplicationContext();
         ToastBanner.init(this);
 
         SessionManager sessionManager = SessionManager.getInstance(this);
@@ -29,10 +42,12 @@ public class FoodCouriersClientApp extends Application {
                         @Override
                         public void onSuccess(Boolean result) {
                             Log.d(TAG, "Token refresh successful");
+                            String refreshedAccessToken = AuthClient.getInstance().getAccessToken();
                             SessionManager.getInstance(FoodCouriersClientApp.this).updateSession(
-                                    AuthClient.getInstance().getAccessToken(),
+                                    refreshedAccessToken,
                                     AuthClient.getInstance().getRefreshToken()
                             );
+                            initializeRealtime(refreshedAccessToken);
                         }
 
                         @Override
@@ -52,7 +67,115 @@ public class FoodCouriersClientApp extends Application {
                         sessionManager.getAccessToken(),
                         sessionManager.getRefreshToken()
                 );
+                initializeRealtime(sessionManager.getAccessToken());
             }
         }
+    }
+
+    /**
+     * Connect Realtime -> WebSocket
+     * @param accessToken Access token của người dùng
+     */
+    public static void initializeRealtime(String accessToken) {
+        if (accessToken == null || accessToken.isEmpty()) {
+            return;
+        }
+        SupabaseRealtimeClient client = SupabaseRealtimeClient.getInstance();
+        client.initialize(appContext, accessToken);
+        client.connect();
+        subscribeAppNotifications();
+    }
+
+    public static void disconnectRealtime() {
+        if (appNotificationChannel != null) {
+            SupabaseRealtimeClient.getInstance().unsubscribe(appNotificationChannel);
+            appNotificationChannel = null;
+            appNotificationUserId = null;
+        }
+        SupabaseRealtimeClient.getInstance().disconnect();
+    }
+
+    private static void subscribeAppNotifications() {
+        if (appContext == null) {
+            return;
+        }
+
+        String userId = SessionManager.getInstance(appContext).getUserId();
+        if (userId == null || userId.isBlank()) {
+            return;
+        }
+
+        if (appNotificationChannel != null && userId.equals(appNotificationUserId)) {
+            return;
+        }
+
+        if (appNotificationChannel != null) {
+            SupabaseRealtimeClient.getInstance().unsubscribe(appNotificationChannel);
+            appNotificationChannel = null;
+        }
+
+        appNotificationUserId = userId;
+        appNotificationChannel = SupabaseRealtimeClient.getInstance()
+                .subscribe("public:notifications", "user_id=eq." + userId, new RealtimeListener() {
+                    @Override
+                    public void onInsert(JsonObject record) {
+                        String title = getString(record, "title");
+                        String body = getString(record, "body");
+                        String message = !body.isBlank() ? body : title;
+                        if (!message.isBlank()) {
+                            ToastBanner.showSuccess(message);
+                        }
+                        notifyNotificationChanged();
+                    }
+
+                    @Override
+                    public void onUpdate(JsonObject record, JsonObject oldRecord) {
+                        notifyNotificationChanged();
+                    }
+
+                    @Override
+                    public void onDelete(JsonObject oldRecord) {
+                        notifyNotificationChanged();
+                    }
+
+                    @Override
+                    public void onConnected() {
+                        Log.d(TAG, "App notification realtime connected for user: " + userId);
+                    }
+
+                    @Override
+                    public void onError(String error) {
+                        if (error != null && error.contains("temporarily unavailable")) {
+                            Log.w(TAG, "App notification realtime reconnecting: " + error);
+                        } else {
+                            Log.e(TAG, "App notification realtime error: " + error);
+                        }
+                    }
+                });
+    }
+
+    public static void addNotificationRefreshListener(Runnable listener) {
+        if (listener != null) {
+            notificationRefreshListeners.add(listener);
+        }
+    }
+
+    public static void removeNotificationRefreshListener(Runnable listener) {
+        if (listener != null) {
+            notificationRefreshListeners.remove(listener);
+        }
+    }
+
+    private static void notifyNotificationChanged() {
+        for (Runnable listener : notificationRefreshListeners) {
+            listener.run();
+        }
+    }
+
+    private static String getString(JsonObject object, String key) {
+        if (object == null || !object.has(key) || object.get(key).isJsonNull()) {
+            return "";
+        }
+        return object.get(key).getAsString();
     }
 }

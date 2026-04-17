@@ -90,6 +90,7 @@ public class OrderHistoryAdapter extends RecyclerView.Adapter<OrderHistoryAdapte
                     return R.drawable.badge_success;
                 case CANCELLED:
                     return R.drawable.badge_error;
+                case AWAITING_PAYMENT:
                 case PENDING:
                     return R.drawable.badge_warning;
                 case DELIVERING:

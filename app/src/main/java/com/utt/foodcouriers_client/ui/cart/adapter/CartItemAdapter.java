@@ -27,6 +27,19 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 
+/**
+ * Adapter hiển thị danh sách giỏ hàng theo nhóm nhà hàng.
+ *
+ * <p>Adapter này không chỉ render UI mà còn giữ trạng thái chọn item thông qua
+ * {@code selectedCartItemIds}. Từ trạng thái này adapter có thể tính ra subtotal,
+ * delivery fee và total theo phần đang chọn.
+ *
+ * <p>Cấu trúc hiển thị:
+ * <ul>
+ *     <li>Mỗi phần tử RecyclerView là một nhà hàng.</li>
+ *     <li>Bên trong mỗi nhà hàng, các item được inflate thủ công vào một container.</li>
+ * </ul>
+ */
 public class CartItemAdapter extends RecyclerView.Adapter<CartItemAdapter.GroupViewHolder> {
 
     private static final RequestOptions IMAGE_REQUEST_OPTIONS = new RequestOptions()
@@ -41,17 +54,30 @@ public class CartItemAdapter extends RecyclerView.Adapter<CartItemAdapter.GroupV
     private final List<CartRestaurantGroup> groups = new ArrayList<>();
     private final Set<String> selectedCartItemIds = new LinkedHashSet<>();
 
-    public interface CartItemListener {
-        void onIncrease(String cartItemId);
-        void onDecrease(String cartItemId);
-        void onSelectionChanged(SelectionState selectionState);
-    }
-
+    /**
+     * Khởi tạo adapter cart.
+     *
+     * @param context context dùng để inflate view, load ảnh và format dữ liệu
+     * @param listener listener nhận callback các thao tác từ item
+     */
     public CartItemAdapter(Context context, CartItemListener listener) {
         this.context = context;
         this.listener = listener;
     }
 
+    /**
+     * Cập nhật danh sách group mới cho adapter.
+     *
+     * <p>Hành vi hiện tại:
+     * <ul>
+     *     <li>Nếu danh sách mới rỗng: xóa dữ liệu cũ và clear selection.</li>
+     *     <li>Nếu adapter chưa có selection nào: tự động chọn toàn bộ item.</li>
+     *     <li>Nếu đã có selection: chỉ giữ lại những item còn tồn tại trong dữ liệu mới.</li>
+     *     <li>Nếu selection sau khi lọc bị rỗng: chọn lại toàn bộ item hiện có.</li>
+     * </ul>
+     *
+     * @param newGroups danh sách cart group mới được truyền từ tầng trên
+     */
     public void submitGroups(List<CartRestaurantGroup> newGroups) {
         if (newGroups == null || newGroups.isEmpty()) {
             boolean wasEmpty = groups.isEmpty();
@@ -89,6 +115,12 @@ public class CartItemAdapter extends RecyclerView.Adapter<CartItemAdapter.GroupV
         notifySelectionChanged();
     }
 
+    /**
+     * Tìm số lượng hiện tại của một cart item trong dữ liệu adapter.
+     *
+     * @param cartItemId id của cart item cần tra cứu
+     * @return số lượng hiện tại; trả về 0 nếu không tìm thấy
+     */
     public int getQuantityForItem(String cartItemId) {
         for (CartRestaurantGroup group : groups) {
             for (CartItem item : group.getItems()) {
@@ -100,6 +132,21 @@ public class CartItemAdapter extends RecyclerView.Adapter<CartItemAdapter.GroupV
         return 0;
     }
 
+    /**
+     * Tính toán trạng thái chọn hiện tại của adapter.
+     *
+     * <p>Giá trị trả về bao gồm:
+     * <ul>
+     *     <li>Danh sách id item được chọn.</li>
+     *     <li>Tổng số lượng item được chọn.</li>
+     *     <li>Số lượng nhà hàng có ít nhất một item được chọn.</li>
+     *     <li>Subtotal theo item được chọn.</li>
+     *     <li>Delivery fee theo nhà hàng được chọn.</li>
+     *     <li>Total = subtotal + delivery fee.</li>
+     * </ul>
+     *
+     * @return snapshot trạng thái chọn hiện tại
+     */
     public SelectionState getSelectionState() {
         int selectedItemCount = 0;
         int selectedSubtotal = 0;
@@ -146,6 +193,12 @@ public class CartItemAdapter extends RecyclerView.Adapter<CartItemAdapter.GroupV
         return group.getRestaurantId() != null ? group.getRestaurantId().hashCode() : position;
     }
 
+    /**
+     * Chọn hoặc bỏ chọn toàn bộ item thuộc một nhà hàng.
+     *
+     * @param group nhóm nhà hàng cần thay đổi selection
+     * @param checked true nếu chọn tất cả, false nếu bỏ chọn tất cả
+     */
     private void toggleRestaurant(CartRestaurantGroup group, boolean checked) {
         if (group == null) {
             return;
@@ -164,6 +217,12 @@ public class CartItemAdapter extends RecyclerView.Adapter<CartItemAdapter.GroupV
         notifySelectionChanged();
     }
 
+    /**
+     * Xử lý thao tác tick/bỏ tick của một item đơn lẻ.
+     *
+     * @param item item đang được thay đổi trạng thái
+     * @param isChecked true nếu item được chọn, false nếu item bị bỏ chọn
+     */
     private void handleItemCheckboxClick(CartItem item, boolean isChecked) {
         if (item == null || item.getId() == null) {
             return;
@@ -192,12 +251,23 @@ public class CartItemAdapter extends RecyclerView.Adapter<CartItemAdapter.GroupV
         return null;
     }
 
+    /**
+     * Thông báo ra ngoài rằng trạng thái chọn đã thay đổi.
+     *
+     * <p>Hàm này sẽ tính lại {@code SelectionState} mới nhất và gửi về listener.
+     */
     private void notifySelectionChanged() {
         if (listener != null) {
             listener.onSelectionChanged(getSelectionState());
         }
     }
 
+    /**
+     * Xác định trạng thái chọn của một nhà hàng.
+     *
+     * @param group nhóm nhà hàng cần kiểm tra
+     * @return 0 nếu không chọn item nào, 1 nếu chọn một phần, 2 nếu chọn toàn bộ
+     */
     private int getRestaurantSelectionState(CartRestaurantGroup group) {
         if (group == null || group.getItems().isEmpty()) {
             return 0;
@@ -234,6 +304,17 @@ public class CartItemAdapter extends RecyclerView.Adapter<CartItemAdapter.GroupV
         holder.bind(groups.get(position));
     }
 
+    /**
+     * ViewHolder đại diện cho một nhóm nhà hàng trong cart.
+     *
+     * <p>Mỗi group hiển thị:
+     * <ul>
+     *     <li>Tên nhà hàng</li>
+     *     <li>Thông tin số món và phí giao</li>
+     *     <li>Checkbox chọn toàn bộ nhà hàng</li>
+     *     <li>Danh sách item con bên trong nhà hàng</li>
+     * </ul>
+     */
     class GroupViewHolder extends RecyclerView.ViewHolder {
         private final CheckBox cbSelectRestaurant;
         private final TextView tvRestaurantName;
@@ -248,6 +329,11 @@ public class CartItemAdapter extends RecyclerView.Adapter<CartItemAdapter.GroupV
             llItemsContainer = itemView.findViewById(R.id.ll_items_container);
         }
 
+        /**
+         * Bind dữ liệu của một nhà hàng lên UI group.
+         *
+         * @param group dữ liệu nhóm nhà hàng cần hiển thị
+         */
         void bind(CartRestaurantGroup group) {
             if (group == null) {
                 return;
@@ -255,7 +341,7 @@ public class CartItemAdapter extends RecyclerView.Adapter<CartItemAdapter.GroupV
 
             tvRestaurantName.setText(group.getRestaurantName());
             tvRestaurantMeta.setText(
-                    group.getItems().size() + " món • Phí giao " + currencyFormatter.format(group.getDeliveryFee()) + " / 1km"
+                    group.getItems().size() + " món • Phí giao " + currencyFormatter.format(group.getDeliveryFee())
             );
 
             int selectionState = getRestaurantSelectionState(group);
@@ -277,6 +363,20 @@ public class CartItemAdapter extends RecyclerView.Adapter<CartItemAdapter.GroupV
             }
         }
 
+        /**
+         * Tạo view hiển thị cho một item con trong nhóm nhà hàng.
+         *
+         * <p>Hàm này chịu trách nhiệm:
+         * <ul>
+         *     <li>Bind tên món, giá, thành tiền dòng và số lượng.</li>
+         *     <li>Load ảnh món bằng Glide hoặc dùng ảnh mặc định nếu không có ảnh.</li>
+         *     <li>Hiển thị trạng thái chọn hiện tại.</li>
+         *     <li>Gắn sự kiện tăng/giảm số lượng và chọn item.</li>
+         * </ul>
+         *
+         * @param item item cần tạo view
+         * @return view hoàn chỉnh của item
+         */
         private View createItemView(CartItem item) {
             View itemView = LayoutInflater.from(context)
                     .inflate(R.layout.component_cart_item, llItemsContainer, false);
@@ -362,6 +462,11 @@ public class CartItemAdapter extends RecyclerView.Adapter<CartItemAdapter.GroupV
         }
     }
 
+    /**
+     * Snapshot mô tả trạng thái chọn hiện tại trong cart.
+     *
+     * <p>Object này thường được adapter gửi ra ngoài để Fragment cập nhật summary UI.
+     */
     public static class SelectionState {
         private final List<String> selectedCartItemIds;
         private final int selectedItemCount;

@@ -12,6 +12,7 @@ import android.widget.TextView;
 
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textfield.TextInputLayout;
+import com.utt.foodcouriers_client.FoodCouriersClientApp;
 import com.utt.foodcouriers_client.R;
 import com.utt.foodcouriers_client.data.auth.SocialAuthProvider;
 import com.utt.foodcouriers_client.data.common.RepositoryCallback;
@@ -169,6 +170,7 @@ public class RegisterActivity extends BaseActivity {
                 String refreshToken = AuthClient.getInstance().getRefreshToken();
 
                 sessionManager.saveSession(accessToken, refreshToken, user, TOKEN_EXPIRY_MILLIS);
+                FoodCouriersClientApp.initializeRealtime(accessToken);
 
                 ToastBanner.showSuccess(getString(R.string.register_success));
                 navigateToMain();

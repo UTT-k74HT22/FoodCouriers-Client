@@ -238,6 +238,14 @@
     <string name="search_results_restaurants">Nhà hàng</string>
     <string name="search_results_menu">Món ăn</string>
     <string name="notifications_title">Thông báo</string>
+    <string name="notifications_mark_all_read">Đã đọc hết</string>
+    <string name="notifications_delete_all">Xóa tất cả</string>
+    <string name="notifications_delete_confirm_message">Bạn có chắc chắn muốn xóa toàn bộ thông báo không?</string>
+    <string name="notifications_count_summary">%1$d thông báo • %2$d chưa đọc</string>
+    <string name="notifications_empty_count">Không có thông báo</string>
+    <string name="notifications_delete_success">Đã xóa toàn bộ thông báo</string>
+    <string name="notifications_mark_all_read_success">Đã đánh dấu tất cả là đã đọc</string>
+    <string name="notifications_login_required">Vui lòng đăng nhập để xem thông báo</string>
     <string name="restaurant_open_cart">Xem giỏ hàng</string>
     <string name="address_title">Địa chỉ giao hàng</string>
     <string name="address_add">Thêm địa chỉ</string>

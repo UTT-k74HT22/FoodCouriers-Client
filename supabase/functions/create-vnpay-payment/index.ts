@@ -63,11 +63,24 @@ serve(async (req) => {
     // Service role client cho tất cả thao tác DB (bypass RLS)
     const supabase = createClient(supabaseUrl, serviceKey);
 
+    const { data: publicUser, error: publicUserError } = await supabase
+      .from("users")
+      .select("id")
+      .eq("auth_id", user.id)
+      .single();
+
+    if (publicUserError || !publicUser) {
+      return new Response(
+        JSON.stringify({ error: "Customer profile not found" }),
+        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     const { data: order, error: orderError } = await supabase
       .from("orders")
       .select("*")
       .eq("id", orderId)
-      .eq("user_id", user.id)
+      .eq("user_id", publicUser.id)
       .single();
 
     if (orderError || !order) {

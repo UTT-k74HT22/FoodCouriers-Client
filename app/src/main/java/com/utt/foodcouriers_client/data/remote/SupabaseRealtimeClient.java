@@ -1,7 +1,12 @@
 package com.utt.foodcouriers_client.data.remote;
 
+import android.content.Context;
+import android.net.ConnectivityManager;
+import android.net.Network;
+import android.net.NetworkCapabilities;
 import android.os.Handler;
 import android.os.Looper;
+import android.util.Base64;
 import android.util.Log;
 
 import com.google.gson.Gson;
@@ -16,6 +21,9 @@ import com.utt.foodcouriers_client.utils.websocket.RealtimeListener;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.net.SocketException;
+import java.net.UnknownHostException;
+import java.nio.charset.StandardCharsets;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
@@ -62,8 +70,11 @@ public class SupabaseRealtimeClient {
     /** Heartbeat interval: 25s (Phoenix timeout là 30s, gửi sớm 5s để an toàn) */
     private static final int HEARTBEAT_INTERVAL_SECONDS = 25;
     
-    /** Delay trước khi reconnect sau khi mất kết nối */
-    private static final int RECONNECT_DELAY_SECONDS = 5;
+    /** Delay khởi điểm trước khi reconnect sau khi mất kết nối */
+    private static final int INITIAL_RECONNECT_DELAY_SECONDS = 5;
+
+    /** Delay reconnect tối đa để tránh spam log/network khi DNS hoặc internet lỗi */
+    private static final int MAX_RECONNECT_DELAY_SECONDS = 60;
     
     /** Số lần retry tối đa trước khi dừng reconnect */
     private static final int MAX_RECONNECT_ATTEMPTS = 10;
@@ -90,6 +101,7 @@ public class SupabaseRealtimeClient {
     private String accessToken;
     private String apikey;
     private CallbackDispatcher callbackDispatcher;
+    private Context appContext;
 
     private SupabaseRealtimeClient() {
         httpClient = new OkHttpClient.Builder()
@@ -122,6 +134,18 @@ public class SupabaseRealtimeClient {
     public void initialize(String accessToken) {
         this.accessToken = accessToken;
         this.apikey = SupabaseConfig.SUPABASE_ANON_KEY;
+        this.shouldReconnect = true;
+    }
+
+    /**
+     * Khởi tạo client với application context để kiểm tra trạng thái mạng trước khi reconnect.
+     *
+     * @param context Application/Activity context
+     * @param accessToken JWT token từ Supabase Auth
+     */
+    public void initialize(Context context, String accessToken) {
+        this.appContext = context != null ? context.getApplicationContext() : null;
+        initialize(accessToken);
     }
 
     /**
@@ -151,6 +175,9 @@ public class SupabaseRealtimeClient {
      */
     public void setAccessToken(String accessToken) {
         this.accessToken = accessToken;
+        if (isConnected && webSocket != null) {
+            sendAccessToken();
+        }
     }
 
     /**
@@ -160,6 +187,14 @@ public class SupabaseRealtimeClient {
     public void connect() {
         if (isConnected) {
             Log.d(TAG, "Already connected");
+            return;
+        }
+        shouldReconnect = true;
+
+        if (!hasUsableNetwork()) {
+            Log.w(TAG, "Network unavailable. Realtime reconnect will be retried later.");
+            notifyChannelsError("Network unavailable");
+            scheduleReconnect();
             return;
         }
 
@@ -192,10 +227,15 @@ public class SupabaseRealtimeClient {
 
             @Override
             public void onFailure(WebSocket webSocket, Throwable t, Response response) {
-                Log.e(TAG, "WebSocket failure: " + t.getMessage());
+                String failureMessage = buildFailureMessage(t, response);
+                if (isTransientSocketAbort(t) || !hasUsableNetwork()) {
+                    Log.w(TAG, "WebSocket disconnected: " + failureMessage);
+                } else {
+                    Log.e(TAG, "WebSocket failure: " + failureMessage);
+                }
                 isConnected = false;
                 stopHeartbeat();
-                notifyChannelsError("Connection failed: " + t.getMessage());
+                notifyChannelsError("Connection failed: " + buildUserFacingFailureMessage(t));
                 if (shouldReconnect) {
                     scheduleReconnect();
                 }
@@ -243,6 +283,8 @@ public class SupabaseRealtimeClient {
      */
     public RealtimeChannel subscribe(String table, String schema, String filter, RealtimeListener listener) {
         String channelId = schema + ":" + table + (filter != null ? ":" + filter : "");
+        RealtimeChannel subscription = new RealtimeChannel(channelId);
+        subscription.addListener(listener);
         
         RealtimeChannel channel;
         if (channels.containsKey(channelId)) {
@@ -254,13 +296,13 @@ public class SupabaseRealtimeClient {
             channels.put(channelId, channel);
             
             if (isConnected) {
-                String topic = "realtime:" + schema + ":" + table;
+                String topic = buildTopic(channelId, schema, table, filter);
                 channelTopics.put(channelId, topic);
                 sendJoin(topic, schema, table, filter);
             }
         }
         
-        return channel;
+        return subscription;
     }
 
     /**
@@ -292,12 +334,15 @@ public class SupabaseRealtimeClient {
         RealtimeChannel existingChannel = channels.get(channelId);
         
         if (existingChannel != null) {
-            existingChannel.removeAllListeners();
-            channels.remove(channelId);
-            
-            String topic = channelTopics.remove(channelId);
-            if (topic != null && isConnected) {
-                sendLeave(topic);
+            existingChannel.removeListeners(channel.getListenersSnapshot());
+
+            if (existingChannel.getListenerCount() == 0) {
+                channels.remove(channelId);
+
+                String topic = channelTopics.remove(channelId);
+                if (topic != null && isConnected) {
+                    sendLeave(topic);
+                }
             }
         }
     }
@@ -365,13 +410,73 @@ public class SupabaseRealtimeClient {
             return;
         }
 
-        Log.d(TAG, "Scheduling reconnect attempt " + attempts + " in " + RECONNECT_DELAY_SECONDS + "s");
+        int delaySeconds = getReconnectDelaySeconds(attempts);
+        Log.d(TAG, "Scheduling reconnect attempt " + attempts + " in " + delaySeconds + "s");
         
         scheduler.schedule(() -> {
             if (shouldReconnect && !isConnected) {
                 connect();
             }
-        }, RECONNECT_DELAY_SECONDS, TimeUnit.SECONDS);
+        }, delaySeconds, TimeUnit.SECONDS);
+    }
+
+    private int getReconnectDelaySeconds(int attempts) {
+        long delay = INITIAL_RECONNECT_DELAY_SECONDS * (1L << Math.min(attempts - 1, 4));
+        return (int) Math.min(delay, MAX_RECONNECT_DELAY_SECONDS);
+    }
+
+    private boolean hasUsableNetwork() {
+        if (appContext == null) {
+            return true;
+        }
+
+        ConnectivityManager connectivityManager =
+                (ConnectivityManager) appContext.getSystemService(Context.CONNECTIVITY_SERVICE);
+        if (connectivityManager == null) {
+            return true;
+        }
+
+        Network network = connectivityManager.getActiveNetwork();
+        if (network == null) {
+            return false;
+        }
+
+        NetworkCapabilities capabilities = connectivityManager.getNetworkCapabilities(network);
+        if (capabilities == null) {
+            return false;
+        }
+
+        return capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                && capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED);
+    }
+
+    private String buildFailureMessage(Throwable t, Response response) {
+        StringBuilder message = new StringBuilder();
+        if (t != null) {
+            message.append(t.getClass().getSimpleName()).append(": ").append(t.getMessage());
+        } else {
+            message.append("unknown error");
+        }
+        if (response != null) {
+            message.append(", httpCode=").append(response.code());
+        }
+        return message.toString();
+    }
+
+    private String buildUserFacingFailureMessage(Throwable t) {
+        if (t instanceof UnknownHostException) {
+            return "Cannot resolve Supabase host. Check internet, DNS, VPN, or emulator network.";
+        }
+        if (isTransientSocketAbort(t) || !hasUsableNetwork()) {
+            return "Realtime connection temporarily unavailable. Reconnecting...";
+        }
+        return t != null && t.getMessage() != null ? t.getMessage() : "Realtime connection failed";
+    }
+
+    private boolean isTransientSocketAbort(Throwable t) {
+        return t instanceof SocketException
+                && t.getMessage() != null
+                && t.getMessage().toLowerCase().contains("software caused connection abort");
     }
 
     private void sendJoin(String topic, String schema, String table, String filter) {
@@ -405,6 +510,7 @@ public class SupabaseRealtimeClient {
         msg.addProperty("ref", String.valueOf(ref));
         
         if (webSocket != null) {
+            Log.d(TAG, "Joining realtime topic=" + topic + ", table=" + schema + "." + table + ", filter=" + filter);
             webSocket.send(msg.toString());
         }
     }
@@ -423,6 +529,24 @@ public class SupabaseRealtimeClient {
         }
     }
 
+    private void sendAccessToken() {
+        for (String topic : new java.util.HashSet<>(channelTopics.values())) {
+            int ref = refCounter.incrementAndGet();
+
+            JsonObject payload = new JsonObject();
+            payload.addProperty("access_token", accessToken);
+
+            JsonObject msg = new JsonObject();
+            msg.addProperty("topic", topic);
+            msg.addProperty("event", "access_token");
+            msg.add("payload", payload);
+            msg.addProperty("join_ref", String.valueOf(ref));
+            msg.addProperty("ref", String.valueOf(ref));
+
+            webSocket.send(msg.toString());
+        }
+    }
+
     private void resubscribeAllChannels() {
         for (Map.Entry<String, RealtimeChannel> entry : channels.entrySet()) {
             String channelId = entry.getKey();
@@ -433,11 +557,23 @@ public class SupabaseRealtimeClient {
                 String table = parts[1];
                 String filter = parts.length > 2 ? parts[2] : null;
                 
-                String topic = "realtime:" + schema + ":" + table;
+                String topic = buildTopic(channelId, schema, table, filter);
                 channelTopics.put(channelId, topic);
                 sendJoin(topic, schema, table, filter);
             }
         }
+    }
+
+    private String buildTopic(String channelId, String schema, String table, String filter) {
+        if (filter == null || filter.isEmpty()) {
+            return "realtime:" + schema + ":" + table;
+        }
+
+        String encodedFilter = Base64.encodeToString(
+                filter.getBytes(StandardCharsets.UTF_8),
+                Base64.URL_SAFE | Base64.NO_WRAP | Base64.NO_PADDING
+        );
+        return "realtime:" + schema + ":" + table + ":" + encodedFilter;
     }
 
     private void handleMessage(String rawMessage) {
@@ -456,7 +592,12 @@ public class SupabaseRealtimeClient {
                     break;
                     
                 case "postgres_changes":
+                    Log.d(TAG, "Postgres change received on topic=" + topic);
                     handlePostgresChanges(payload, topic);
+                    break;
+
+                case "system":
+                    Log.d(TAG, "Realtime system message on topic=" + topic + ": " + payload);
                     break;
                     
                 default:
@@ -483,47 +624,128 @@ public class SupabaseRealtimeClient {
     private void handlePostgresChanges(JsonObject payload, String topic) {
         JsonObject data = payload.has("data") ? payload.getAsJsonObject("data") : null;
         if (data == null) return;
-        
-        String commitType = data.has("commit_type") ? data.get("commit_type").getAsString() : "";
-        JsonArray changes = data.has("changes") ? data.getAsJsonArray("changes") : null;
-        
-        if (changes == null || changes.size() == 0) return;
-        
+
+        if (data.has("changes") && data.get("changes").isJsonArray()) {
+            handleLegacyPostgresChanges(data, topic);
+            return;
+        }
+
+        String schema = getStringOrDefault(data, "schema", extractSchemaFromTopic(topic));
+        String table = getStringOrDefault(data, "table", extractTableFromTopic(topic));
+        String type = getStringOrDefault(data, "type", "").toLowerCase();
+        JsonObject newRecord = data.has("record") && data.get("record").isJsonObject()
+                ? data.getAsJsonObject("record")
+                : null;
+        JsonObject oldRecord = data.has("old_record") && data.get("old_record").isJsonObject()
+                ? data.getAsJsonObject("old_record")
+                : null;
+
+        dispatchDatabaseChange(schema, table, type, newRecord, oldRecord);
+    }
+
+    private void handleLegacyPostgresChanges(JsonObject data, String topic) {
+        String commitType = getStringOrDefault(data, "commit_type", "").toLowerCase();
+        JsonArray changes = data.getAsJsonArray("changes");
+        if (changes.size() == 0) return;
+
         String schema = extractSchemaFromTopic(topic);
         String table = extractTableFromTopic(topic);
-        String channelId = schema + ":" + table;
-        
-        RealtimeChannel channel = channels.get(channelId);
-        if (channel == null) return;
-        
+
         for (JsonElement changeElem : changes) {
             JsonObject change = changeElem.getAsJsonObject();
-            JsonObject newRecord = change.has("new") ? change.getAsJsonObject("new") : null;
-            JsonObject oldRecord = change.has("old") ? change.getAsJsonObject("old") : null;
-            
-            switch (commitType) {
+            JsonObject newRecord = change.has("new") && change.get("new").isJsonObject()
+                    ? change.getAsJsonObject("new")
+                    : null;
+            JsonObject oldRecord = change.has("old") && change.get("old").isJsonObject()
+                    ? change.getAsJsonObject("old")
+                    : null;
+
+            dispatchDatabaseChange(schema, table, commitType, newRecord, oldRecord);
+        }
+    }
+
+    private void dispatchDatabaseChange(
+            String schema,
+            String table,
+            String type,
+            JsonObject newRecord,
+            JsonObject oldRecord
+    ) {
+        for (Map.Entry<String, RealtimeChannel> entry : channels.entrySet()) {
+            String channelId = entry.getKey();
+            if (!isMatchingChannel(channelId, schema, table, newRecord, oldRecord)) {
+                continue;
+            }
+
+            RealtimeChannel channel = entry.getValue();
+            switch (type) {
                 case "insert":
                     if (newRecord != null) {
                         notifyChannel(channel, c -> c.notifyInsert(newRecord));
                     }
                     break;
-                    
+
                 case "update":
                     if (newRecord != null) {
                         notifyChannel(channel, c -> c.notifyUpdate(newRecord, oldRecord));
                     }
                     break;
-                    
+
                 case "delete":
                     if (oldRecord != null) {
                         notifyChannel(channel, c -> c.notifyDelete(oldRecord));
                     }
                     break;
-                    
+
                 default:
                     break;
             }
         }
+    }
+
+    private boolean isMatchingChannel(String channelId, String schema, String table, JsonObject newRecord, JsonObject oldRecord) {
+        String[] parts = channelId.split(":", 3);
+        if (parts.length < 2) {
+            return false;
+        }
+
+        boolean sameTable = parts[0].equals(schema) && parts[1].equals(table);
+        if (!sameTable) {
+            return false;
+        }
+
+        if (parts.length < 3 || parts[2] == null || parts[2].isEmpty()) {
+            return true;
+        }
+
+        JsonObject record = newRecord != null ? newRecord : oldRecord;
+        return matchesFilter(record, parts[2]);
+    }
+
+    private boolean matchesFilter(JsonObject record, String filter) {
+        if (record == null || filter == null || filter.isEmpty()) {
+            return true;
+        }
+
+        int operatorIndex = filter.indexOf("=eq.");
+        if (operatorIndex <= 0) {
+            return true;
+        }
+
+        String column = filter.substring(0, operatorIndex);
+        String expectedValue = filter.substring(operatorIndex + 4);
+        if (!record.has(column) || record.get(column).isJsonNull()) {
+            return false;
+        }
+
+        return expectedValue.equals(record.get(column).getAsString());
+    }
+
+    private String getStringOrDefault(JsonObject object, String key, String fallback) {
+        if (object.has(key) && !object.get(key).isJsonNull()) {
+            return object.get(key).getAsString();
+        }
+        return fallback;
     }
 
     private String extractSchemaFromTopic(String topic) {

@@ -1,39 +1,131 @@
 package com.utt.foodcouriers_client.data.model;
 
+import com.google.gson.JsonElement;
+import com.google.gson.JsonParser;
+import com.google.gson.annotations.SerializedName;
+
 import java.io.Serializable;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.Locale;
 
 public class NotificationItem implements Serializable {
-    private final String id;
-    private final String title;
-    private final String message;
-    private final String timeLabel;
-    private final boolean unread;
 
-    public NotificationItem(String id, String title, String message, String timeLabel, boolean unread) {
-        this.id = id;
-        this.title = title;
-        this.message = message;
-        this.timeLabel = timeLabel;
-        this.unread = unread;
-    }
+    private String id;
+    @SerializedName("user_id")
+    private String userId;
+    private String title;
+    private String body;
+    private String type;
+    private JsonElement data;
+    @SerializedName("is_read")
+    private boolean isRead;
+    @SerializedName("created_at")
+    private String createdAt;
+
+    public NotificationItem() {}
 
     public String getId() {
         return id;
+    }
+
+    public void setId(String id) {
+        this.id = id;
+    }
+
+    public String getUserId() {
+        return userId;
+    }
+
+    public void setUserId(String userId) {
+        this.userId = userId;
     }
 
     public String getTitle() {
         return title;
     }
 
-    public String getMessage() {
-        return message;
+    public void setTitle(String title) {
+        this.title = title;
     }
 
-    public String getTimeLabel() {
-        return timeLabel;
+    public String getBody() {
+        return body;
+    }
+
+    public void setBody(String body) {
+        this.body = body;
+    }
+
+    public String getType() {
+        return type;
+    }
+
+    public void setType(String type) {
+        this.type = type;
+    }
+
+    public JsonElement getDataElement() {
+        return data;
+    }
+
+    public void setDataElement(JsonElement data) {
+        this.data = data;
+    }
+
+    public String getData() {
+        if (data == null || data.isJsonNull()) {
+            return null;
+        }
+        return data.toString();
+    }
+
+    public void setData(String data) {
+        if (data == null || data.trim().isEmpty()) {
+            this.data = null;
+            return;
+        }
+        this.data = JsonParser.parseString(data);
     }
 
     public boolean isUnread() {
-        return unread;
+        return !isRead;
+    }
+
+    public void setRead(boolean read) {
+        isRead = read;
+    }
+
+    public boolean isRead() {
+        return isRead;
+    }
+
+    public String getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(String createdAt) {
+        this.createdAt = createdAt;
+    }
+
+    public String getTimeLabel() {
+        if (createdAt == null || createdAt.isEmpty()) {
+            return "";
+        }
+        try {
+            SimpleDateFormat inputFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.US);
+            SimpleDateFormat outputFormat = new SimpleDateFormat("dd/MM/yyyy HH:mm", new Locale("vi", "VN"));
+            Date date = inputFormat.parse(createdAt.replace("+00", ""));
+            if (date != null) {
+                return outputFormat.format(date);
+            }
+        } catch (Exception e) {
+            return createdAt;
+        }
+        return createdAt;
+    }
+
+    public String getMessage() {
+        return body;
     }
 }

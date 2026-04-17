@@ -95,9 +95,14 @@ serve(async (req) => {
         .eq("id", tx.id);
 
       if (orderId) {
+        const orderUpdate: Record<string, string> = { payment_status: "paid" };
+        if (orderStatus === "awaiting_payment") {
+          orderUpdate.status = "pending";
+        }
+
         await supabase
           .from("orders")
-          .update({ payment_status: "paid" })
+          .update(orderUpdate)
           .eq("id", orderId);
       }
 

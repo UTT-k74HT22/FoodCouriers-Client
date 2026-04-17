@@ -18,6 +18,8 @@ import com.utt.foodcouriers_client.data.model.PromotionValidationResult;
 import com.utt.foodcouriers_client.data.repository.CartRepository;
 import com.utt.foodcouriers_client.data.repository.OrderRepository;
 import com.utt.foodcouriers_client.data.repository.PaymentRepository;
+import com.utt.foodcouriers_client.utils.CartDTO.CartState;
+import com.utt.foodcouriers_client.utils.CartDTO.CartSummary;
 import com.utt.foodcouriers_client.utils.DistanceUtils;
 import com.utt.foodcouriers_client.utils.payment.PaymentMethodEnum;
 
@@ -27,7 +29,7 @@ import java.util.List;
 public class CheckoutViewModel extends BaseViewModel {
     private static final String TAG = "CheckoutFlow";
     private final MutableLiveData<List<CartRestaurantGroup>> restaurantGroups = new MutableLiveData<>();
-    private final MutableLiveData<CartRepository.CartSummary> checkoutSummary = new MutableLiveData<>();
+    private final MutableLiveData<CartSummary> checkoutSummary = new MutableLiveData<>();
     private final MutableLiveData<List<OrderSummary>> createdOrders = new MutableLiveData<>();
     private final MutableLiveData<Boolean> isOrderSuccess = new MutableLiveData<>(false);
     // Kết quả xác thực mã khuyến mãi
@@ -42,7 +44,7 @@ public class CheckoutViewModel extends BaseViewModel {
         return restaurantGroups;
     }
 
-    public LiveData<CartRepository.CartSummary> getCheckoutSummary() {
+    public LiveData<CartSummary> getCheckoutSummary() {
         return checkoutSummary;
     }
 
@@ -71,9 +73,9 @@ public class CheckoutViewModel extends BaseViewModel {
      */
     public void loadCheckoutData(Context context, List<String> selectedIds, double deliveryLat, double deliveryLon) {
         setLoading(true);
-        CartRepository.getInstance().getCart(context, new RepositoryCallback<CartRepository.CartState>() {
+        CartRepository.getInstance().getCart(context, new RepositoryCallback<CartState>() {
             @Override
-            public void onSuccess(CartRepository.CartState state) {
+            public void onSuccess(CartState state) {
                 List<CartRestaurantGroup> filteredGroups = new ArrayList<>();
                 int subtotal = 0;
                 int deliveryFee = 0;
@@ -143,15 +145,29 @@ public class CheckoutViewModel extends BaseViewModel {
         });
     }
 
-    /**
-     * Cập nhật tóm tắt chi phí đơn hàng
-     */
-    private void updateSummary(int itemCount, int subtotal, int deliveryFee, int deliveryFeePerKm, int discount) {
-        checkoutSummary.setValue(new CartRepository.CartSummary(
+    private String calculateTotalDistance(List<CartRestaurantGroup> groups, double deliveryLat, double deliveryLon) {
+        if (groups == null || groups.isEmpty() || deliveryLat == 0d || deliveryLon == 0d) {
+            return "";
+        }
+
+        double totalDistance = 0d;
+        for (CartRestaurantGroup group : groups) {
+            Double restLat = group.getRestaurantLatitude();
+            Double restLon = group.getRestaurantLongitude();
+            if (restLat != null && restLon != null) {
+                totalDistance += DistanceUtils.calculateDistanceKm(restLat, restLon, deliveryLat, deliveryLon);
+            }
+        }
+
+        return totalDistance > 0d ? DistanceUtils.formatDistance(totalDistance) : "";
+    }
+
+    private void updateSummary(int itemCount, int subtotal, int deliveryFee, int serviceFee, int discount) {
+        checkoutSummary.setValue(new CartSummary(
                 itemCount,
                 subtotal,
                 deliveryFee,
-                deliveryFeePerKm,
+                serviceFee,
                 discount,
                 subtotal + deliveryFee - discount, // total
                 ""
@@ -165,14 +181,14 @@ public class CheckoutViewModel extends BaseViewModel {
         if (code == null || code.isBlank()) {
             appliedPromotion.setValue(null);
             appliedPromoCode = null;
-            CartRepository.CartSummary current = checkoutSummary.getValue();
+            CartSummary current = checkoutSummary.getValue();
             if (current != null) {
                 updateSummary(current.getItemCount(), current.getSubtotal(), current.getDeliveryFee(), current.getServiceFee(), 0);
             }
             return;
         }
 
-        CartRepository.CartSummary current = checkoutSummary.getValue();
+        CartSummary current = checkoutSummary.getValue();
         if (current == null) {
             return;
         }
@@ -237,7 +253,13 @@ public class CheckoutViewModel extends BaseViewModel {
                                         String promoCode,
                                         List<OrderSummary> results) {
         if (index >= groups.size()) {
-            // Tất cả đơn hàng đã tạo thành công, tiến hành xóa món khỏi giỏ hàng
+            // VNPAY chỉ được xóa giỏ sau khi tạo được payment URL.
+            if (PaymentMethodEnum.VNPAY.getValue().equals(paymentMethod)) {
+                completeCheckout(context, paymentMethod, results);
+                return;
+            }
+
+            // COD: tất cả đơn hàng đã tạo thành công, tiến hành xóa món khỏi giỏ hàng
             List<String> cartItemIdsToRemove = new ArrayList<>();
             for (CartRestaurantGroup group : groups) {
                 for (CartItem item : group.getItems()) {
@@ -246,9 +268,9 @@ public class CheckoutViewModel extends BaseViewModel {
             }
 
             if (!cartItemIdsToRemove.isEmpty()) {
-                CartRepository.getInstance().removeItems(context, cartItemIdsToRemove, new RepositoryCallback<CartRepository.CartState>() {
+                CartRepository.getInstance().removeItems(context, cartItemIdsToRemove, new RepositoryCallback<CartState>() {
                     @Override
-                    public void onSuccess(CartRepository.CartState result) {
+                    public void onSuccess(CartState result) {
                         Log.d(TAG, "Các món đã đặt đã được xóa khỏi giỏ hàng");
                         completeCheckout(context, paymentMethod, results);
                     }
@@ -326,11 +348,26 @@ public class CheckoutViewModel extends BaseViewModel {
         }
     }
 
+    private void clearCartAfterOrderSuccess(Context context) {
+        CartRepository.getInstance().clearCart(context, new RepositoryCallback<Boolean>() {
+            @Override
+            public void onSuccess(Boolean result) {
+                Log.d(TAG, "Cart cleared after successful order");
+            }
+
+            @Override
+            public void onError(String error) {
+                Log.w(TAG, "Failed to clear cart: " + error);
+            }
+        });
+    }
+
     private void fetchVnpayPaymentUrl(Context context, String orderId) {
         PaymentRepository.getInstance().createVnpayPayment(context, orderId, new RepositoryCallback<PaymentInitResult>() {
             @Override
             public void onSuccess(PaymentInitResult result) {
                 Log.d(TAG, "Step 4: VNPAY payment initialized txnRef=" + result.getProviderOrderRef());
+                clearCartAfterOrderSuccess(context);
                 setLoading(false);
                 vnpayPaymentResult.setValue(result);
             }

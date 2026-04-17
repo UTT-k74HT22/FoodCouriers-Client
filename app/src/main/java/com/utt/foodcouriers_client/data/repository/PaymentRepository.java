@@ -55,7 +55,7 @@ public class PaymentRepository {
     public void createVnpayPayment(Context context, String orderId,
                                    RepositoryCallback<PaymentInitResult> callback) {
         String idempotencyKey = orderId + "-" + System.currentTimeMillis();
-        createVnpayPayment(context, orderId, idempotencyKey, callback, false);
+        createVnpayPayment(context, orderId, idempotencyKey, callback, false, false);
     }
 
     /**
@@ -70,7 +70,8 @@ public class PaymentRepository {
      */
     private void createVnpayPayment(Context context, String orderId, String idempotencyKey,
                                      RepositoryCallback<PaymentInitResult> callback,
-                                     boolean hasRetriedAfterRefresh) {
+                                     boolean hasRetriedAfterRefresh,
+                                     boolean hasRetriedTransientFailure) {
         SessionManager sessionManager = SessionManager.getInstance(context);
         if (!sessionManager.isLoggedIn()) {
             Log.e(FLOW_TAG, "Step 4: No active session, VNPAY payment request aborted");
@@ -84,6 +85,7 @@ public class PaymentRepository {
                 + ", tokenExpired=" + sessionManager.isTokenExpired()
                 + ", hasRefreshToken=" + sessionManager.hasRefreshToken()
                 + ", retried=" + hasRetriedAfterRefresh
+                + ", transientRetried=" + hasRetriedTransientFailure
                 + ", idempotencyKey=" + idempotencyKey);
 
         JsonObject body = new JsonObject();
@@ -104,6 +106,10 @@ public class PaymentRepository {
             public void onFailure(@NonNull Call call, @NonNull IOException e) {
                 Log.e(TAG, "Step 4: Network error calling create-vnpay-payment", e);
                 Log.e(FLOW_TAG, "Step 4: Network error calling create-vnpay-payment: " + e.getMessage());
+                if (!hasRetriedTransientFailure) {
+                    retryTransientFailure(context, orderId, idempotencyKey, callback, hasRetriedAfterRefresh);
+                    return;
+                }
                 postError(callback, "Lỗi kết nối: " + e.getMessage());
             }
 
@@ -119,6 +125,10 @@ public class PaymentRepository {
                         Log.w(TAG, "Step 4: JWT rejected, attempting session refresh before retry");
                         Log.w(FLOW_TAG, "Step 4: JWT rejected, attempting session refresh before retry");
                         refreshSessionAndRetry(context, orderId, idempotencyKey, callback);
+                        return;
+                    }
+                    if (isTransientHttpError(response.code()) && !hasRetriedTransientFailure) {
+                        retryTransientFailure(context, orderId, idempotencyKey, callback, hasRetriedAfterRefresh);
                         return;
                     }
                     postError(callback, parseErrorMessage(responseBody, response.code()));
@@ -162,7 +172,7 @@ public class PaymentRepository {
                 SessionManager.getInstance(context).updateSession(newAccessToken, newRefreshToken);
                 Log.d(TAG, "Step 4: Session refresh succeeded, retrying create-vnpay-payment");
                 Log.d(FLOW_TAG, "Step 4: Session refresh succeeded, retrying create-vnpay-payment");
-                createVnpayPayment(context, orderId, idempotencyKey, callback, true);
+                createVnpayPayment(context, orderId, idempotencyKey, callback, true, false);
             }
 
             @Override
@@ -172,6 +182,21 @@ public class PaymentRepository {
                 postError(callback, "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.");
             }
         });
+    }
+
+    private void retryTransientFailure(Context context, String orderId, String idempotencyKey,
+                                       RepositoryCallback<PaymentInitResult> callback,
+                                       boolean hasRetriedAfterRefresh) {
+        Log.w(TAG, "Step 4: Transient payment init failure, retrying with same idempotency key");
+        Log.w(FLOW_TAG, "Step 4: Transient payment init failure, retrying with same idempotency key");
+        mainHandler.postDelayed(
+                () -> createVnpayPayment(context, orderId, idempotencyKey, callback, hasRetriedAfterRefresh, true),
+                1200L
+        );
+    }
+
+    private boolean isTransientHttpError(int code) {
+        return code == 502 || code == 503 || code == 504;
     }
 
     private String parseErrorMessage(String body, int code) {

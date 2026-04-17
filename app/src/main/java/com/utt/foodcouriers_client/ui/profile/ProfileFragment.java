@@ -12,6 +12,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import com.bumptech.glide.Glide;
+import com.utt.foodcouriers_client.FoodCouriersClientApp;
 import com.utt.foodcouriers_client.R;
 import com.utt.foodcouriers_client.data.model.Address;
 import com.utt.foodcouriers_client.data.remote.AddressClient;
@@ -199,6 +200,7 @@ public class ProfileFragment extends BaseFragment {
                     public void onSuccess(Void result) {
                         sessionManager.clearSession();
                         SessionStore.clearSession(requireContext());
+                        FoodCouriersClientApp.disconnectRealtime();
                         requireActivity().runOnUiThread(() -> {
                             ToastBanner.showSuccess("Đã đăng xuất");
                             loadUserInfo(); // Refresh UI to guest state
@@ -209,6 +211,7 @@ public class ProfileFragment extends BaseFragment {
                     public void onError(String error) {
                         sessionManager.clearSession();
                         SessionStore.clearSession(requireContext());
+                        FoodCouriersClientApp.disconnectRealtime();
                         requireActivity().runOnUiThread(() -> {
                             loadUserInfo();
                         });

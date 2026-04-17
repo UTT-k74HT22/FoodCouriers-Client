@@ -1,14 +1,14 @@
 package com.utt.foodcouriers_client.data.model;
 
 public enum DeliveryStatus {
-    UNASSIGNED("unassigned", "Chua phan cong"),
-    SEARCHING("searching", "Dang tim tai xe"),
-    ASSIGNED("assigned", "Da gan tai xe"),
-    ARRIVING_PICKUP("arriving_pickup", "Dang den nha hang"),
-    WAITING_PICKUP("waiting_pickup", "Dang cho lay hang"),
-    PICKED_UP("picked_up", "Da lay hang"),
-    COMPLETED("completed", "Hoan tat"),
-    FAILED("failed", "That bai");
+    UNASSIGNED("unassigned", "Chưa phân công"),
+    SEARCHING("searching", "Đang tìm tài xế"),
+    ASSIGNED("assigned", "Đã gán tài xế"),
+    ARRIVING_PICKUP("arriving_pickup", "Đang đến nhà hàng"),
+    WAITING_PICKUP("waiting_pickup", "Đang chuẩn bị lấy hàng"),
+    PICKED_UP("picked_up", "Đã lấy hàng"),
+    COMPLETED("completed", "Hoàn thành"),
+    FAILED("failed", "Thất bại");
 
     private final String value;
     private final String label;
