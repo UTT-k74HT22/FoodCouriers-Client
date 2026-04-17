@@ -408,6 +408,14 @@ public class HomeFragment extends BaseFragment {
     }
 
     @Override
+    public void onResume() {
+        super.onResume();
+        if (locationHelper != null && locationHelper.hasLocationPermission()) {
+            fetchLocation();
+        }
+    }
+
+    @Override
     public void onDestroyView() {
         super.onDestroyView();
         if (locationHelper != null) {
