@@ -162,12 +162,12 @@ public class CheckoutViewModel extends BaseViewModel {
         return totalDistance > 0d ? DistanceUtils.formatDistance(totalDistance) : "";
     }
 
-    private void updateSummary(int itemCount, int subtotal, int deliveryFee, int discount) {
+    private void updateSummary(int itemCount, int subtotal, int deliveryFee, int serviceFee, int discount) {
         checkoutSummary.setValue(new CartSummary(
                 itemCount,
                 subtotal,
                 deliveryFee,
-                deliveryFeePerKm,
+                serviceFee,
                 discount,
                 subtotal + deliveryFee - discount, // total
                 ""
@@ -253,7 +253,13 @@ public class CheckoutViewModel extends BaseViewModel {
                                         String promoCode,
                                         List<OrderSummary> results) {
         if (index >= groups.size()) {
-            // Tất cả đơn hàng đã tạo thành công, tiến hành xóa món khỏi giỏ hàng
+            // VNPAY chỉ được xóa giỏ sau khi tạo được payment URL.
+            if (PaymentMethodEnum.VNPAY.getValue().equals(paymentMethod)) {
+                completeCheckout(context, paymentMethod, results);
+                return;
+            }
+
+            // COD: tất cả đơn hàng đã tạo thành công, tiến hành xóa món khỏi giỏ hàng
             List<String> cartItemIdsToRemove = new ArrayList<>();
             for (CartRestaurantGroup group : groups) {
                 for (CartItem item : group.getItems()) {
@@ -262,9 +268,9 @@ public class CheckoutViewModel extends BaseViewModel {
             }
 
             if (!cartItemIdsToRemove.isEmpty()) {
-                CartRepository.getInstance().removeItems(context, cartItemIdsToRemove, new RepositoryCallback<CartRepository.CartState>() {
+                CartRepository.getInstance().removeItems(context, cartItemIdsToRemove, new RepositoryCallback<CartState>() {
                     @Override
-                    public void onSuccess(CartRepository.CartState result) {
+                    public void onSuccess(CartState result) {
                         Log.d(TAG, "Các món đã đặt đã được xóa khỏi giỏ hàng");
                         completeCheckout(context, paymentMethod, results);
                     }
@@ -277,9 +283,6 @@ public class CheckoutViewModel extends BaseViewModel {
                     }
                 });
             } else {
-                clearCartAfterOrderSuccess(context);
-                isOrderSuccess.setValue(true);
-                setLoading(false);
                 completeCheckout(context, paymentMethod, results);
             }
             return;
