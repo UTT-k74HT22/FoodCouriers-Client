@@ -61,7 +61,7 @@ public class OrderRepository {
         String userId = sessionManager.getUserId();
         String filterQuery = "";
         if (filter == OrderFilter.ACTIVE) {
-            filterQuery = "&status=in.(pending,confirmed,preparing,ready_for_pickup,delivering)";
+            filterQuery = "&status=in.(awaiting_payment,pending,confirmed,preparing,ready_for_pickup,delivering)";
         } else if (filter == OrderFilter.COMPLETED) {
             filterQuery = "&status=eq.delivered";
         } else if (filter == OrderFilter.CANCELLED) {

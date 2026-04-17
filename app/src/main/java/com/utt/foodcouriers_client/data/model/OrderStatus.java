@@ -1,6 +1,7 @@
 package com.utt.foodcouriers_client.data.model;
 
 public enum OrderStatus {
+    AWAITING_PAYMENT("awaiting_payment", "Chờ thanh toán"),
     PENDING("pending", "Chờ nhận"),
     CONFIRMED("confirmed", "Đã nhận"),
     PREPARING("preparing", "Đang làm"),
@@ -26,7 +27,7 @@ public enum OrderStatus {
     }
 
     public boolean isActive() {
-        return this == PENDING || this == CONFIRMED || this == PREPARING || this == READY_FOR_PICKUP || this == DELIVERING;
+        return this == AWAITING_PAYMENT || this == PENDING || this == CONFIRMED || this == PREPARING || this == READY_FOR_PICKUP || this == DELIVERING;
     }
 
     public static OrderStatus fromValue(String value) {

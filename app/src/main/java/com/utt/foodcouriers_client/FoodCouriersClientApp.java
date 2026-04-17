@@ -12,12 +12,16 @@ import com.utt.foodcouriers_client.utils.ToastBanner;
 import com.utt.foodcouriers_client.utils.websocket.RealtimeChannel;
 import com.utt.foodcouriers_client.utils.websocket.RealtimeListener;
 
+import java.util.Set;
+import java.util.concurrent.CopyOnWriteArraySet;
+
 public class FoodCouriersClientApp extends Application {
 
     private static final String TAG = "FoodCouriersApp";
     private static Context appContext;
     private static RealtimeChannel appNotificationChannel;
     private static String appNotificationUserId;
+    private static final Set<Runnable> notificationRefreshListeners = new CopyOnWriteArraySet<>();
 
     @Override
     public void onCreate() {
@@ -68,12 +72,16 @@ public class FoodCouriersClientApp extends Application {
         }
     }
 
+    /**
+     * Connect Realtime -> WebSocket
+     * @param accessToken Access token của người dùng
+     */
     public static void initializeRealtime(String accessToken) {
         if (accessToken == null || accessToken.isEmpty()) {
             return;
         }
         SupabaseRealtimeClient client = SupabaseRealtimeClient.getInstance();
-        client.initialize(accessToken);
+        client.initialize(appContext, accessToken);
         client.connect();
         subscribeAppNotifications();
     }
@@ -117,14 +125,17 @@ public class FoodCouriersClientApp extends Application {
                         if (!message.isBlank()) {
                             ToastBanner.showSuccess(message);
                         }
+                        notifyNotificationChanged();
                     }
 
                     @Override
                     public void onUpdate(JsonObject record, JsonObject oldRecord) {
+                        notifyNotificationChanged();
                     }
 
                     @Override
                     public void onDelete(JsonObject oldRecord) {
+                        notifyNotificationChanged();
                     }
 
                     @Override
@@ -137,6 +148,24 @@ public class FoodCouriersClientApp extends Application {
                         Log.e(TAG, "App notification realtime error: " + error);
                     }
                 });
+    }
+
+    public static void addNotificationRefreshListener(Runnable listener) {
+        if (listener != null) {
+            notificationRefreshListeners.add(listener);
+        }
+    }
+
+    public static void removeNotificationRefreshListener(Runnable listener) {
+        if (listener != null) {
+            notificationRefreshListeners.remove(listener);
+        }
+    }
+
+    private static void notifyNotificationChanged() {
+        for (Runnable listener : notificationRefreshListeners) {
+            listener.run();
+        }
     }
 
     private static String getString(JsonObject object, String key) {

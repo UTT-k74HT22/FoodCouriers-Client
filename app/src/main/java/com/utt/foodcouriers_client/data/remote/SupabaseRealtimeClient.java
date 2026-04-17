@@ -1,5 +1,9 @@
 package com.utt.foodcouriers_client.data.remote;
 
+import android.content.Context;
+import android.net.ConnectivityManager;
+import android.net.Network;
+import android.net.NetworkCapabilities;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
@@ -16,6 +20,7 @@ import com.utt.foodcouriers_client.utils.websocket.RealtimeListener;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.net.UnknownHostException;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
@@ -62,8 +67,11 @@ public class SupabaseRealtimeClient {
     /** Heartbeat interval: 25s (Phoenix timeout là 30s, gửi sớm 5s để an toàn) */
     private static final int HEARTBEAT_INTERVAL_SECONDS = 25;
     
-    /** Delay trước khi reconnect sau khi mất kết nối */
-    private static final int RECONNECT_DELAY_SECONDS = 5;
+    /** Delay khởi điểm trước khi reconnect sau khi mất kết nối */
+    private static final int INITIAL_RECONNECT_DELAY_SECONDS = 5;
+
+    /** Delay reconnect tối đa để tránh spam log/network khi DNS hoặc internet lỗi */
+    private static final int MAX_RECONNECT_DELAY_SECONDS = 60;
     
     /** Số lần retry tối đa trước khi dừng reconnect */
     private static final int MAX_RECONNECT_ATTEMPTS = 10;
@@ -90,6 +98,7 @@ public class SupabaseRealtimeClient {
     private String accessToken;
     private String apikey;
     private CallbackDispatcher callbackDispatcher;
+    private Context appContext;
 
     private SupabaseRealtimeClient() {
         httpClient = new OkHttpClient.Builder()
@@ -123,6 +132,17 @@ public class SupabaseRealtimeClient {
         this.accessToken = accessToken;
         this.apikey = SupabaseConfig.SUPABASE_ANON_KEY;
         this.shouldReconnect = true;
+    }
+
+    /**
+     * Khởi tạo client với application context để kiểm tra trạng thái mạng trước khi reconnect.
+     *
+     * @param context Application/Activity context
+     * @param accessToken JWT token từ Supabase Auth
+     */
+    public void initialize(Context context, String accessToken) {
+        this.appContext = context != null ? context.getApplicationContext() : null;
+        initialize(accessToken);
     }
 
     /**
@@ -168,6 +188,13 @@ public class SupabaseRealtimeClient {
         }
         shouldReconnect = true;
 
+        if (!hasUsableNetwork()) {
+            Log.w(TAG, "Network unavailable. Realtime reconnect will be retried later.");
+            notifyChannelsError("Network unavailable");
+            scheduleReconnect();
+            return;
+        }
+
         String url = getRealtimeWebsocketUrl();
         if (url.isEmpty()) {
             Log.e(TAG, "Realtime URL not configured");
@@ -197,10 +224,10 @@ public class SupabaseRealtimeClient {
 
             @Override
             public void onFailure(WebSocket webSocket, Throwable t, Response response) {
-                Log.e(TAG, "WebSocket failure: " + t.getMessage());
+                Log.e(TAG, "WebSocket failure: " + buildFailureMessage(t, response));
                 isConnected = false;
                 stopHeartbeat();
-                notifyChannelsError("Connection failed: " + t.getMessage());
+                notifyChannelsError("Connection failed: " + buildUserFacingFailureMessage(t));
                 if (shouldReconnect) {
                     scheduleReconnect();
                 }
@@ -375,13 +402,64 @@ public class SupabaseRealtimeClient {
             return;
         }
 
-        Log.d(TAG, "Scheduling reconnect attempt " + attempts + " in " + RECONNECT_DELAY_SECONDS + "s");
+        int delaySeconds = getReconnectDelaySeconds(attempts);
+        Log.d(TAG, "Scheduling reconnect attempt " + attempts + " in " + delaySeconds + "s");
         
         scheduler.schedule(() -> {
             if (shouldReconnect && !isConnected) {
                 connect();
             }
-        }, RECONNECT_DELAY_SECONDS, TimeUnit.SECONDS);
+        }, delaySeconds, TimeUnit.SECONDS);
+    }
+
+    private int getReconnectDelaySeconds(int attempts) {
+        long delay = INITIAL_RECONNECT_DELAY_SECONDS * (1L << Math.min(attempts - 1, 4));
+        return (int) Math.min(delay, MAX_RECONNECT_DELAY_SECONDS);
+    }
+
+    private boolean hasUsableNetwork() {
+        if (appContext == null) {
+            return true;
+        }
+
+        ConnectivityManager connectivityManager =
+                (ConnectivityManager) appContext.getSystemService(Context.CONNECTIVITY_SERVICE);
+        if (connectivityManager == null) {
+            return true;
+        }
+
+        Network network = connectivityManager.getActiveNetwork();
+        if (network == null) {
+            return false;
+        }
+
+        NetworkCapabilities capabilities = connectivityManager.getNetworkCapabilities(network);
+        if (capabilities == null) {
+            return false;
+        }
+
+        return capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                && capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED);
+    }
+
+    private String buildFailureMessage(Throwable t, Response response) {
+        StringBuilder message = new StringBuilder();
+        if (t != null) {
+            message.append(t.getClass().getSimpleName()).append(": ").append(t.getMessage());
+        } else {
+            message.append("unknown error");
+        }
+        if (response != null) {
+            message.append(", httpCode=").append(response.code());
+        }
+        return message.toString();
+    }
+
+    private String buildUserFacingFailureMessage(Throwable t) {
+        if (t instanceof UnknownHostException || !hasUsableNetwork()) {
+            return "Cannot resolve Supabase host. Check internet, DNS, VPN, or emulator network.";
+        }
+        return t != null && t.getMessage() != null ? t.getMessage() : "Realtime connection failed";
     }
 
     private void sendJoin(String topic, String schema, String table, String filter) {

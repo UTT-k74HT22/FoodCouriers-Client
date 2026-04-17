@@ -6,9 +6,12 @@ import android.view.View;
 
 import androidx.fragment.app.Fragment;
 
+import com.utt.foodcouriers_client.FoodCouriersClientApp;
 import com.utt.foodcouriers_client.R;
 import com.utt.foodcouriers_client.data.common.RepositoryCallback;
+import com.utt.foodcouriers_client.data.model.NotificationItem;
 import com.utt.foodcouriers_client.data.repository.CartRepository;
+import com.utt.foodcouriers_client.data.repository.NotificationRepository;
 import com.utt.foodcouriers_client.databinding.ActivityMainBinding;
 import com.utt.foodcouriers_client.ui.auth.LoginActivity;
 import com.utt.foodcouriers_client.ui.cart.CartFragment;
@@ -21,12 +24,15 @@ import com.utt.foodcouriers_client.ui.profile.ProfileFragment;
 import com.utt.foodcouriers_client.utils.CartDTO.CartState;
 import com.utt.foodcouriers_client.utils.SessionManager;
 
+import java.util.List;
+
 public class MainActivity extends BaseActivity {
 
     public static final String EXTRA_OPEN_CART = "open_cart";
     private ActivityMainBinding binding;
     private SessionManager sessionManager;
     private int currentPrimaryNavId = R.id.navigation_home;
+    private final Runnable notificationRefreshListener = () -> runOnUiThread(this::loadNotificationBadge);
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -83,9 +89,22 @@ public class MainActivity extends BaseActivity {
     }
 
     @Override
+    protected void onStart() {
+        super.onStart();
+        FoodCouriersClientApp.addNotificationRefreshListener(notificationRefreshListener);
+    }
+
+    @Override
+    protected void onStop() {
+        FoodCouriersClientApp.removeNotificationRefreshListener(notificationRefreshListener);
+        super.onStop();
+    }
+
+    @Override
     protected void onResume() {
         super.onResume();
         loadCartBadge();
+        loadNotificationBadge();
         syncToolbarTitle();
     }
 
@@ -120,6 +139,52 @@ public class MainActivity extends BaseActivity {
             binding.tvCartBadge.setText(count > 99 ? "99+" : String.valueOf(count));
         } else {
             binding.tvCartBadge.setVisibility(View.GONE);
+        }
+    }
+
+    private void loadNotificationBadge() {
+        if (!sessionManager.isLoggedIn()) {
+            updateNotificationBadge(0);
+            return;
+        }
+
+        String userId = sessionManager.getUserId();
+        if (userId == null || userId.isBlank()) {
+            updateNotificationBadge(0);
+            return;
+        }
+
+        NotificationRepository.getInstance().getNotifications(this, userId, new RepositoryCallback<List<NotificationItem>>() {
+            @Override
+            public void onSuccess(List<NotificationItem> result) {
+                int unreadCount = 0;
+                if (result != null) {
+                    for (NotificationItem item : result) {
+                        if (item != null && item.isUnread()) {
+                            unreadCount++;
+                        }
+                    }
+                }
+                updateNotificationBadge(unreadCount);
+            }
+
+            @Override
+            public void onError(String error) {
+                updateNotificationBadge(0);
+            }
+        });
+    }
+
+    public void refreshNotificationBadge() {
+        loadNotificationBadge();
+    }
+
+    public void updateNotificationBadge(int count) {
+        if (count > 0) {
+            binding.tvNotificationBadge.setVisibility(View.VISIBLE);
+            binding.tvNotificationBadge.setText(count > 99 ? "99+" : String.valueOf(count));
+        } else {
+            binding.tvNotificationBadge.setVisibility(View.GONE);
         }
     }
 

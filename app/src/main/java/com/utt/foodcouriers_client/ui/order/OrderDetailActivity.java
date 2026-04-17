@@ -61,7 +61,7 @@ public class OrderDetailActivity extends BaseActivity {
         currentOrderId = getIntent().getStringExtra(EXTRA_ORDER_ID);
         shouldDelayedRefresh = getIntent().getBooleanExtra(EXTRA_FROM_PAYMENT_CALLBACK, false);
         if (currentOrderId == null || currentOrderId.isBlank()) {
-            showErrorBanner("Khong co thong tin don hang.");
+            showErrorBanner("Không có thông tin đơn hàng.");
             finish();
             return;
         }

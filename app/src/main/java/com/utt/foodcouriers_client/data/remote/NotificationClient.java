@@ -1,5 +1,7 @@
 package com.utt.foodcouriers_client.data.remote;
 
+import android.util.Log;
+
 import com.utt.foodcouriers_client.data.model.NotificationItem;
 import java.io.IOException;
 import java.util.HashMap;
@@ -67,8 +69,13 @@ public class NotificationClient extends BaseSupabaseClient {
                         return;
                     }
 
-                    NotificationItem[] items = gson.fromJson(json, NotificationItem[].class);
-                    postSuccess(callback, items != null ? items : new NotificationItem[0]);
+                    try {
+                        NotificationItem[] items = gson.fromJson(json, NotificationItem[].class);
+                        postSuccess(callback, items != null ? items : new NotificationItem[0]);
+                    } catch (Exception exception) {
+                        Log.e(TAG, "Failed to parse notifications response", exception);
+                        postError(callback, "Không thể đọc dữ liệu thông báo");
+                    }
                 }
             }
         });
@@ -145,6 +152,42 @@ public class NotificationClient extends BaseSupabaseClient {
                     } else {
                         String json = responseBody != null ? responseBody.string() : "";
                         postError(callback, parseRestError("Failed to mark all as read", response.code(), json));
+                    }
+                }
+            }
+        });
+    }
+
+    public void deleteAll(String userId, ApiCallback<Void> callback) {
+        syncSession();
+
+        if (!isAuthenticated()) {
+            postError(callback, "Not authenticated");
+            return;
+        }
+
+        Request request = new Request.Builder()
+                .url(SupabaseConfig.REST_URL + "/notifications?user_id=eq." + userId)
+                .delete()
+                .addHeader(SupabaseConfig.HEADER_AUTH, SupabaseConfig.SUPABASE_ANON_KEY)
+                .addHeader(SupabaseConfig.HEADER_AUTHORIZATION, "Bearer " + accessToken)
+                .addHeader(SupabaseConfig.HEADER_PREFER, "return=minimal")
+                .build();
+
+        client.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(Call call, IOException exception) {
+                postError(callback, "Network error: " + exception.getMessage());
+            }
+
+            @Override
+            public void onResponse(Call call, Response response) throws IOException {
+                try (ResponseBody responseBody = response.body()) {
+                    if (response.isSuccessful()) {
+                        postSuccess(callback, null);
+                    } else {
+                        String json = responseBody != null ? responseBody.string() : "";
+                        postError(callback, parseRestError("Failed to delete notifications", response.code(), json));
                     }
                 }
             }

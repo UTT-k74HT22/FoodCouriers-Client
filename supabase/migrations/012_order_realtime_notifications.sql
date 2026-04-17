@@ -29,14 +29,15 @@ CREATE OR REPLACE FUNCTION public.order_status_label(p_status text)
 RETURNS text AS $$
 BEGIN
     RETURN CASE p_status
-        WHEN 'pending' THEN 'dang cho xac nhan'
-        WHEN 'confirmed' THEN 'da duoc xac nhan'
-        WHEN 'preparing' THEN 'dang duoc chuan bi'
-        WHEN 'ready_for_pickup' THEN 'da san sang lay hang'
-        WHEN 'delivering' THEN 'dang duoc giao'
-        WHEN 'delivered' THEN 'da giao thanh cong'
-        WHEN 'cancelled' THEN 'da bi huy'
-        ELSE COALESCE(p_status, 'da cap nhat')
+        WHEN 'awaiting_payment' THEN 'đang chờ thanh toán'
+        WHEN 'pending' THEN 'đang chờ xác nhận'
+        WHEN 'confirmed' THEN 'đã được xác nhận'
+        WHEN 'preparing' THEN 'đang được chuẩn bị'
+        WHEN 'ready_for_pickup' THEN 'đã sẵn sàng lấy hàng'
+        WHEN 'delivering' THEN 'đang được giao'
+        WHEN 'delivered' THEN 'đã gaio thành công'
+        WHEN 'cancelled' THEN 'đã bị hủy'
+        ELSE COALESCE(p_status, 'đã cập nhật')
     END;
 END;
 $$ LANGUAGE plpgsql IMMUTABLE SET search_path = public;
@@ -45,16 +46,16 @@ CREATE OR REPLACE FUNCTION public.delivery_status_label(p_status text)
 RETURNS text AS $$
 BEGIN
     RETURN CASE p_status
-        WHEN 'unassigned' THEN 'chua co tai xe'
-        WHEN 'searching' THEN 'dang tim tai xe'
-        WHEN 'assigned' THEN 'da co tai xe nhan don'
-        WHEN 'arriving_pickup' THEN 'tai xe dang den nha hang'
-        WHEN 'waiting_pickup' THEN 'tai xe dang cho lay hang'
-        WHEN 'picked_up' THEN 'tai xe da lay hang'
-        WHEN 'delivering' THEN 'tai xe dang giao hang'
-        WHEN 'delivered' THEN 'da giao hang'
-        WHEN 'failed' THEN 'giao hang khong thanh cong'
-        ELSE COALESCE(p_status, 'da cap nhat')
+        WHEN 'unassigned' THEN 'chưa có tài xế'
+        WHEN 'searching' THEN 'đang tìm tài xế'
+        WHEN 'assigned' THEN 'đã có tài xế nhận đơn'
+        WHEN 'arriving_pickup' THEN 'tài xế đang đến nhà hàng'
+        WHEN 'waiting_pickup' THEN 'tài xế đang chờ lấy hàng'
+        WHEN 'picked_up' THEN 'tài xế đã lấy hàng'
+        WHEN 'delivering' THEN 'tài xế đang giao hàng'
+        WHEN 'delivered' THEN 'đã giao hàng thành công'
+        WHEN 'failed' THEN 'giao hàng thất bại'
+        ELSE COALESCE(p_status, 'đã cập nhật')
     END;
 END;
 $$ LANGUAGE plpgsql IMMUTABLE SET search_path = public;
@@ -78,12 +79,12 @@ BEGIN
         RETURN NEW;
     END IF;
 
-    v_title := 'Cap nhat don hang ' || COALESCE(NEW.order_code, '');
+    v_title := 'Cập nhật đơn hàng ' || COALESCE(NEW.order_code, '');
 
     IF COALESCE(OLD.status, '') <> COALESCE(NEW.status, '') THEN
-        v_body := 'Don hang cua ban ' || public.order_status_label(NEW.status) || '.';
+        v_body := 'Đơn hàng của bạn ' || public.order_status_label(NEW.status) || '.';
     ELSE
-        v_body := 'Trang thai giao hang ' || public.delivery_status_label(NEW.delivery_status) || '.';
+        v_body := 'Trạng thái giao hàng ' || public.delivery_status_label(NEW.delivery_status) || '.';
     END IF;
 
     INSERT INTO public.notifications (user_id, title, body, type, data)

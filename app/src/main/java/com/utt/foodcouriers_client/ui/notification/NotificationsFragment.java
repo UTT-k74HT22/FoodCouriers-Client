@@ -9,18 +9,23 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.gson.JsonObject;
 import com.utt.foodcouriers_client.R;
 import com.utt.foodcouriers_client.data.model.NotificationItem;
 import com.utt.foodcouriers_client.data.remote.SupabaseRealtimeClient;
 import com.utt.foodcouriers_client.databinding.FragmentNotificationsBinding;
 import com.utt.foodcouriers_client.ui.common.BaseFragment;
+import com.utt.foodcouriers_client.ui.main.MainActivity;
 import com.utt.foodcouriers_client.ui.notification.adapter.NotificationAdapter;
 import com.utt.foodcouriers_client.utils.SessionManager;
 import com.utt.foodcouriers_client.utils.ToastBanner;
 import com.utt.foodcouriers_client.utils.websocket.RealtimeChannel;
 import com.utt.foodcouriers_client.utils.websocket.RealtimeListener;
 import com.utt.foodcouriers_client.viewmodel.NotificationViewModel;
+
+import java.util.Collections;
+import java.util.List;
 
 public class NotificationsFragment extends BaseFragment {
 
@@ -49,6 +54,7 @@ public class NotificationsFragment extends BaseFragment {
         
         setupRecyclerView();
         setupSwipeRefresh();
+        setupActions();
         observeViewModel();
         loadNotifications();
     }
@@ -150,17 +156,52 @@ public class NotificationsFragment extends BaseFragment {
         });
     }
 
+    private void setupActions() {
+        binding.btnMarkAllRead.setOnClickListener(v -> {
+            viewModel.markAllAsRead(requireContext());
+        });
+
+        binding.btnDeleteAll.setOnClickListener(v -> new MaterialAlertDialogBuilder(requireContext())
+                .setTitle(getString(R.string.notifications_delete_all))
+                .setMessage(getString(R.string.notifications_delete_confirm_message))
+                .setNegativeButton(getString(R.string.address_cancel), null)
+                .setPositiveButton(getString(R.string.address_delete), (dialog, which) -> {
+                    viewModel.deleteAll(requireContext());
+                })
+                .show());
+    }
+
     private void observeViewModel() {
         viewModel.getNotifications().observe(getViewLifecycleOwner(), notifications -> {
             binding.swipeRefresh.setRefreshing(false);
-            
+
+            updateActionState(notifications);
             if (notifications == null || notifications.isEmpty()) {
+                adapter.submitList(Collections.emptyList());
                 binding.emptyState.getRoot().setVisibility(View.VISIBLE);
                 binding.rvNotifications.setVisibility(View.GONE);
             } else {
                 binding.emptyState.getRoot().setVisibility(View.GONE);
                 binding.rvNotifications.setVisibility(View.VISIBLE);
                 adapter.submitList(notifications);
+            }
+        });
+
+        viewModel.getUnreadCount().observe(getViewLifecycleOwner(), unreadCount -> {
+            int count = unreadCount != null ? unreadCount : 0;
+            if (getActivity() instanceof MainActivity) {
+                ((MainActivity) getActivity()).updateNotificationBadge(count);
+            }
+        });
+
+        viewModel.getSuccessAction().observe(getViewLifecycleOwner(), action -> {
+            if (action == null) {
+                return;
+            }
+            if (action == NotificationViewModel.ACTION_MARK_ALL_READ) {
+                ToastBanner.showSuccess(getString(R.string.notifications_mark_all_read_success));
+            } else if (action == NotificationViewModel.ACTION_DELETE_ALL) {
+                ToastBanner.showSuccess(getString(R.string.notifications_delete_success));
             }
         });
 
@@ -175,12 +216,30 @@ public class NotificationsFragment extends BaseFragment {
         });
     }
 
+    private void updateActionState(List<NotificationItem> notifications) {
+        int totalCount = notifications != null ? notifications.size() : 0;
+        int unreadCount = 0;
+        if (notifications != null) {
+            for (NotificationItem notification : notifications) {
+                if (notification != null && notification.isUnread()) {
+                    unreadCount++;
+                }
+            }
+        }
+
+        binding.tvNotificationCount.setText(totalCount > 0
+                ? getString(R.string.notifications_count_summary, totalCount, unreadCount)
+                : getString(R.string.notifications_empty_count));
+        binding.btnMarkAllRead.setEnabled(unreadCount > 0);
+        binding.btnDeleteAll.setEnabled(totalCount > 0);
+    }
+
     private void loadNotifications() {
         String userId = sessionManager.getUserId();
         if (userId != null && !userId.isBlank()) {
             viewModel.loadNotifications(requireContext());
         } else {
-            ToastBanner.showWarning("Vui lòng đăng nhập để xem thông báo");
+            ToastBanner.showWarning(getString(R.string.notifications_login_required));
         }
     }
 

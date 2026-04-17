@@ -64,4 +64,18 @@ public class NotificationRepository {
             }
         });
     }
+
+    public void deleteAll(Context context, String userId, RepositoryCallback<Void> callback) {
+        client.deleteAll(userId, new NotificationClient.ApiCallback<Void>() {
+            @Override
+            public void onSuccess(Void result) {
+                callback.onSuccess(null);
+            }
+
+            @Override
+            public void onError(String error) {
+                callback.onError(error);
+            }
+        });
+    }
 }

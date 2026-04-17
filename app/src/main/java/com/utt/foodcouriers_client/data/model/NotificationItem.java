@@ -1,5 +1,7 @@
 package com.utt.foodcouriers_client.data.model;
 
+import com.google.gson.JsonElement;
+import com.google.gson.JsonParser;
 import com.google.gson.annotations.SerializedName;
 
 import java.io.Serializable;
@@ -15,7 +17,7 @@ public class NotificationItem implements Serializable {
     private String title;
     private String body;
     private String type;
-    private String data;
+    private JsonElement data;
     @SerializedName("is_read")
     private boolean isRead;
     @SerializedName("created_at")
@@ -63,12 +65,27 @@ public class NotificationItem implements Serializable {
         this.type = type;
     }
 
-    public String getData() {
+    public JsonElement getDataElement() {
         return data;
     }
 
-    public void setData(String data) {
+    public void setDataElement(JsonElement data) {
         this.data = data;
+    }
+
+    public String getData() {
+        if (data == null || data.isJsonNull()) {
+            return null;
+        }
+        return data.toString();
+    }
+
+    public void setData(String data) {
+        if (data == null || data.trim().isEmpty()) {
+            this.data = null;
+            return;
+        }
+        this.data = JsonParser.parseString(data);
     }
 
     public boolean isUnread() {
