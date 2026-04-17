@@ -195,7 +195,7 @@ public class CheckoutActivity extends BaseActivity {
                 showErrorBanner(error);
             }
         });
-
+        // Chuyển sang OrderSuccessActivity khi đơn hàng được tạo thành công
         viewModel.getIsOrderSuccess().observe(this, success -> {
             if (Boolean.TRUE.equals(success)) {
                 List<OrderSummary> orders = viewModel.getCreatedOrders().getValue();

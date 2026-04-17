@@ -13,9 +13,9 @@
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
-        android:icon="@drawable/deliveryfood"
+        android:icon="@mipmap/ic_appclient"
         android:label="@string/app_name"
-        android:roundIcon="@drawable/deliveryfood"
+        android:roundIcon="@mipmap/ic_appclient_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.FoodCouriersClient"
         android:usesCleartextTraffic="true">

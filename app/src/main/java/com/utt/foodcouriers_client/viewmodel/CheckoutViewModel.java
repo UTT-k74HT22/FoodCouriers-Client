@@ -144,24 +144,6 @@ public class CheckoutViewModel extends BaseViewModel {
             }
         });
     }
-
-    private String calculateTotalDistance(List<CartRestaurantGroup> groups, double deliveryLat, double deliveryLon) {
-        if (groups == null || groups.isEmpty() || deliveryLat == 0d || deliveryLon == 0d) {
-            return "";
-        }
-
-        double totalDistance = 0d;
-        for (CartRestaurantGroup group : groups) {
-            Double restLat = group.getRestaurantLatitude();
-            Double restLon = group.getRestaurantLongitude();
-            if (restLat != null && restLon != null) {
-                totalDistance += DistanceUtils.calculateDistanceKm(restLat, restLon, deliveryLat, deliveryLon);
-            }
-        }
-
-        return totalDistance > 0d ? DistanceUtils.formatDistance(totalDistance) : "";
-    }
-
     private void updateSummary(int itemCount, int subtotal, int deliveryFee, int serviceFee, int discount) {
         checkoutSummary.setValue(new CartSummary(
                 itemCount,
@@ -178,18 +160,13 @@ public class CheckoutViewModel extends BaseViewModel {
      * Kiểm tra và áp dụng mã giảm giá
      */
     public void validatePromotion(Context context, String code) {
+        CartSummary current = checkoutSummary.getValue();
+        if (current == null) return;
+
         if (code == null || code.isBlank()) {
             appliedPromotion.setValue(null);
             appliedPromoCode = null;
-            CartSummary current = checkoutSummary.getValue();
-            if (current != null) {
-                updateSummary(current.getItemCount(), current.getSubtotal(), current.getDeliveryFee(), current.getServiceFee(), 0);
-            }
-            return;
-        }
-
-        CartSummary current = checkoutSummary.getValue();
-        if (current == null) {
+            updateSummary(current.getItemCount(), current.getSubtotal(), current.getDeliveryFee(), current.getServiceFee(), 0);
             return;
         }
 
@@ -198,15 +175,10 @@ public class CheckoutViewModel extends BaseViewModel {
             @Override
             public void onSuccess(PromotionValidationResult result) {
                 setLoading(false);
-                if (result.isValid()) {
-                    appliedPromotion.setValue(result);
-                    appliedPromoCode = code;
-                    updateSummary(current.getItemCount(), current.getSubtotal(), current.getDeliveryFee(), current.getServiceFee(), result.getDiscount());
-                } else {
-                    appliedPromotion.setValue(result);
-                    appliedPromoCode = null;
-                    updateSummary(current.getItemCount(), current.getSubtotal(), current.getDeliveryFee(), current.getServiceFee(), 0);
-                }
+                appliedPromotion.setValue(result);
+                appliedPromoCode = result.isValid() ? code : null;
+                int discount = result.isValid() ? result.getDiscount() : 0;
+                updateSummary(current.getItemCount(), current.getSubtotal(), current.getDeliveryFee(), current.getServiceFee(), discount);
             }
 
             @Override
