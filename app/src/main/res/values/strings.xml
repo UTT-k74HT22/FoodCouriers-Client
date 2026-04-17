@@ -185,7 +185,7 @@
     <string name="cart_review_title">Xem lại đơn hàng</string>
     <string name="cart_order_summary_title">Tóm tắt đơn hàng</string>
     <string name="cart_subtotal">Tạm tính</string>
-    <string name="cart_delivery_fee">Phí giao hàng</string>
+    <string name="cart_delivery_fee">Phí giao hàng /1km </string>
     <string name="cart_service_fee">Phí dịch vụ</string>
     <string name="cart_savings">Giảm giá</string>
     <string name="cart_checkout_cta">Tiếp tục</string>

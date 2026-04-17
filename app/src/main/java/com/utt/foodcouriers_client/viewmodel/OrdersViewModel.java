@@ -10,7 +10,7 @@ import com.utt.foodcouriers_client.data.model.OrderSummary;
 import com.utt.foodcouriers_client.data.repository.OrderRepository;
 
 import java.util.List;
-
+/** Điều phối các trạng thái đơn hàng */
 public class OrdersViewModel extends BaseViewModel {
 
     private final OrderRepository repository = OrderRepository.getInstance();
