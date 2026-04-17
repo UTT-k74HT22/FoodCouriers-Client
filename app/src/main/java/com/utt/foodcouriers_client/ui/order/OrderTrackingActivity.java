@@ -19,6 +19,14 @@ import com.utt.foodcouriers_client.utils.websocket.RealtimeChannel;
 import com.utt.foodcouriers_client.utils.websocket.RealtimeListener;
 import com.utt.foodcouriers_client.viewmodel.OrdersViewModel;
 
+/**
+ * Màn hình theo dõi tiến trình giao đơn theo thời gian thực.
+ *
+ * <p>Activity nhận {@link #EXTRA_ORDER_ID}, load chi tiết đơn qua {@link OrdersViewModel},
+ * rồi subscribe Supabase Realtime vào bảng {@code public.orders} với filter
+ * {@code id=eq.<orderId>}. Khi trạng thái đơn hoặc trạng thái giao hàng thay đổi, màn hình
+ * reload order detail và cập nhật các bước tracking.</p>
+ */
 public class OrderTrackingActivity extends BaseActivity {
 
     public static final String EXTRA_ORDER_ID = "extra_order_id";
@@ -65,6 +73,9 @@ public class OrderTrackingActivity extends BaseActivity {
         }
     }
 
+    /**
+     * Bind view và setup nội dung tĩnh cho các bước tracking.
+     */
     private void bindViews() {
         tvOrderStatus = findViewById(R.id.tv_order_status);
         stepConfirmed = findViewById(R.id.step_confirmed);
@@ -77,6 +88,9 @@ public class OrderTrackingActivity extends BaseActivity {
         setupStep(stepDelivered, "Đã giao", "Đơn hàng giao thành công");
     }
 
+    /**
+     * Observe order detail/lỗi từ ViewModel.
+     */
     private void bindObservers() {
         viewModel.getSelectedOrder().observe(this, this::renderOrder);
         viewModel.getErrorMessage().observe(this, error -> {
@@ -86,6 +100,11 @@ public class OrderTrackingActivity extends BaseActivity {
         });
     }
 
+    /**
+     * Render trạng thái hiện tại và đánh dấu các bước đã đạt.
+     *
+     * @param order order detail mới nhất từ REST
+     */
     private void renderOrder(OrderSummary order) {
         OrderStatus status = OrderStatus.fromValue(order.getStatus());
         String statusLabel = status.getLabel();
@@ -122,11 +141,12 @@ public class OrderTrackingActivity extends BaseActivity {
     }
 
     /**
-     * Subscribes to real-time updates for the current order.
-     * When the order status or delivery status changes in the database,
-     * this method receives the update via Supabase Realtime and refreshes the UI.
+     * Subscribe realtime cho đúng order đang tracking.
      *
-     * @param orderId The unique identifier of the order to track.
+     * <p>Payload realtime chỉ dùng để biết có thay đổi. UI gọi {@link #refreshOrder()}
+     * để load lại order đầy đủ, sau đó {@link #renderOrder(OrderSummary)} cập nhật timeline.</p>
+     *
+     * @param orderId id đơn hàng cần theo dõi
      */
     private void subscribeToOrderUpdates(String orderId) {
         Log.d(TAG_REAL_TIME, "Subscribing to order updates: " + orderId);
@@ -177,8 +197,7 @@ public class OrderTrackingActivity extends BaseActivity {
     }
 
     /**
-     * Refreshes the order detail by reloading from the database.
-     * This is called when a real-time update is received from Supabase.
+     * Load lại order detail trên main thread sau khi realtime báo thay đổi.
      */
     private void refreshOrder() {
         runOnUiThread(() -> {

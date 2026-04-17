@@ -182,7 +182,11 @@ public class SupabaseRealtimeClient {
 
     /**
      * Kết nối đến Supabase Realtime server.
-     * Nếu đã connected, không làm gì.
+     *
+     * <p>Nếu đã connected thì bỏ qua. Nếu chưa có mạng hợp lệ, client không mở socket ngay
+     * mà báo lỗi cho các channel hiện có và schedule reconnect. Khi socket mở thành công,
+     * client bắt đầu heartbeat, join lại tất cả channel đã đăng ký và báo {@code onConnected}
+     * cho listener.</p>
      */
     public void connect() {
         if (isConnected) {
@@ -274,12 +278,17 @@ public class SupabaseRealtimeClient {
 
     /**
      * Subscribe vào một database table để lắng nghe thay đổi.
-     * 
-     * @param table Tên table (vd: "orders", "products")
-     * @param schema Schema của table (vd: "public")
-     * @param filter Filter query (vd: "restaurant_id=eq.123"). Để null nếu muốn lắng nghe tất cả.
-     * @param listener Listener để nhận events
-     * @return RealtimeChannel - có thể dùng để unsubscribe
+     *
+     * <p>Nhiều nơi trong app có thể subscribe cùng một channel id. Client gom các listener vào
+     * một {@link RealtimeChannel} thật để chỉ join Supabase một lần, nhưng trả về một
+     * {@link RealtimeChannel} riêng cho caller. Khi caller unsubscribe, chỉ listener của caller
+     * bị gỡ; socket chỉ gửi {@code phx_leave} khi không còn listener nào.</p>
+     *
+     * @param table tên table, ví dụ {@code orders} hoặc {@code notifications}
+     * @param schema schema của table, thường là {@code public}
+     * @param filter filter Supabase Realtime, ví dụ {@code user_id=eq.123}; null để nghe tất cả
+     * @param listener listener nhận INSERT/UPDATE/DELETE và trạng thái kết nối
+     * @return channel handle để caller truyền lại vào {@link #unsubscribe(RealtimeChannel)}
      */
     public RealtimeChannel subscribe(String table, String schema, String filter, RealtimeListener listener) {
         String channelId = schema + ":" + table + (filter != null ? ":" + filter : "");
@@ -377,6 +386,9 @@ public class SupabaseRealtimeClient {
         return shouldReconnect && !isConnected;
     }
 
+    /**
+     * Gửi heartbeat Phoenix định kỳ để giữ WebSocket sống.
+     */
     private void startHeartbeat() {
         stopHeartbeat();
         
@@ -401,6 +413,9 @@ public class SupabaseRealtimeClient {
         }
     }
 
+    /**
+     * Lên lịch reconnect với backoff tăng dần khi socket mất kết nối.
+     */
     private void scheduleReconnect() {
         int attempts = reconnectAttempts.incrementAndGet();
         if (attempts > MAX_RECONNECT_ATTEMPTS) {
@@ -479,6 +494,9 @@ public class SupabaseRealtimeClient {
                 && t.getMessage().toLowerCase().contains("software caused connection abort");
     }
 
+    /**
+     * Gửi message {@code phx_join} để đăng ký postgres_changes cho một table/filter.
+     */
     private void sendJoin(String topic, String schema, String table, String filter) {
         int ref = refCounter.incrementAndGet();
         
@@ -529,6 +547,9 @@ public class SupabaseRealtimeClient {
         }
     }
 
+    /**
+     * Gửi access token mới tới các topic đang join sau khi token được refresh.
+     */
     private void sendAccessToken() {
         for (String topic : new java.util.HashSet<>(channelTopics.values())) {
             int ref = refCounter.incrementAndGet();
@@ -547,6 +568,9 @@ public class SupabaseRealtimeClient {
         }
     }
 
+    /**
+     * Join lại toàn bộ channel sau khi reconnect.
+     */
     private void resubscribeAllChannels() {
         for (Map.Entry<String, RealtimeChannel> entry : channels.entrySet()) {
             String channelId = entry.getKey();
@@ -576,6 +600,11 @@ public class SupabaseRealtimeClient {
         return "realtime:" + schema + ":" + table + ":" + encodedFilter;
     }
 
+    /**
+     * Parse message thô từ WebSocket và chuyển tới handler theo event Phoenix/Supabase.
+     *
+     * @param rawMessage chuỗi JSON nhận từ Supabase Realtime
+     */
     private void handleMessage(String rawMessage) {
         try {
             JsonObject obj = JsonParser.parseString(rawMessage).getAsJsonObject();
@@ -621,6 +650,9 @@ public class SupabaseRealtimeClient {
         }
     }
 
+    /**
+     * Xử lý payload {@code postgres_changes} mới của Supabase Realtime.
+     */
     private void handlePostgresChanges(JsonObject payload, String topic) {
         JsonObject data = payload.has("data") ? payload.getAsJsonObject("data") : null;
         if (data == null) return;
@@ -643,6 +675,9 @@ public class SupabaseRealtimeClient {
         dispatchDatabaseChange(schema, table, type, newRecord, oldRecord);
     }
 
+    /**
+     * Xử lý payload realtime dạng cũ có mảng {@code changes}.
+     */
     private void handleLegacyPostgresChanges(JsonObject data, String topic) {
         String commitType = getStringOrDefault(data, "commit_type", "").toLowerCase();
         JsonArray changes = data.getAsJsonArray("changes");
@@ -664,6 +699,9 @@ public class SupabaseRealtimeClient {
         }
     }
 
+    /**
+     * Dispatch INSERT/UPDATE/DELETE tới những channel trùng schema/table/filter.
+     */
     private void dispatchDatabaseChange(
             String schema,
             String table,
@@ -703,6 +741,9 @@ public class SupabaseRealtimeClient {
         }
     }
 
+    /**
+     * Kiểm tra event realtime có thuộc channel đã subscribe hay không.
+     */
     private boolean isMatchingChannel(String channelId, String schema, String table, JsonObject newRecord, JsonObject oldRecord) {
         String[] parts = channelId.split(":", 3);
         if (parts.length < 2) {
@@ -722,6 +763,9 @@ public class SupabaseRealtimeClient {
         return matchesFilter(record, parts[2]);
     }
 
+    /**
+     * Áp dụng filter đơn giản dạng {@code column=eq.value} ở phía client trước khi dispatch.
+     */
     private boolean matchesFilter(JsonObject record, String filter) {
         if (record == null || filter == null || filter.isEmpty()) {
             return true;

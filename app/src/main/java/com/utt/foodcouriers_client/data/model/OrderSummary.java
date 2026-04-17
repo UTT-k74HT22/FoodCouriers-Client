@@ -3,6 +3,14 @@ package com.utt.foodcouriers_client.data.model;
 import java.io.Serializable;
 import java.util.List;
 
+/**
+ * Model tổng hợp dùng cho cả danh sách đơn, chi tiết đơn và tracking.
+ *
+ * <p>Repository parse model này từ Supabase REST response. Với màn detail, object có thêm
+ * {@code items}; với màn list, danh sách item có thể rỗng tùy query select. Các trạng thái
+ * vẫn giữ dạng raw string để UI tự chuyển sang {@link OrderStatus} hoặc
+ * {@link DeliveryStatus} khi cần label.</p>
+ */
 public class OrderSummary implements Serializable {
     private final String id;
     private final String orderCode;
@@ -21,6 +29,9 @@ public class OrderSummary implements Serializable {
     private final String paymentMethod;
     private final String paymentStatus;
 
+    /**
+     * Tạo order summary đã parse từ REST response.
+     */
     public OrderSummary(
             String id,
             String orderCode,

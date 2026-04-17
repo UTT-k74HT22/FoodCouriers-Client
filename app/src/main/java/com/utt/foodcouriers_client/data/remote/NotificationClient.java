@@ -14,6 +14,13 @@ import okhttp3.RequestBody;
 import okhttp3.Response;
 import okhttp3.ResponseBody;
 
+/**
+ * Client REST thao tác trực tiếp với bảng {@code public.notifications} trên Supabase.
+ *
+ * <p>Mỗi request gọi {@link #syncSession()} trước để lấy access token mới nhất từ
+ * {@link AuthClient}. Supabase RLS dựa vào bearer token này để chỉ cho user đọc/sửa/xóa
+ * thông báo của chính họ.</p>
+ */
 public class NotificationClient extends BaseSupabaseClient {
 
     private static final String TAG = "NotificationClient";
@@ -23,6 +30,9 @@ public class NotificationClient extends BaseSupabaseClient {
         super();
     }
 
+    /**
+     * @return singleton REST client cho module notification
+     */
     public static synchronized NotificationClient getInstance() {
         if (instance == null) {
             instance = new NotificationClient();
@@ -30,12 +40,21 @@ public class NotificationClient extends BaseSupabaseClient {
         return instance;
     }
 
+    /**
+     * Đồng bộ token hiện tại từ AuthClient trước khi gọi Supabase REST.
+     */
     private void syncSession() {
         AuthClient authClient = AuthClient.getInstance();
         this.accessToken = authClient.getAccessToken();
         this.refreshToken = authClient.getRefreshToken();
     }
 
+    /**
+     * Gọi Supabase REST để lấy danh sách thông báo của user.
+     *
+     * @param userId id user trong bảng {@code public.users}
+     * @param callback trả mảng {@link NotificationItem}; lỗi parse/network được chuyển thành message
+     */
     public void getNotifications(String userId, ApiCallback<NotificationItem[]> callback) {
         syncSession();
         
@@ -81,6 +100,12 @@ public class NotificationClient extends BaseSupabaseClient {
         });
     }
 
+    /**
+     * PATCH một thông báo về trạng thái đã đọc.
+     *
+     * @param notificationId id thông báo cần cập nhật
+     * @param callback callback rỗng khi PATCH thành công
+     */
     public void markAsRead(String notificationId, ApiCallback<Void> callback) {
         syncSession();
         
@@ -119,6 +144,12 @@ public class NotificationClient extends BaseSupabaseClient {
         });
     }
 
+    /**
+     * PATCH tất cả thông báo chưa đọc của user về {@code is_read=true}.
+     *
+     * @param userId id user trong bảng {@code public.users}
+     * @param callback callback rỗng khi PATCH thành công
+     */
     public void markAllAsRead(String userId, ApiCallback<Void> callback) {
         syncSession();
         
@@ -158,6 +189,12 @@ public class NotificationClient extends BaseSupabaseClient {
         });
     }
 
+    /**
+     * DELETE toàn bộ thông báo của user.
+     *
+     * @param userId id user trong bảng {@code public.users}
+     * @param callback callback rỗng khi DELETE thành công
+     */
     public void deleteAll(String userId, ApiCallback<Void> callback) {
         syncSession();
 

@@ -9,6 +9,13 @@ import com.utt.foodcouriers_client.data.repository.NotificationRepository;
 import com.utt.foodcouriers_client.utils.SessionManager;
 import java.util.List;
 
+/**
+ * ViewModel quản lý state cho màn danh sách thông báo.
+ *
+ * <p>Lớp này là nơi nối UI với {@link NotificationRepository}: lấy user id từ
+ * {@link SessionManager}, gọi repository, rồi expose danh sách thông báo, số chưa đọc,
+ * trạng thái loading/lỗi và action thành công cho Fragment observe.</p>
+ */
 public class NotificationViewModel extends BaseViewModel {
 
     private final NotificationRepository repository = NotificationRepository.getInstance();
@@ -22,18 +29,32 @@ public class NotificationViewModel extends BaseViewModel {
     public NotificationViewModel() {
     }
 
+    /**
+     * @return danh sách thông báo hiện tại để adapter render
+     */
     public LiveData<List<NotificationItem>> getNotifications() {
         return notifications;
     }
 
+    /**
+     * @return số lượng thông báo chưa đọc để cập nhật badge
+     */
     public LiveData<Integer> getUnreadCount() {
         return unreadCount;
     }
 
+    /**
+     * @return mã action vừa thành công để Fragment hiện toast phù hợp
+     */
     public LiveData<Integer> getSuccessAction() {
         return successAction;
     }
 
+    /**
+     * Load thông báo của user đang đăng nhập.
+     *
+     * @param context context dùng để lấy {@link SessionManager} và gọi repository
+     */
     public void loadNotifications(Context context) {
         SessionManager sessionManager = SessionManager.getInstance(context);
         String userId = sessionManager.getUserId();
@@ -59,6 +80,12 @@ public class NotificationViewModel extends BaseViewModel {
         });
     }
 
+    /**
+     * Đánh dấu một thông báo là đã đọc, sau đó refresh lại danh sách.
+     *
+     * @param context context màn hình
+     * @param notificationId id thông báo user vừa bấm
+     */
     public void markAsRead(Context context, String notificationId) {
         repository.markAsRead(context, notificationId, new RepositoryCallback<Void>() {
             @Override
@@ -73,6 +100,11 @@ public class NotificationViewModel extends BaseViewModel {
         });
     }
 
+    /**
+     * Đánh dấu toàn bộ thông báo chưa đọc của user hiện tại là đã đọc.
+     *
+     * @param context context màn hình
+     */
     public void markAllAsRead(Context context) {
         SessionManager sessionManager = SessionManager.getInstance(context);
         String userId = sessionManager.getUserId();
@@ -97,6 +129,11 @@ public class NotificationViewModel extends BaseViewModel {
         });
     }
 
+    /**
+     * Xóa toàn bộ thông báo của user hiện tại và clear state local khi thành công.
+     *
+     * @param context context màn hình
+     */
     public void deleteAll(Context context) {
         SessionManager sessionManager = SessionManager.getInstance(context);
         String userId = sessionManager.getUserId();
@@ -122,6 +159,11 @@ public class NotificationViewModel extends BaseViewModel {
         });
     }
 
+    /**
+     * Reload danh sách thông báo. Được gọi bởi swipe refresh, realtime listener và sau khi mark read.
+     *
+     * @param context context màn hình
+     */
     public void refreshNotifications(Context context) {
         loadNotifications(context);
     }

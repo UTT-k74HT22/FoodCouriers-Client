@@ -26,6 +26,16 @@ import com.utt.foodcouriers_client.utils.SessionManager;
 
 import java.util.List;
 
+/**
+ * Activity chính chứa bottom navigation, toolbar và các badge toàn app.
+ *
+ * <p>Với notification, activity không render danh sách chi tiết mà chỉ:</p>
+ * <ol>
+ *     <li>Load unread count qua {@link NotificationRepository} để hiển thị badge.</li>
+ *     <li>Đăng ký listener với {@link FoodCouriersClientApp} để badge tự refresh khi realtime nhận event.</li>
+ *     <li>Mở {@link NotificationsFragment} khi user bấm icon thông báo.</li>
+ * </ol>
+ */
 public class MainActivity extends BaseActivity {
 
     public static final String EXTRA_OPEN_CART = "open_cart";
@@ -142,6 +152,9 @@ public class MainActivity extends BaseActivity {
         }
     }
 
+    /**
+     * Tải danh sách notification và đếm số item chưa đọc để cập nhật badge toolbar.
+     */
     private void loadNotificationBadge() {
         if (!sessionManager.isLoggedIn()) {
             updateNotificationBadge(0);
@@ -175,10 +188,18 @@ public class MainActivity extends BaseActivity {
         });
     }
 
+    /**
+     * API công khai để Fragment khác yêu cầu refresh badge notification.
+     */
     public void refreshNotificationBadge() {
         loadNotificationBadge();
     }
 
+    /**
+     * Render badge notification theo số chưa đọc.
+     *
+     * @param count số thông báo chưa đọc
+     */
     public void updateNotificationBadge(int count) {
         if (count > 0) {
             binding.tvNotificationBadge.setVisibility(View.VISIBLE);

@@ -22,6 +22,18 @@ import com.utt.foodcouriers_client.ui.main.MainActivity;
 import com.utt.foodcouriers_client.utils.SessionManager;
 import com.utt.foodcouriers_client.utils.ToastBanner;
 
+/**
+ * Màn hình đăng nhập chính của app.
+ *
+ * <p>Màn này có hai luồng đăng nhập:</p>
+ * <ol>
+ *     <li>Email/password: gọi {@link AuthRepository#login(String, String, RepositoryCallback)},
+ *     lưu token/profile vào {@link SessionManager}, rồi bật realtime.</li>
+ *     <li>Google OAuth: gọi {@link SocialAuthRepository#startAuth(android.content.Context, SocialAuthProvider, RepositoryCallback)}
+ *     để mở browser. Kết quả OAuth không quay lại đây mà đi qua
+ *     {@link SocialAuthCallbackActivity} bằng deep link.</li>
+ * </ol>
+ */
 public class LoginActivity extends BaseActivity {
     private static final String TAG = "LoginActivity";
     private static final long TOKEN_EXPIRY_MILLIS = 3600000L;
@@ -80,6 +92,12 @@ public class LoginActivity extends BaseActivity {
         loginAction();
     }
 
+    /**
+     * Gắn action cho các nút đăng nhập mạng xã hội.
+     *
+     * <p>Google chạy OAuth thật qua Supabase. Facebook hiện chỉ trả thông báo chưa hỗ trợ
+     * từ {@link com.utt.foodcouriers_client.data.auth.SocialAuthManager}.</p>
+     */
     private void socialAuthActions() {
         cardGoogleAuth.setOnClickListener(v -> startSocialAuth(SocialAuthProvider.GOOGLE));
         cardFacebookAuth.setOnClickListener(v -> startSocialAuth(SocialAuthProvider.FACEBOOK));
@@ -137,6 +155,9 @@ public class LoginActivity extends BaseActivity {
         return true;
     }
 
+    /**
+     * Thực hiện đăng nhập email/password, lưu session và khởi tạo realtime khi thành công.
+     */
     private void performLogin() {
         String email = getEmail().trim();
         String password = getPassword();
@@ -185,6 +206,11 @@ public class LoginActivity extends BaseActivity {
         });
     }
 
+    /**
+     * Bắt đầu luồng OAuth từ màn Login.
+     *
+     * @param provider provider user vừa chọn
+     */
     private void startSocialAuth(SocialAuthProvider provider) {
         Log.d(TAG, "Step 1: User requested social auth | provider=" + provider.getValue());
         socialAuthRepository.startAuth(this, provider, new RepositoryCallback<Boolean>() {

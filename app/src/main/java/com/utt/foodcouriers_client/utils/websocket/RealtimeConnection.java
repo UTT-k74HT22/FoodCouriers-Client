@@ -10,7 +10,12 @@ import okhttp3.WebSocket;
 import okhttp3.WebSocketListener;
 
 /**
- * Sử dụng để kết nối đến một channel.
+ * Wrapper WebSocket đơn giản có reconnect cố định.
+ *
+ * <p>Lớp này chỉ chịu trách nhiệm mở socket, gửi message và gọi callback thô.
+ * Luồng Supabase Realtime đầy đủ của app hiện nằm ở
+ * {@link com.utt.foodcouriers_client.data.remote.SupabaseRealtimeClient}; class này vẫn hữu ích
+ * nếu cần test hoặc tạo connection độc lập cho một channel.</p>
  */
 public class RealtimeConnection {
 
@@ -27,6 +32,14 @@ public class RealtimeConnection {
     private final Runnable onClose;
     private final java.util.function.Consumer<String> onError;
 
+    /**
+     * Tạo connection với các callback vòng đời WebSocket.
+     *
+     * @param onOpen chạy khi socket mở thành công
+     * @param onMessage nhận message text từ socket
+     * @param onClose chạy khi socket đóng
+     * @param onError nhận lỗi socket
+     */
     public RealtimeConnection(
             Runnable onOpen,
             java.util.function.Consumer<String> onMessage,
@@ -43,6 +56,11 @@ public class RealtimeConnection {
         this.onError = onError;
     }
 
+    /**
+     * Mở WebSocket đến URL realtime.
+     *
+     * @param url WebSocket URL cần kết nối
+     */
     public void connect(String url) {
         Request request = new Request.Builder().url(url).build();
 
@@ -75,6 +93,11 @@ public class RealtimeConnection {
         });
     }
 
+    /**
+     * Gửi message qua socket nếu đang connected.
+     *
+     * @param msg JSON/message cần gửi
+     */
     public void send(String msg) {
         if (socket != null && isConnected) {
             socket.send(msg);
@@ -89,6 +112,9 @@ public class RealtimeConnection {
         }, 5, TimeUnit.SECONDS);
     }
 
+    /**
+     * @return {@code true} nếu socket đang mở
+     */
     public boolean isConnected() {
         return isConnected;
     }

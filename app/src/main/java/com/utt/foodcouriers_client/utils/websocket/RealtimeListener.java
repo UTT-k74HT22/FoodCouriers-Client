@@ -6,7 +6,8 @@ import com.google.gson.JsonObject;
  * Interface định nghĩa các callback để lắng nghe sự kiện realtime từ Supabase.
  * 
  * Sử dụng khi subscribe vào một database table để nhận thông báo khi có
- * INSERT, UPDATE, hoặc DELETE xảy ra.
+ * INSERT, UPDATE, hoặc DELETE xảy ra. Các callback mặc định được dispatch qua
+ * {@link CallbackDispatcher}; production đang đưa callback về main thread để UI có thể refresh an toàn.
  * 
  * Ví dụ sử dụng:
  * <pre>

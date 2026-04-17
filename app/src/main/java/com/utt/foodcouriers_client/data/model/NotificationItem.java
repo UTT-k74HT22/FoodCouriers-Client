@@ -9,6 +9,13 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Locale;
 
+/**
+ * Model ánh xạ một row trong bảng {@code public.notifications}.
+ *
+ * <p>Backend tạo thông báo khi đơn hàng đổi trạng thái hoặc có sự kiện hệ thống/khuyến mãi.
+ * Client dùng model này cho cả REST response và render UI. Field {@code data} được giữ dạng
+ * {@link JsonElement} để chứa payload linh hoạt như order id, promotion id hoặc metadata khác.</p>
+ */
 public class NotificationItem implements Serializable {
 
     private String id;
@@ -73,6 +80,9 @@ public class NotificationItem implements Serializable {
         this.data = data;
     }
 
+    /**
+     * @return payload phụ dạng JSON string, hoặc {@code null} nếu backend không gửi data
+     */
     public String getData() {
         if (data == null || data.isJsonNull()) {
             return null;
@@ -80,6 +90,11 @@ public class NotificationItem implements Serializable {
         return data.toString();
     }
 
+    /**
+     * Set payload phụ từ JSON string.
+     *
+     * @param data chuỗi JSON hợp lệ; chuỗi rỗng/null sẽ clear payload
+     */
     public void setData(String data) {
         if (data == null || data.trim().isEmpty()) {
             this.data = null;
@@ -88,6 +103,9 @@ public class NotificationItem implements Serializable {
         this.data = JsonParser.parseString(data);
     }
 
+    /**
+     * @return {@code true} khi notification chưa được user đọc
+     */
     public boolean isUnread() {
         return !isRead;
     }
@@ -108,6 +126,11 @@ public class NotificationItem implements Serializable {
         this.createdAt = createdAt;
     }
 
+    /**
+     * Chuyển {@code created_at} từ Supabase sang định dạng ngày giờ dễ đọc cho người Việt.
+     *
+     * @return chuỗi thời gian đã format, hoặc raw {@code created_at} nếu parse lỗi
+     */
     public String getTimeLabel() {
         if (createdAt == null || createdAt.isEmpty()) {
             return "";
@@ -125,6 +148,9 @@ public class NotificationItem implements Serializable {
         return createdAt;
     }
 
+    /**
+     * @return nội dung hiển thị chính của thông báo
+     */
     public String getMessage() {
         return body;
     }

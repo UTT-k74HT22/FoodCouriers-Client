@@ -29,6 +29,13 @@ import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
 
+/**
+ * Repository thao tác với đơn hàng qua Supabase REST/RPC.
+ *
+ * <p>Realtime trong UI chỉ đóng vai trò báo "dữ liệu đã thay đổi". Sau mỗi event realtime,
+ * các màn order vẫn gọi repository này để kéo lại dữ liệu đầy đủ từ REST. Cách này giúp UI
+ * không phụ thuộc vào payload realtime thiếu field join như restaurant hoặc order_items.</p>
+ */
 public class OrderRepository {
 
     private static final MediaType JSON = MediaType.parse(SupabaseConfig.CONTENT_TYPE_JSON);
@@ -37,6 +44,9 @@ public class OrderRepository {
     private final OkHttpClient client = new OkHttpClient();
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
 
+    /**
+     * Bộ lọc danh sách đơn hàng ở màn lịch sử đơn.
+     */
     public enum OrderFilter {
         ALL,
         ACTIVE,
@@ -44,13 +54,22 @@ public class OrderRepository {
         CANCELLED
     }
 
+    /**
+     * @return singleton repository dùng chung cho checkout, order history, detail và tracking
+     */
     public static synchronized OrderRepository getInstance() {
         if (instance == null) {
             instance = new OrderRepository();
         }
         return instance;
     }
-    /** Lấy toàn bộ đơn hàng  */
+    /**
+     * Lấy danh sách đơn hàng của user đang đăng nhập.
+     *
+     * @param context context dùng để lấy {@link SessionManager}
+     * @param filter bộ lọc tab hiện tại
+     * @param callback trả danh sách {@link OrderSummary} đã parse từ REST response
+     */
     public void getOrders(Context context, OrderFilter filter, RepositoryCallback<List<OrderSummary>> callback) {
         SessionManager sessionManager = SessionManager.getInstance(context);
         if (!sessionManager.isLoggedIn()) {
@@ -98,6 +117,13 @@ public class OrderRepository {
         });
     }
 
+    /**
+     * Lấy chi tiết một đơn hàng, bao gồm thông tin nhà hàng và line items.
+     *
+     * @param context context dùng để lấy session/access token
+     * @param orderId id đơn hàng cần load
+     * @param callback trả {@link OrderSummary} đầy đủ cho màn detail/tracking
+     */
     public void getOrderById(Context context, String orderId, RepositoryCallback<OrderSummary> callback) {
         SessionManager sessionManager = SessionManager.getInstance(context);
         if (!sessionManager.isLoggedIn()) {
@@ -135,6 +161,14 @@ public class OrderRepository {
         });
     }
 
+    /**
+     * Gọi RPC kiểm tra mã khuyến mãi trước khi tạo đơn.
+     *
+     * @param context context dùng để lấy session
+     * @param code mã khuyến mãi user nhập
+     * @param subtotal tổng tiền hàng trước phí/giảm giá
+     * @param callback kết quả hợp lệ, message và discount
+     */
     public void validatePromotion(Context context, String code, int subtotal, RepositoryCallback<PromotionValidationResult> callback) {
         SessionManager sessionManager = SessionManager.getInstance(context);
         String url = SupabaseConfig.REST_URL + "/rpc/rpc_apply_promotion";
@@ -177,6 +211,25 @@ public class OrderRepository {
         });
     }
 
+    /**
+     * Tạo đơn hàng bằng Supabase RPC {@code rpc_create_order}.
+     *
+     * <p>RPC chịu trách nhiệm insert orders/order_items, tính tổng tiền và có thể tạo notification.
+     * Repository chỉ gửi payload từ checkout, sau đó load lại order bằng id RPC trả về để UI nhận
+     * dữ liệu đầy đủ.</p>
+     *
+     * @param context context dùng để lấy user/session
+     * @param restaurantId id nhà hàng
+     * @param deliveryAddress địa chỉ giao hàng
+     * @param lat vĩ độ giao hàng
+     * @param lon kinh độ giao hàng
+     * @param note ghi chú của user
+     * @param paymentMethod phương thức thanh toán
+     * @param promotionCode mã khuyến mãi nếu có
+     * @param items danh sách món gửi vào RPC
+     * @param deliveryFee phí giao hàng
+     * @param callback trả order vừa tạo sau khi load lại từ REST
+     */
     public void createOrder(
             Context context,
             String restaurantId,
@@ -240,7 +293,12 @@ public class OrderRepository {
             }
         });
     }
-    // Hàm phụ để chuyển đổi JsonObject thành OrderSummary
+    /**
+     * Chuyển JSON REST response thành model dùng chung cho list/detail/tracking.
+     *
+     * @param obj object order từ Supabase REST
+     * @return model {@link OrderSummary}
+     */
     private OrderSummary parseOrderSummary(JsonObject obj) {
         String id = getAsString(obj, "id");
         String code = getAsString(obj, "order_code");
@@ -277,6 +335,9 @@ public class OrderRepository {
                 subtotal, deliveryFee, discount, total, address, note, items, paymentMethod, paymentStatus);
     }
 
+    /**
+     * Tạo request builder có đủ anon key, bearer token và content type.
+     */
     private Request.Builder authorizedBuilder(SessionManager sessionManager, String url) {
         return new Request.Builder()
                 .url(url)
@@ -285,6 +346,9 @@ public class OrderRepository {
                 .addHeader(SupabaseConfig.HEADER_CONTENT_TYPE, SupabaseConfig.CONTENT_TYPE_JSON);
     }
 
+    /**
+     * Đưa callback thành công về main thread để ViewModel cập nhật LiveData an toàn.
+     */
     private void postSuccess(RepositoryCallback<?> callback, Object result) {
         mainHandler.post(() -> {
             @SuppressWarnings("unchecked")
@@ -293,6 +357,9 @@ public class OrderRepository {
         });
     }
 
+    /**
+     * Đưa callback lỗi về main thread.
+     */
     private void postError(RepositoryCallback<?> callback, String error) {
         mainHandler.post(() -> callback.onError(error));
     }

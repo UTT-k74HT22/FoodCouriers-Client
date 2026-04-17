@@ -25,6 +25,14 @@ import com.utt.foodcouriers_client.ui.main.MainActivity;
 import com.utt.foodcouriers_client.utils.SessionManager;
 import com.utt.foodcouriers_client.utils.ToastBanner;
 
+/**
+ * Màn hình đăng ký tài khoản.
+ *
+ * <p>Ngoài đăng ký email/password, màn này dùng chung luồng Google OAuth với
+ * {@link LoginActivity}. Khi user chọn Google, activity chỉ mở browser qua
+ * {@link SocialAuthRepository}; token và profile sẽ được xử lý ở
+ * {@link SocialAuthCallbackActivity} sau khi Supabase redirect về app.</p>
+ */
 public class RegisterActivity extends BaseActivity {
 
     private static final String TAG = "RegisterActivity";
@@ -153,6 +161,9 @@ public class RegisterActivity extends BaseActivity {
         return true;
     }
 
+    /**
+     * Gửi thông tin đăng ký lên Supabase Auth/app profile, lưu session và bật realtime.
+     */
     private void performRegister() {
         String name = getName().trim();
         String email = getEmail().trim();
@@ -189,6 +200,11 @@ public class RegisterActivity extends BaseActivity {
         });
     }
 
+    /**
+     * Bắt đầu luồng OAuth từ màn Register.
+     *
+     * @param provider provider user vừa chọn
+     */
     private void startSocialAuth(SocialAuthProvider provider) {
         Log.d(TAG, "Step 1: User requested social auth | provider=" + provider.getValue());
         socialAuthRepository.startAuth(this, provider, new RepositoryCallback<Boolean>() {

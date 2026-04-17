@@ -23,6 +23,14 @@ import com.utt.foodcouriers_client.utils.websocket.RealtimeChannel;
 import com.utt.foodcouriers_client.utils.websocket.RealtimeListener;
 import com.utt.foodcouriers_client.viewmodel.OrdersViewModel;
 
+/**
+ * Màn hình lịch sử đơn hàng theo tab filter.
+ *
+ * <p>Fragment load danh sách qua {@link OrdersViewModel}. Khi màn hình start, Fragment subscribe
+ * Supabase Realtime vào bảng {@code public.orders} với filter {@code user_id=eq.<currentUserId>}.
+ * Mỗi INSERT/UPDATE/DELETE chỉ đóng vai trò trigger refresh list; dữ liệu render vẫn được lấy lại
+ * qua REST để giữ đủ thông tin join và đúng filter hiện tại.</p>
+ */
 public class OrdersFragment extends BaseFragment {
 
     private static final String TAG_REAL_TIME = "OrdersRealtime";
@@ -62,6 +70,9 @@ public class OrdersFragment extends BaseFragment {
         super.onStop();
     }
 
+    /**
+     * Khởi tạo danh sách đơn và mở màn detail khi user chọn một đơn.
+     */
     private void setupRecyclerView() {
         adapter = new OrderHistoryAdapter();
         adapter.setListener(order -> {
@@ -73,6 +84,9 @@ public class OrdersFragment extends BaseFragment {
         binding.rvOrders.setAdapter(adapter);
     }
 
+    /**
+     * Tạo các tab filter và reload danh sách khi user đổi tab.
+     */
     private void setupTabs() {
         binding.tabLayout.removeAllTabs();
         binding.tabLayout.addTab(binding.tabLayout.newTab().setText(R.string.orders_filter_all).setTag(OrderRepository.OrderFilter.ALL));
@@ -99,6 +113,9 @@ public class OrdersFragment extends BaseFragment {
         });
     }
 
+    /**
+     * Observe state từ ViewModel để render list, empty state, loading và lỗi.
+     */
     private void bindObservers() {
         viewModel.getOrders().observe(getViewLifecycleOwner(), orders -> {
             adapter.submitList(orders);
@@ -119,6 +136,12 @@ public class OrdersFragment extends BaseFragment {
         });
     }
 
+    /**
+     * Subscribe realtime cho toàn bộ đơn của user hiện tại.
+     *
+     * <p>Channel này phục vụ màn danh sách. Màn detail/tracking có channel riêng theo id đơn hàng
+     * để chỉ refresh đúng order đang mở.</p>
+     */
     private void subscribeToOrderUpdates() {
         if (ordersChannel != null || !isAdded()) {
             return;
@@ -178,6 +201,9 @@ public class OrdersFragment extends BaseFragment {
         Log.d(TAG_REAL_TIME, "Subscribed to orders channel: " + (ordersChannel != null ? "success" : "failed"));
     }
 
+    /**
+     * Hủy channel realtime của màn danh sách khi Fragment dừng hoặc view bị destroy.
+     */
     private void unsubscribeFromOrderUpdates() {
         if (ordersChannel != null) {
             SupabaseRealtimeClient.getInstance().unsubscribe(ordersChannel);
@@ -186,6 +212,9 @@ public class OrdersFragment extends BaseFragment {
         }
     }
 
+    /**
+     * Refresh list trên main thread sau khi realtime báo thay đổi.
+     */
     private void refreshOrders() {
         if (!isAdded()) {
             return;

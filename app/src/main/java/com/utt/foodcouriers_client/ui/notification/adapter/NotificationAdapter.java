@@ -11,11 +11,23 @@ import com.utt.foodcouriers_client.R;
 import com.utt.foodcouriers_client.data.model.NotificationItem;
 import com.utt.foodcouriers_client.databinding.ItemNotificationBinding;
 
+/**
+ * Adapter render danh sách thông báo bằng {@link ListAdapter}.
+ *
+ * <p>Adapter chỉ chịu trách nhiệm hiển thị item và bắn sự kiện click ra ngoài.
+ * Việc mark read, reload list hoặc cập nhật badge thuộc về Fragment/ViewModel.</p>
+ */
 public class NotificationAdapter extends ListAdapter<NotificationItem, NotificationAdapter.NotificationViewHolder> {
 
     private OnNotificationClickListener clickListener;
 
+    /**
+     * Callback khi user bấm một thông báo trong danh sách.
+     */
     public interface OnNotificationClickListener {
+        /**
+         * @param notification item vừa được user chọn
+         */
         void onNotificationClick(NotificationItem notification);
     }
 
@@ -23,6 +35,11 @@ public class NotificationAdapter extends ListAdapter<NotificationItem, Notificat
         super(DIFF_CALLBACK);
     }
 
+    /**
+     * Gắn listener để Fragment xử lý thao tác click.
+     *
+     * @param listener listener nhận item được click
+     */
     public void setOnNotificationClickListener(OnNotificationClickListener listener) {
         this.clickListener = listener;
     }
@@ -62,6 +79,11 @@ public class NotificationAdapter extends ListAdapter<NotificationItem, Notificat
             this.binding = binding;
         }
 
+        /**
+         * Bind dữ liệu thông báo vào layout item.
+         *
+         * @param item thông báo cần render
+         */
         void bind(NotificationItem item) {
             binding.tvTitle.setText(item.getTitle());
             binding.tvMessage.setText(item.getMessage());
@@ -81,6 +103,12 @@ public class NotificationAdapter extends ListAdapter<NotificationItem, Notificat
             });
         }
 
+        /**
+         * Chọn icon theo loại thông báo từ backend.
+         *
+         * @param type loại thông báo, ví dụ {@code order}, {@code promotion}, {@code system}
+         * @return drawable resource phù hợp
+         */
         private int getIconForType(String type) {
             if (type == null) {
                 return R.drawable.ic_notification;

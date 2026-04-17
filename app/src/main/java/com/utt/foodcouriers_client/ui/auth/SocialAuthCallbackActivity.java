@@ -17,6 +17,19 @@ import com.utt.foodcouriers_client.data.auth.SocialAuthResult;
 import com.utt.foodcouriers_client.data.repository.SocialAuthRepository;
 import com.utt.foodcouriers_client.ui.common.BaseActivity;
 
+/**
+ * Màn hình nhận deep link sau khi user đăng nhập Google trên browser.
+ *
+ * <p>Activity này là điểm nối giữa Android intent và tầng repository:</p>
+ *
+ * <ol>
+ *     <li>Android mở activity bằng URI {@code com.utt.foodcouriers.client://auth/callback...}.</li>
+ *     <li>{@link #processCallback(Uri)} chuyển URI cho {@link SocialAuthRepository}.</li>
+ *     <li>Repository/manager parse token, bootstrap profile, lưu session và bật realtime.</li>
+ *     <li>Nếu thành công, activity mở {@link com.utt.foodcouriers_client.ui.main.MainActivity};
+ *     nếu lỗi, màn hình hiển thị trạng thái để user retry hoặc quay lại đăng nhập.</li>
+ * </ol>
+ */
 public class SocialAuthCallbackActivity extends BaseActivity {
     private static final String TAG = "SocialAuthCallback";
 
@@ -85,6 +98,11 @@ public class SocialAuthCallbackActivity extends BaseActivity {
         btnSecondaryAction.setOnClickListener(v -> openLogin());
     }
 
+    /**
+     * Gửi URI callback xuống repository và render kết quả.
+     *
+     * @param data deep link data lấy từ intent hiện tại
+     */
     private void processCallback(Uri data) {
         Log.d(TAG, "Step 2: Forwarding callback to repository | uri=" + describeUri(data));
         socialAuthRepository.handleCallback(this, data, new com.utt.foodcouriers_client.data.common.RepositoryCallback<SocialAuthResult>() {
@@ -126,6 +144,9 @@ public class SocialAuthCallbackActivity extends BaseActivity {
         finish();
     }
 
+    /**
+     * Hiển thị trạng thái đang xử lý trong lúc app parse URI và bootstrap profile.
+     */
     private void renderProcessing() {
         lastResult = null;
         ivStatusIcon.setImageResource(R.drawable.ic_route_path);
@@ -141,6 +162,11 @@ public class SocialAuthCallbackActivity extends BaseActivity {
         btnSecondaryAction.setText(R.string.social_auth_secondary_sign_in);
     }
 
+    /**
+     * Hiển thị trạng thái thành công nếu cần giữ user ở màn callback để bootstrap lại.
+     *
+     * @param result kết quả OAuth đã có đủ token
+     */
     private void renderSuccess(@NonNull SocialAuthResult result) {
         progressCallback.hide();
         ivStatusIcon.setImageResource(R.drawable.ic_receipt);
@@ -155,6 +181,11 @@ public class SocialAuthCallbackActivity extends BaseActivity {
         btnSecondaryAction.setText(R.string.social_auth_secondary_sign_in);
     }
 
+    /**
+     * Hiển thị lỗi OAuth đã parse được từ callback.
+     *
+     * @param result kết quả chứa provider/lỗi/missing payload để user dễ hiểu đang hỏng ở bước nào
+     */
     private void renderError(@NonNull SocialAuthResult result) {
         progressCallback.hide();
         ivStatusIcon.setImageResource(R.drawable.ic_warning_circle);
@@ -189,6 +220,9 @@ public class SocialAuthCallbackActivity extends BaseActivity {
         btnSecondaryAction.setText(R.string.social_auth_secondary_sign_in);
     }
 
+    /**
+     * Thử lại bước lấy/tạo profile bằng token OAuth đã lưu tạm, không mở browser lần nữa.
+     */
     private void retryProfileBootstrap() {
         socialAuthRepository.retryProfileBootstrap(this, new com.utt.foodcouriers_client.data.common.RepositoryCallback<Boolean>() {
             @Override

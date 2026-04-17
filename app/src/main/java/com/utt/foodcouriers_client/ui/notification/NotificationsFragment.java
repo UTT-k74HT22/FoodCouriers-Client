@@ -27,6 +27,17 @@ import com.utt.foodcouriers_client.viewmodel.NotificationViewModel;
 import java.util.Collections;
 import java.util.List;
 
+/**
+ * Màn hình hiển thị và thao tác với thông báo in-app.
+ *
+ * <p>Luồng hoạt động chính:</p>
+ * <ol>
+ *     <li>Khi view được tạo, Fragment setup RecyclerView/action/observer rồi gọi ViewModel load REST.</li>
+ *     <li>Khi Fragment start, nó subscribe realtime vào {@code public:notifications} với filter user hiện tại.</li>
+ *     <li>Khi Supabase gửi INSERT/UPDATE/DELETE, listener gọi {@link #refreshNotifications()} để kéo lại list mới.</li>
+ *     <li>Khi rời màn, Fragment unsubscribe channel để tránh callback thừa và rò rỉ listener.</li>
+ * </ol>
+ */
 public class NotificationsFragment extends BaseFragment {
 
     private static final String TAG_REAL_TIME = "RealTimeWebSocket";
@@ -71,6 +82,12 @@ public class NotificationsFragment extends BaseFragment {
         unsubscribeFromNotifications();
     }
 
+    /**
+     * Subscribe thay đổi bảng {@code notifications} của user hiện tại.
+     *
+     * <p>Subscription này chỉ phục vụ màn danh sách đang mở. App còn có một subscription toàn cục
+     * trong {@link com.utt.foodcouriers_client.FoodCouriersClientApp} để hiện toast và refresh badge.</p>
+     */
     private void subscribeToNotifications() {
         currentUserId = sessionManager.getUserId();
         if (currentUserId == null || currentUserId.isBlank()) {
@@ -119,6 +136,9 @@ public class NotificationsFragment extends BaseFragment {
         Log.d(TAG_REAL_TIME, "Subscribed to notifications channel: " + (notificationChannel != null ? "success" : "failed"));
     }
 
+    /**
+     * Hủy subscription realtime của màn hiện tại.
+     */
     private void unsubscribeFromNotifications() {
         if (notificationChannel != null) {
             SupabaseRealtimeClient.getInstance().unsubscribe(notificationChannel);
@@ -127,6 +147,9 @@ public class NotificationsFragment extends BaseFragment {
         }
     }
 
+    /**
+     * Refresh danh sách trên main thread sau khi realtime báo dữ liệu thay đổi.
+     */
     private void refreshNotifications() {
         if (getContext() != null) {
             requireActivity().runOnUiThread(() -> {
@@ -135,6 +158,11 @@ public class NotificationsFragment extends BaseFragment {
         }
     }
 
+    /**
+     * Khởi tạo adapter và xử lý click từng thông báo.
+     *
+     * <p>Khi user bấm vào thông báo chưa đọc, ViewModel sẽ mark read rồi load lại danh sách.</p>
+     */
     private void setupRecyclerView() {
         adapter = new NotificationAdapter();
         adapter.setOnNotificationClickListener(new NotificationAdapter.OnNotificationClickListener() {
@@ -171,6 +199,9 @@ public class NotificationsFragment extends BaseFragment {
                 .show());
     }
 
+    /**
+     * Observe state từ ViewModel để render danh sách, empty state, badge và toast kết quả.
+     */
     private void observeViewModel() {
         viewModel.getNotifications().observe(getViewLifecycleOwner(), notifications -> {
             binding.swipeRefresh.setRefreshing(false);
@@ -216,6 +247,11 @@ public class NotificationsFragment extends BaseFragment {
         });
     }
 
+    /**
+     * Cập nhật text tổng quan và enable/disable các nút thao tác theo số lượng thông báo.
+     *
+     * @param notifications danh sách hiện tại từ ViewModel
+     */
     private void updateActionState(List<NotificationItem> notifications) {
         int totalCount = notifications != null ? notifications.size() : 0;
         int unreadCount = 0;
@@ -234,6 +270,9 @@ public class NotificationsFragment extends BaseFragment {
         binding.btnDeleteAll.setEnabled(totalCount > 0);
     }
 
+    /**
+     * Load thông báo nếu user đã đăng nhập; nếu chưa thì báo user cần login.
+     */
     private void loadNotifications() {
         String userId = sessionManager.getUserId();
         if (userId != null && !userId.isBlank()) {

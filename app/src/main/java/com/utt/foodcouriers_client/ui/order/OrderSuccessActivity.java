@@ -14,6 +14,13 @@ import com.utt.foodcouriers_client.data.repository.OrderRepository;
 import com.utt.foodcouriers_client.ui.common.BaseActivity;
 import com.utt.foodcouriers_client.ui.main.MainActivity;
 
+/**
+ * Màn hình xác nhận tạo đơn thành công.
+ *
+ * <p>Activity nhận order id từ checkout/payment flow, load lại order để hiển thị mã đơn
+ * và tổng tiền, rồi cho user quay về trang chủ hoặc mở {@link OrderTrackingActivity}
+ * để theo dõi realtime.</p>
+ */
 public class OrderSuccessActivity extends BaseActivity {
 
     public static final String EXTRA_ORDER_ID = "extra_order_id";

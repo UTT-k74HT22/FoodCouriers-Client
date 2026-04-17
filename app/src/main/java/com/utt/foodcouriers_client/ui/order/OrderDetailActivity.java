@@ -27,6 +27,13 @@ import com.utt.foodcouriers_client.utils.websocket.RealtimeChannel;
 import com.utt.foodcouriers_client.utils.websocket.RealtimeListener;
 import com.utt.foodcouriers_client.viewmodel.OrdersViewModel;
 
+/**
+ * Màn hình chi tiết đơn hàng.
+ *
+ * <p>Màn này load order đầy đủ qua {@link OrdersViewModel}, bao gồm nhà hàng, tiền, địa chỉ
+ * và line items. Đồng thời subscribe realtime theo {@code id=eq.<orderId>} để khi admin đổi
+ * trạng thái đơn, màn hình chỉ cần gọi lại REST detail và render lại badge/timeline.</p>
+ */
 public class OrderDetailActivity extends BaseActivity {
 
     public static final String TAG_REAL_TIME = "RealTimeWebSocket";
@@ -92,6 +99,9 @@ public class OrderDetailActivity extends BaseActivity {
         super.onDestroy();
     }
 
+    /**
+     * Khởi tạo danh sách món trong đơn.
+     */
     private void setupRecyclerView() {
         androidx.recyclerview.widget.RecyclerView recyclerView = findViewById(R.id.rv_order_items);
         lineItemAdapter = new OrderLineItemAdapter();
@@ -99,6 +109,9 @@ public class OrderDetailActivity extends BaseActivity {
         recyclerView.setAdapter(lineItemAdapter);
     }
 
+    /**
+     * Observe order detail và lỗi từ ViewModel.
+     */
     private void bindObservers() {
         viewModel.getSelectedOrder().observe(this, this::renderOrder);
         viewModel.getErrorMessage().observe(this, error -> {
@@ -108,6 +121,11 @@ public class OrderDetailActivity extends BaseActivity {
         });
     }
 
+    /**
+     * Render toàn bộ thông tin order lên UI.
+     *
+     * @param order order summary đã được repository load đủ thông tin detail
+     */
     private void renderOrder(OrderSummary order) {
         ((TextView) findViewById(R.id.tv_order_code)).setText(order.getOrderCode());
         ((TextView) findViewById(R.id.tv_order_date)).setText(order.getCreatedAtLabel());
@@ -153,6 +171,11 @@ public class OrderDetailActivity extends BaseActivity {
         btnReorder.setOnClickListener(v -> showToast("Re-order se duoc noi sang cart/use case o buoc tiep theo."));
     }
 
+    /**
+     * Render timeline trạng thái đơn hàng trong màn detail.
+     *
+     * @param currentStatus trạng thái hiện tại của đơn
+     */
     private void renderTimeline(OrderStatus currentStatus) {
         LinearLayout timeline = findViewById(R.id.layout_status_timeline);
         timeline.removeAllViews();
@@ -211,11 +234,13 @@ public class OrderDetailActivity extends BaseActivity {
     }
 
     /**
-     * Subscribes to real-time updates for the current order.
-     * When the order status or delivery status changes in the database,
-     * this method receives the update via Supabase Realtime and refreshes the UI.
+     * Subscribe realtime cho đúng đơn hàng đang mở.
      *
-     * @param orderId The unique identifier of the order to track.
+     * <p>Khi nhận INSERT/UPDATE, màn hình không dùng trực tiếp record realtime để render.
+     * Thay vào đó {@link #refreshOrder()} load lại chi tiết qua REST để có đủ restaurant,
+     * order_items và các field tính tiền.</p>
+     *
+     * @param orderId id đơn hàng đang mở
      */
     private void subscribeToOrderUpdates(String orderId) {
         Log.d(TAG_REAL_TIME, "Subscribing to order updates: " + orderId);
@@ -266,8 +291,7 @@ public class OrderDetailActivity extends BaseActivity {
     }
 
     /**
-     * Refreshes the order detail by reloading from the database.
-     * This is called when a real-time update is received from Supabase.
+     * Load lại order detail trên main thread sau khi realtime báo thay đổi.
      */
     private void refreshOrder() {
         runOnUiThread(() -> {

@@ -10,7 +10,14 @@ import com.utt.foodcouriers_client.data.model.OrderSummary;
 import com.utt.foodcouriers_client.data.repository.OrderRepository;
 
 import java.util.List;
-/** Điều phối các trạng thái đơn hàng */
+
+/**
+ * ViewModel điều phối state cho lịch sử đơn, chi tiết đơn và màn tracking.
+ *
+ * <p>ViewModel giữ filter hiện tại của danh sách. Khi realtime báo có thay đổi,
+ * Fragment/Activity gọi {@link #refresh(Context)} hoặc {@link #loadOrderDetail(Context, String)}
+ * để kéo lại dữ liệu đầy đủ từ {@link OrderRepository}.</p>
+ */
 public class OrdersViewModel extends BaseViewModel {
 
     private final OrderRepository repository = OrderRepository.getInstance();
@@ -20,15 +27,26 @@ public class OrdersViewModel extends BaseViewModel {
 
     private OrderRepository.OrderFilter currentFilter = OrderRepository.OrderFilter.ALL;
 
+    /**
+     * @return danh sách đơn hàng theo filter hiện tại
+     */
     public LiveData<List<OrderSummary>> getOrders() {
         return orders;
     }
 
+    /**
+     * @return đơn hàng đang được mở ở detail/tracking
+     */
     public LiveData<OrderSummary> getSelectedOrder() {
         return selectedOrder;
     }
 
-    // Load list orders
+    /**
+     * Load danh sách đơn hàng theo filter được chọn.
+     *
+     * @param context context màn hình để repository lấy session
+     * @param filter filter tab hiện tại; null sẽ mặc định là ALL
+     */
     public void loadOrders(Context context, OrderRepository.OrderFilter filter) {
         currentFilter = filter != null ? filter : OrderRepository.OrderFilter.ALL;
         setLoading(true);
@@ -48,12 +66,21 @@ public class OrdersViewModel extends BaseViewModel {
         });
     }
 
-    // Refresh list
+    /**
+     * Refresh danh sách bằng filter đang lưu.
+     *
+     * @param context context màn hình
+     */
     public void refresh(Context context) {
         loadOrders(context, currentFilter);
     }
 
-    // Load order detail
+    /**
+     * Load chi tiết một đơn hàng cho detail/tracking.
+     *
+     * @param context context màn hình
+     * @param orderId id đơn hàng cần load
+     */
     public void loadOrderDetail(Context context, String orderId) {
         setLoading(true);
 
@@ -72,7 +99,11 @@ public class OrdersViewModel extends BaseViewModel {
         });
     }
 
-    // Refresh cả list + detail
+    /**
+     * Refresh cả danh sách và chi tiết đang chọn nếu có.
+     *
+     * @param context context màn hình
+     */
     public void refreshAll(Context context) {
         loadOrders(context, currentFilter);
 
